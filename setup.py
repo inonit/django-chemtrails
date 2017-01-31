@@ -38,6 +38,7 @@ setup(
     tests_require=[
         'nose',
         'coverage',
+        'django-autofixture',
     ],
     zip_safe=False,
     test_suite='tests.run_tests.start',
