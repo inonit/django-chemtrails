@@ -19,21 +19,22 @@ def get_version(package):
     return re.search("__version__ = ['\"]([^'\"]+)['\"]", init_py).group(1)
 
 setup(
-    name='django-permtrail',
-    version=get_version('permtrail'),
+    name='django-chemtrails',
+    version=get_version('chemtrails'),
     description='Neo4j Permission Backend for Django',
     long_description='Calculate permissions based on entity relationship in a Neo4j graph',
     author='Rolf Håvard Blindheim',
     author_email='rhblind@gmail.com',
-    url='https://github.com/inonit/django-permtrail',
-    download_url='https://github.com/inonit/django-permtrail.git',
+    url='https://github.com/inonit/django-chemtrails',
+    download_url='https://github.com/inonit/django-chemtrails.git',
     license='MIT License',
     packages=[
-        'permtrail',
+        'chemtrails',
     ],
     include_package_data=True,
     install_requires=[
         'Django>=1.8.0',
+        'neomodel>=3.1.0'
     ],
     tests_require=[
         'nose',

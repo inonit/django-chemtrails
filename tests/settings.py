@@ -29,7 +29,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'autofixture',
-    'tests.testapp'
+    'tests.testapp',
+
+    'chemtrails'
 ]
 
 MIDDLEWARE = [
@@ -91,7 +93,10 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
-
+AUTHENTICATION_BACKENDS = (
+    'django.contrib.auth.backends.ModelBackend',
+    'chemtrails.backends.Neo4jPermissionBackend'
+)
 
 # Internationalization
 # https://docs.djangoproject.com/en/1.10/topics/i18n/

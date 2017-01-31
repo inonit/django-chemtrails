@@ -1,3 +1,5 @@
 Django==1.10.5
 coverage
+django-autofixture==0.12.1
+neomodel==3.1.0
 nose

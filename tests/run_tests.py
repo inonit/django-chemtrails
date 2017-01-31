@@ -17,7 +17,7 @@ def start(argv=None):
             '--cover-html', '--cover-html-dir=.htmlcov',
             '--cover-erase',
             '--cover-branches',
-            '--cover-package=permtrail',
+            '--cover-package=chemtrails',
         ]
 
     nose.run_exit(argv=argv, defaultTest=os.path.abspath(os.path.dirname(__file__)))
