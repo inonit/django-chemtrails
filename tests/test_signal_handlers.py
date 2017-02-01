@@ -14,3 +14,5 @@ class SignalHandlerTestCase(TestCase):
 
     def test_post_save_handler(self):
         BookFixture(Book).create(1)
+        b = Book.objects.get()
+        ret = ''
