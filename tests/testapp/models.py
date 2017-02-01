@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 from django.db import models
-from chemtrails.models import Neo4jDatasyncMixin
 
 
 class Author(models.Model):

@@ -13,9 +13,28 @@ def post_migrate_handler(sender, **kwargs):
 
 
 def post_save_handler(sender, instance, created, **kwargs):
-    value = serializers.serialize('json', [instance])
-    value = json.loads(value[1:-1])  # Trim off square brackets!
-    brk = ''
+    """
+    Get all relations the current instance has and store them in the graph.
+    """
+    # Ref: https://docs.djangoproject.com/en/1.10/ref/models/meta/
+
+    from chemtrails.utils import NeoModelWrapper
+    i = NeoModelWrapper(instance).get_neo_model()
+    if hasattr(i, 'someinteger'):
+        i.someinteger = 1
+        i.save()
+
+
+    # fields = instance._meta.get_fields(include_hidden=True)
+    # fields = [
+    #     (f, f.model if f.model != instance else None)
+    #     for f in instance._meta.get_fields()
+    #     if f.is_relation or f.one_to_one or (f.many_to_one and f.related_model)
+    # ]
+    # if fields:
+    #     brk = ''
+    serialized = serializers.serialize('json', [instance])
+    serialized = json.loads(serialized[1:-1])  # Trim off square brackets!
 
 
 def pre_delete_handler(sender, instance, **kwargs):
