@@ -5,7 +5,7 @@ python:
   - 3.6
 
 dist: trusty
-sudo: false
+sudo: required
 
 cache:
   apt: true
@@ -15,31 +15,30 @@ cache:
 
 env:
   global:
-    - NEO4J_VERSION="3.1.1"
     - PIP_DOWNLOAD_CACHE="pip_download_cache"
   matrix:
     - DJANGO_VERSION=">=1.8,<1.9"
     - DJANGO_VERSION=">=1.9,<1.10"
     - DJANGO_VERSION=">=1.10,<1.11"
 
+services:
+  - docker
+
 before_install:
   - mkdir -p $PIP_DOWNLOAD_CACHE
-  - wget dist.neo4j.org/neo4j-community-$NEO4J_VERSION-unix.tar.gz
-  - tar -xzf neo4j-community-$NEO4J_VERSION-unix.tar.gz
-  - neo4j-community-$NEO4J_VERSION/bin/neo4j start
 
 install:
   - pip install tox
   - pip install coveralls
+  - pip install docker-compose
   - pip install "Django${DJANGO_VERSION}"
 
 after_success:
   coveralls
 
 script:
-  # - python setup.py test
-  - netstat -lnt
-  - telnet localhost 7687
+  - docker-compose up -d
+  - python setup.py test
 
 notifications:
   email: false
