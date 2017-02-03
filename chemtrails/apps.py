@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import os
+
 from django.apps import AppConfig
 from django.conf import settings
 from django.db.models.signals import m2m_changed, post_migrate, post_save, pre_delete
@@ -29,5 +31,7 @@ class ChemTrailsConfig(AppConfig):
                              dispatch_uid='neomodel.core.install_all_labels')
 
         # Neo4j config
-        config.DATABASE_URL = getattr(settings, 'NEOMODEL_NEO4J_BOLT_URL', config.DATABASE_URL)
-        config.FORCE_TIMEZONE = getattr(settings, 'NEOMODEL_FORCE_TIMEZONE', False)
+        config.DATABASE_URL = getattr(settings, 'NEOMODEL_NEO4J_BOLT_URL',
+                                      os.environ.get('NEOMODEL_NEO4J_BOLT_URL', config.DATABASE_URL))
+        config.FORCE_TIMEZONE = getattr(settings, 'NEOMODEL_FORCE_TIMEZONE',
+                                        os.environ.get('NEOMODEL_FORCE_TIMEZONE', False))
