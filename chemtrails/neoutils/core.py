@@ -141,12 +141,3 @@ class ModelRelationsMixin(object):
                 field.connect(related_node)
 
         return result
-
-
-
-# TODO: Make a base class we can instantiate!
-# @six.add_metaclass(ModelRelationsMeta)
-# class ModelRelationsNode(StructuredNode):
-#     class Meta:
-#         model = None
-
