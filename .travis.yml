@@ -26,6 +26,7 @@ before_install:
   - mkdir -p $PIP_DOWNLOAD_CACHE
   - wget dist.neo4j.org/neo4j-community-$NEO4J_VERSION-unix.tar.gz
   - tar -xzf neo4j-community-$NEO4J_VERSION-unix.tar.gz
+  - jdk_switcher use oraclejdk8
   - neo4j-community-$NEO4J_VERSION/bin/neo4j start
 
 install:
