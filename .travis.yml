@@ -4,8 +4,8 @@ python:
   - 3.5
   - 3.6
 
-jdk:
-  - oraclejdk8
+dist: trusty
+sudo: false
 
 cache:
   apt: true
@@ -26,7 +26,6 @@ before_install:
   - mkdir -p $PIP_DOWNLOAD_CACHE
   - wget dist.neo4j.org/neo4j-community-$NEO4J_VERSION-unix.tar.gz
   - tar -xzf neo4j-community-$NEO4J_VERSION-unix.tar.gz
-  - jdk_switcher use oraclejdk8
   - neo4j-community-$NEO4J_VERSION/bin/neo4j start
 
 install:
@@ -39,14 +38,6 @@ after_success:
 
 script:
   - python setup.py test
-
-# Required for neo4j to work
-#dist: trusty
-#sudo: false
-#
-#services:
-#  - neo4j
-
 
 notifications:
   email: false
