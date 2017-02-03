@@ -33,15 +33,14 @@ class ModelRelationsMeta(NodeMeta):
         if getattr(cls, 'Meta', None):
             cls.Meta = Meta('Meta', (Meta,), dict(cls.Meta.__dict__))
 
+            # A little hack which helps us dynamically create ModelRelation classes
+            # where variables holding the model class is out of scope.
             if hasattr(cls, '__metaclass_model__') and not cls.Meta.model:
                 cls.Meta.model = getattr(cls, '__metaclass_model__', None)
                 delattr(cls, '__metaclass_model__')
 
-            if not hasattr(cls.Meta, 'model'):
-                raise AttributeError('%s.Meta is missing a model attribute.' % name)
-
-            elif hasattr(cls.Meta, 'model') and not cls.Meta.model:
-                raise AttributeError('Model.meta attribute cannot be None.')
+            if not getattr(cls.Meta, 'model', None):
+                raise ValueError('%s.Meta.model attribute cannot be None.' % name)
 
             setattr(cls, '__label__', '{object_name}RelationMeta'.format(
                 object_name=cls.Meta.model._meta.object_name))

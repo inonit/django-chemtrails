@@ -10,26 +10,34 @@ from chemtrails.neoutils import ModelRelationsMeta, ModelRelationsMixin
 from tests.testapp.models import Book
 
 
-# class ModelRelationsNodeTestCase(TestCase):
+class ModelRelationsNodeTestCase(TestCase):
 
-    # def test_create_node_with_meta_class(self):
-    #
-    #     @six.add_metaclass(ModelRelationsMeta)
-    #     class RelationNode(ModelRelationsMixin, StructuredNode):
-    #         class Meta:
-    #             model = Book
-    #
-    #     node = RelationNode().save()
-    #
-    #     self.assertIsInstance(RelationNode(), StructuredNode)
+    def test_create_node(self):
+        @six.add_metaclass(ModelRelationsMeta)
+        class RelationNode(ModelRelationsMixin, StructuredNode):
+            class Meta:
+                model = Book
 
-    # def test_create_node_fails_without_meta_class(self):
-    #     try:
-    #         class RelationNode(ModelRelationsNode):
-    #             pass
-    #         self.fail('Did not fail when defining a ModelRelationNode without a Meta class.')
-    #     except ImproperlyConfigured as e:
-    #         # FIXME: For some reason the exception is not caught here...
-    #         self.assertEqual(str(e), '%s must implement a Meta class.' % 'ModelRelationsNode')
-    #     pass
+        self.assertIsInstance(RelationNode(), StructuredNode)
+
+    def test_create_node_fails_without_meta_model(self):
+        try:
+            @six.add_metaclass(ModelRelationsMeta)
+            class RelationNode(ModelRelationsMixin, StructuredNode):
+                class Meta:
+                    model = None
+
+            self.fail('Did not fail when defining a ModelRelationNode with missing Meta class model.')
+        except ValueError as e:
+            self.assertEqual(str(e), '%s.Meta.model attribute cannot be None.' % 'RelationNode')
+
+    def test_create_node_fails_without_meta_class(self):
+        try:
+            @six.add_metaclass(ModelRelationsMeta)
+            class RelationNode(ModelRelationsMixin, StructuredNode):
+                pass
+
+            self.fail('Did not fail when defining a ModelRelationNode without a Meta class.')
+        except ImproperlyConfigured as e:
+            self.assertEqual(str(e), '%s must implement a Meta class.' % 'RelationNode')
 
