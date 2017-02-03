@@ -37,7 +37,9 @@ after_success:
   coveralls
 
 script:
-  - python setup.py test
+  # - python setup.py test
+  - netstat -lnt
+  - telnet localhost 7687
 
 notifications:
   email: false
