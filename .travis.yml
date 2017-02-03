@@ -9,8 +9,23 @@ cache:
   directories:
     - pip_download_cache
 
+env:
+  global:
+    - NEO4J_VERSION="3.1.1"
+    - PIP_DOWNLOAD_CACHE="pip_download_cache"
+  matrix:
+    - DJANGO_VERSION=">=1.8,<1.9"
+    - DJANGO_VERSION=">=1.9,<1.10"
+    - DJANGO_VERSION=">=1.10,<1.11"
+
+jdk:
+  - oraclejdk8
+
 before_install:
   - mkdir -p $PIP_DOWNLOAD_CACHE
+  - wget dist.neo4j.org/neo4j-community-$NEO4J_VERSION-unix.tar.gz
+  - tar -xzf neo4j-community-$NEO4J_VERSION-unix.tar.gz
+  - neo4j-community-$NEO4J_VERSION/bin/neo4j start
 
 install:
   - pip install tox
@@ -23,20 +38,13 @@ after_success:
 script:
   - python setup.py test
 
-env:
-  global:
-    - PIP_DOWNLOAD_CACHE="pip_download_cache"
-  matrix:
-    - DJANGO_VERSION=">=1.8,<1.9"
-    - DJANGO_VERSION=">=1.9,<1.10"
-    - DJANGO_VERSION=">=1.10,<1.11"
-
 # Required for neo4j to work
-dist: trusty
-sudo: false
+#dist: trusty
+#sudo: false
+#
+#services:
+#  - neo4j
 
-services:
-  - neo4j
 
 notifications:
   email: false
