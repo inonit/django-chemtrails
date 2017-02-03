@@ -1,18 +1,31 @@
 # -*- coding: utf-8 -*-
 
 import json
-from neomodel.core import install_all_labels
+from django.apps import apps
 from django.core import serializers
+from django.utils import six
 
-from chemtrails.utils import ModelRelationWrapper
+from neomodel import *
+
+from chemtrails.neoutils import ModelRelationsMeta, ModelRelationsMixin
 
 
 def post_migrate_handler(sender, **kwargs):
     """
     Make sure all StructuredNode labels are installed.
     """
-    # for model in sender.models.values():
-    #     ModelRelationWrapper(model).save()
+    for model in sender.models.values():
+        # ModelRelationWrapper(model).save()
+
+        @six.add_metaclass(ModelRelationsMeta)
+        class ModelNode(ModelRelationsMixin, StructuredNode):
+
+            __metaclass_model__ = model
+
+            class Meta:
+                model = None  # Will pick model from parent __metaclass_model__
+
+        ModelNode.get_or_create([{'content_type': ModelNode.get_ctype_name()}])
 
     install_all_labels()
 

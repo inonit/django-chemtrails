@@ -32,7 +32,11 @@ class ModelRelationsMeta(NodeMeta):
         cls = super(ModelRelationsMeta, mcs).__new__(mcs, str(name), bases, attrs)
 
         if getattr(cls, 'Meta', None):
+            model = cls.__dict__.get('__metaclass_model__', None)  # Should pop
             cls.Meta = Meta('Meta', (Meta,), dict(cls.Meta.__dict__))
+
+            if model and not cls.Meta.model:
+                cls.Meta.model = model
 
             if not hasattr(cls.Meta, 'model'):
                 raise AttributeError('%s.Meta is missing a model attribute.' % name)
@@ -49,6 +53,9 @@ class ModelRelationsMeta(NodeMeta):
         # Set label for node
         cls.__label__ = '{object_name}RelationMeta'.format(object_name=cls.Meta.model._meta.object_name)
 
+        # Create a mapping to hold related node fields
+        cls.__related_nodes__ = {}
+
         # Add some default fields
         cls.uuid = UniqueIdProperty()
         cls.content_type = StringProperty(unique_index=True, default=cls.get_ctype_name)
@@ -57,7 +64,7 @@ class ModelRelationsMeta(NodeMeta):
         for relation in cls.get_relation_fields(cls.Meta.model):
             if hasattr(relation, 'field') and relation.field.__class__ in field_property_map:
                 related_node, relation_property = cls.get_property_for_field(relation.field)
-                cls.related_nodes[relation.name] = related_node
+                cls.__related_nodes__[relation.name] = related_node
                 setattr(cls, relation.name, relation_property)
 
         # Recalculate relations
@@ -67,10 +74,6 @@ class ModelRelationsMeta(NodeMeta):
 
 
 class ModelRelationsMixin(object):
-
-    related_nodes = {
-
-    }
 
     @staticmethod
     def get_relation_fields(model):
@@ -118,16 +121,34 @@ class ModelRelationsMixin(object):
         ])
         return nodes[0], prop(cls_name=RelatedNode, rel_type='RELATES_THROUGH', model=DynamicRelation)
 
-    @hooks
-    def save(self):
-        super(ModelRelationsMixin, self).save()
+    @classmethod
+    def get_or_create(cls, *props, **kwargs):
+        response = super(ModelRelationsMixin, cls).get_or_create(*props, **kwargs)
+        for node in response:
+            # Connect related nodes
+            for attr, related_node in node.__related_nodes__.items():
+                field = getattr(node, attr)
+                field.connect(related_node)
 
-        # Connect related nodes
-        for attr, node in self.related_nodes.items():
-            field = getattr(self, attr)
-            field.connect(node)
-
-        return self
+        return response
+    # @hooks
+    # def save(self):
+    #     try:
+    #         super(ModelRelationsMixin, self).save()
+    #     except UniqueProperty as e:
+    #         pass
+    #     finally:
+    #         # Connect related nodes
+    #         for attr, related_node in self.__related_nodes__.items():
+    #             if not related_node.id:
+    #                 related_node.save()
+    #             field = getattr(self, attr)
+    #             try:
+    #                 field.connect(related_node)
+    #             except ValueError as e:
+    #                 pass
+    #
+    #         return self
 
 
 # TODO: Make a base class we can instantiate!

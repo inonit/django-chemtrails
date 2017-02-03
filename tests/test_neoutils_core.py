@@ -10,18 +10,18 @@ from chemtrails.neoutils import ModelRelationsMeta, ModelRelationsMixin
 from tests.testapp.models import Book
 
 
-class ModelRelationsNodeTestCase(TestCase):
+# class ModelRelationsNodeTestCase(TestCase):
 
-    def test_create_node_with_meta_class(self):
-
-        @six.add_metaclass(ModelRelationsMeta)
-        class RelationNode(ModelRelationsMixin, StructuredNode):
-            class Meta:
-                model = Book
-
-        node = RelationNode().save()
-
-        self.assertIsInstance(RelationNode(), StructuredNode)
+    # def test_create_node_with_meta_class(self):
+    #
+    #     @six.add_metaclass(ModelRelationsMeta)
+    #     class RelationNode(ModelRelationsMixin, StructuredNode):
+    #         class Meta:
+    #             model = Book
+    #
+    #     node = RelationNode().save()
+    #
+    #     self.assertIsInstance(RelationNode(), StructuredNode)
 
     # def test_create_node_fails_without_meta_class(self):
     #     try:

@@ -26,19 +26,20 @@ class SignalHandlerTestCase(TestCase):
     Make sure that whenever a model is saved the changes are reflected
     in Neo4j.
     """
+    pass
+    #
+    # def test_post_save_handler(self):
+    #     BookFixture(Book).create(1)
+    #     Book.objects.get()
 
-    def test_post_save_handler(self):
-        BookFixture(Book).create(1)
-        Book.objects.get()
-
-    def test_create_node(self):
-
-        person1 = Person(name='Fred').save()
-        person2 = Person(name='Jimbo').save()
-
-        person1.friends.connect(person2)
-
-        self.assertIsInstance(person1, Person)
+    # def test_create_node(self):
+    #
+    #     person1 = Person(name='Fred').save()
+    #     person2 = Person(name='Jimbo').save()
+    #
+    #     person1.friends.connect(person2)
+    #
+    #     self.assertIsInstance(person1, Person)
 
 
 
