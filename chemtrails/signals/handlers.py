@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import json
-from django.apps import apps
 from django.core import serializers
 from django.utils import six
 
@@ -15,8 +14,8 @@ def post_migrate_handler(sender, **kwargs):
     Make sure all StructuredNode labels are installed.
     """
     for model in sender.models.values():
-        # ModelRelationWrapper(model).save()
 
+        # Define a ModelRelationsNode class representing the model relations.
         @six.add_metaclass(ModelRelationsMeta)
         class ModelNode(ModelRelationsMixin, StructuredNode):
 
@@ -25,8 +24,10 @@ def post_migrate_handler(sender, **kwargs):
             class Meta:
                 model = None  # Will pick model from parent __metaclass_model__
 
-        ModelNode.get_or_create([{'content_type': ModelNode.get_ctype_name()}])
+        # This will create-or-update the node.
+        ModelNode.sync()
 
+    # TODO: Should read from settings.py
     install_all_labels()
 
 
@@ -36,6 +37,8 @@ def post_save_handler(sender, instance, created, **kwargs):
     """
     serialized = serializers.serialize('json', [instance])
     serialized = json.loads(serialized[1:-1])  # Trim off square brackets!
+
+    # TODO: Write to graph
 
 
 def pre_delete_handler(sender, instance, **kwargs):

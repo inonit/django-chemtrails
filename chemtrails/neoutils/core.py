@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ImproperlyConfigured
 from django.db import models
 from django.utils import six
@@ -32,11 +31,11 @@ class ModelRelationsMeta(NodeMeta):
         cls = super(ModelRelationsMeta, mcs).__new__(mcs, str(name), bases, attrs)
 
         if getattr(cls, 'Meta', None):
-            model = cls.__dict__.get('__metaclass_model__', None)  # Should pop
             cls.Meta = Meta('Meta', (Meta,), dict(cls.Meta.__dict__))
 
-            if model and not cls.Meta.model:
-                cls.Meta.model = model
+            if hasattr(cls, '__metaclass_model__') and not cls.Meta.model:
+                cls.Meta.model = getattr(cls, '__metaclass_model__', None)
+                delattr(cls, '__metaclass_model__')
 
             if not hasattr(cls.Meta, 'model'):
                 raise AttributeError('%s.Meta is missing a model attribute.' % name)
@@ -63,9 +62,9 @@ class ModelRelationsMeta(NodeMeta):
         # Add relations for the model
         for relation in cls.get_relation_fields(cls.Meta.model):
             if hasattr(relation, 'field') and relation.field.__class__ in field_property_map:
-                related_node, relation_property = cls.get_property_for_field(relation.field)
+                related_node, related_type = cls.get_property_for_field(relation.field)
                 cls.__related_nodes__[relation.name] = related_node
-                setattr(cls, relation.name, relation_property)
+                setattr(cls, relation.name, related_type)
 
         # Recalculate relations
         cls.__all_relationships__ = tuple(cls.defined_properties(aliases=False, properties=False).items())
@@ -122,33 +121,27 @@ class ModelRelationsMixin(object):
         return nodes[0], prop(cls_name=RelatedNode, rel_type='RELATES_THROUGH', model=DynamicRelation)
 
     @classmethod
-    def get_or_create(cls, *props, **kwargs):
-        response = super(ModelRelationsMixin, cls).get_or_create(*props, **kwargs)
-        for node in response:
+    def sync(cls, *props, **kwargs):
+        with db.transaction:
+            result = cls.create_or_update([{'content_type': cls.get_ctype_name()}])
+            if len(result) > 1:
+                raise MultipleNodesReturned(
+                    'sync() returned more than one {klass} - it returned {num}.'.format(
+                        klass=cls.__class__.__name__, num=len(result)))
+            elif not result:
+                raise cls.DoesNotExist(
+                    '{klass} was unable to sync - Did not receive any results.'.format(
+                        klass=cls.__class__.__name__))
+
+            # There should be exactly one node for each relation type.
             # Connect related nodes
-            for attr, related_node in node.__related_nodes__.items():
-                field = getattr(node, attr)
+            result = result[0]
+            for attr, related_node in result.__related_nodes__.items():
+                field = getattr(result, attr)
                 field.connect(related_node)
 
-        return response
-    # @hooks
-    # def save(self):
-    #     try:
-    #         super(ModelRelationsMixin, self).save()
-    #     except UniqueProperty as e:
-    #         pass
-    #     finally:
-    #         # Connect related nodes
-    #         for attr, related_node in self.__related_nodes__.items():
-    #             if not related_node.id:
-    #                 related_node.save()
-    #             field = getattr(self, attr)
-    #             try:
-    #                 field.connect(related_node)
-    #             except ValueError as e:
-    #                 pass
-    #
-    #         return self
+        return result
+
 
 
 # TODO: Make a base class we can instantiate!
