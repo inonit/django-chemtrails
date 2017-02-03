@@ -32,12 +32,12 @@ install:
   - pip install coveralls
   - pip install docker-compose
   - pip install "Django${DJANGO_VERSION}"
+  - docker-compose up -d
 
 after_success:
   coveralls
 
 script:
-  - docker-compose up -d
   - python setup.py test
 
 notifications:
