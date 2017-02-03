@@ -28,10 +28,10 @@ class ChemTrailsConfig(AppConfig):
                            dispatch_uid='chemtrails.signals.handlers.pre_delete_handler')
 
         post_migrate.connect(receiver=post_migrate_handler,
-                             dispatch_uid='neomodel.core.install_all_labels')
+                             dispatch_uid='neomodel.core.post_migrate_handler')
 
         # Neo4j config
-        config.DATABASE_URL = getattr(settings, 'NEOMODEL_NEO4J_BOLT_URL',
-                                      os.environ.get('NEOMODEL_NEO4J_BOLT_URL', config.DATABASE_URL))
-        config.FORCE_TIMEZONE = getattr(settings, 'NEOMODEL_FORCE_TIMEZONE',
-                                        os.environ.get('NEOMODEL_FORCE_TIMEZONE', False))
+        config.DATABASE_URL = getattr(settings, 'NEO4J_BOLT_URL',
+                                      os.environ.get('NEO4J_BOLT_URL', config.DATABASE_URL))
+        config.FORCE_TIMEZONE = getattr(settings, 'NEO4J_FORCE_TIMEZONE',
+                                        os.environ.get('NEO4J_FORCE_TIMEZONE', False))

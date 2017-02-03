@@ -32,8 +32,8 @@ env:
     - DJANGO_VERSION=">=1.10,<1.11"
 
 # Required for neo4j to work
-sudo: required
 dist: trusty
+sudo: false
 
 services:
   - neo4j
