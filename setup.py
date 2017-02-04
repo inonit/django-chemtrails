@@ -34,7 +34,8 @@ setup(
     include_package_data=True,
     install_requires=[
         'Django>=1.8.0',
-        'neomodel>=3.1.0'
+        'neomodel>=3.1.0',
+        'requests[security]'
     ],
     tests_require=[
         'nose',
