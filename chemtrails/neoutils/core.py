@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import uuid
 from django.core.exceptions import ImproperlyConfigured
 from django.db import models
 from django.utils import six

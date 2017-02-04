@@ -28,17 +28,21 @@ before_install:
   - mkdir -p $PIP_DOWNLOAD_CACHE
 
 install:
-  - pip install tox
-  - pip install coveralls
-  - pip install docker-compose
-  - pip install "Django${DJANGO_VERSION}"
+  - pip install --upgrade setuptools
+  - pip install coveralls docker-compose "Django${DJANGO_VERSION}"
   - docker-compose up -d
+  - python setup.py clean build install
 
 after_success:
   coveralls
 
 script:
   - python setup.py test
+
+matrix:
+  allow_failured:
+    - env: DJANGO_VERSION=">=1.8,<1.9"
+
 
 notifications:
   email: false
