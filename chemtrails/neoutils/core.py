@@ -8,9 +8,9 @@ from neomodel import *
 
 
 field_property_map = {
-    models.ForeignKey: (RelationshipFrom, ZeroOrOne),
-    models.OneToOneField: (RelationshipFrom, ZeroOrOne),
-    models.ManyToManyField: (RelationshipFrom, ZeroOrMore),
+    models.ForeignKey: RelationshipFrom,
+    models.OneToOneField: RelationshipFrom,
+    models.ManyToManyField: RelationshipFrom
 }
 
 
@@ -81,7 +81,7 @@ class ModelRelationsMixin(object):
         return [
             field for field in model._meta.get_fields()
             if field.is_relation or field.one_to_one or (field.many_to_one and field.related_model)
-            ]
+        ]
 
     @staticmethod
     def get_property_class_for_field(klass):
@@ -108,14 +108,14 @@ class ModelRelationsMixin(object):
             remote_field = StringProperty(default=str(field.remote_field.field).lower())
             target_field = StringProperty(default=str(field.target_field).lower())
 
-        prop, cardinality = cls.get_property_class_for_field(field.__class__)
+        prop = cls.get_property_class_for_field(field.__class__)
 
         @six.add_metaclass(ModelRelationsMeta)
         class RelatedNode(ModelRelationsMixin, StructuredNode):
             class Meta:
                 model = field.remote_field.related_model
 
-        node = RelatedNode.create_or_update_one({'content_type': cls.get_ctype_name()})
+        node = RelatedNode.create_or_update_one([{'content_type': cls.get_ctype_name()}])
         return node, prop(cls_name=RelatedNode, rel_type='RELATES_TO', model=DynamicRelation)
 
     @classmethod
@@ -132,13 +132,14 @@ class ModelRelationsMixin(object):
                         klass=cls.__class__.__name__))
 
             # There should be exactly one node for each relation type.
-            # Connect related nodes
             result = result[0]
         return result
 
     @classmethod
     def sync(cls, *props, **kwargs):
-        result = cls.create_or_update_one({'content_type': cls.get_ctype_name()})
+        result = cls.create_or_update_one([{'uuid': cls.uuid.default_value()}])
+
+        # Connect related nodes
         for attr, related_node in result.__related_nodes__.items():
             field = getattr(result, attr)
             field.connect(related_node)

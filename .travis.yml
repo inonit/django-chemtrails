@@ -14,12 +14,11 @@ cache:
     - pip_download_cache
 
 env:
+  - DJANGO_VERSION=">=1.8,<1.9"
+  - DJANGO_VERSION=">=1.9,<1.10"
+  - DJANGO_VERSION=">=1.10,<1.11"
   global:
     - PIP_DOWNLOAD_CACHE="pip_download_cache"
-  matrix:
-    - DJANGO_VERSION=">=1.8,<1.9"
-    - DJANGO_VERSION=">=1.9,<1.10"
-    - DJANGO_VERSION=">=1.10,<1.11"
 
 services:
   - docker
@@ -40,6 +39,7 @@ script:
   - python setup.py test
 
 matrix:
+  fast_finish: true
   allow_failured:
     - env: DJANGO_VERSION=">=1.8,<1.9"
 
