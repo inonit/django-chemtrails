@@ -11,11 +11,10 @@ from chemtrails.neoutils import ModelRelationsMeta, ModelRelationsMixin
 
 def post_migrate_handler(sender, **kwargs):
     """
-    Make sure all StructuredNode labels are installed.
+    Creates a Neo4j node representing the migrated apps models.
     """
     for model in sender.models.values():
 
-        # Define a ModelRelationsNode class representing the model relations.
         @six.add_metaclass(ModelRelationsMeta)
         class ModelNode(ModelRelationsMixin, StructuredNode):
 
@@ -24,7 +23,6 @@ def post_migrate_handler(sender, **kwargs):
             class Meta:
                 model = None  # Will pick model from parent __metaclass_model__
 
-        # This will create-or-update the node.
         ModelNode.sync()
 
     # TODO: Should read from settings.py
@@ -33,7 +31,7 @@ def post_migrate_handler(sender, **kwargs):
 
 def post_save_handler(sender, instance, created, **kwargs):
     """
-    Get all relations the current instance has and store them in the graph.
+    Keep the graph model in sync with the model
     """
     serialized = serializers.serialize('json', [instance])
     serialized = json.loads(serialized[1:-1])  # Trim off square brackets!

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import uuid
 from django.core.exceptions import ImproperlyConfigured
 from django.db import models
 from django.utils import six
@@ -8,9 +9,9 @@ from neomodel import *
 
 
 field_property_map = {
-    models.ForeignKey: (RelationshipTo, ZeroOrOne),
-    models.OneToOneField: (RelationshipTo, ZeroOrOne),
-    models.ManyToManyField: (RelationshipTo, ZeroOrMore),
+    models.ForeignKey: (RelationshipFrom, ZeroOrOne),
+    models.OneToOneField: (RelationshipFrom, ZeroOrOne),
+    models.ManyToManyField: (RelationshipFrom, ZeroOrMore),
 }
 
 
@@ -104,6 +105,7 @@ class ModelRelationsMixin(object):
         """
 
         class DynamicRelation(StructuredRel):
+            relation_type = StringProperty(default=field.__class__.__name__)
             remote_field = StringProperty(default=str(field.remote_field.field).lower())
             target_field = StringProperty(default=str(field.target_field).lower())
 
@@ -114,15 +116,13 @@ class ModelRelationsMixin(object):
             class Meta:
                 model = field.remote_field.related_model
 
-        nodes = RelatedNode.create_or_update([
-            {'content_type': cls.get_ctype_name()}
-        ])
-        return nodes[0], prop(cls_name=RelatedNode, rel_type='RELATES_THROUGH', model=DynamicRelation)
+        node = RelatedNode.create_or_update_one({'content_type': cls.get_ctype_name()})
+        return node, prop(cls_name=RelatedNode, rel_type='RELATES_TO', model=DynamicRelation)
 
     @classmethod
-    def sync(cls, *props, **kwargs):
+    def create_or_update_one(cls, *props, **kwargs):
         with db.transaction:
-            result = cls.create_or_update([{'content_type': cls.get_ctype_name()}])
+            result = cls.create_or_update(*props, **kwargs)
             if len(result) > 1:
                 raise MultipleNodesReturned(
                     'sync() returned more than one {klass} - it returned {num}.'.format(
@@ -135,8 +135,12 @@ class ModelRelationsMixin(object):
             # There should be exactly one node for each relation type.
             # Connect related nodes
             result = result[0]
-            for attr, related_node in result.__related_nodes__.items():
-                field = getattr(result, attr)
-                field.connect(related_node)
+        return result
 
+    @classmethod
+    def sync(cls, *props, **kwargs):
+        result = cls.create_or_update_one({'content_type': cls.get_ctype_name()})
+        for attr, related_node in result.__related_nodes__.items():
+            field = getattr(result, attr)
+            field.connect(related_node)
         return result
