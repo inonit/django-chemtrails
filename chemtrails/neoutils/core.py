@@ -23,12 +23,12 @@ class Meta(type):
         return cls
 
 
-class ModelRelationsMeta(NodeMeta):
+class ModelNodeMeta(NodeMeta):
     """
-    Meta class for ModelRelationNode.
+    Meta class for ``ModelNode``.
     """
     def __new__(mcs, name, bases, attrs):
-        cls = super(ModelRelationsMeta, mcs).__new__(mcs, str(name), bases, attrs)
+        cls = super(ModelNodeMeta, mcs).__new__(mcs, str(name), bases, attrs)
 
         if getattr(cls, 'Meta', None):
             cls.Meta = Meta('Meta', (Meta,), dict(cls.Meta.__dict__))
@@ -47,6 +47,23 @@ class ModelRelationsMeta(NodeMeta):
 
         elif not getattr(cls, '__abstract_node__', None):
             raise ImproperlyConfigured('%s must implement a Meta class.' % name)
+
+        return cls
+
+
+class ModelNodeMixin(object):
+    """
+    Mixin class for ``StructuredNode`` for dealing with Django model instances.
+    """
+    pass
+
+
+class ModelRelationsMeta(ModelNodeMeta):
+    """
+    Meta class for ``ModelRelationNode``.
+    """
+    def __new__(mcs, name, bases, attrs):
+        cls = super(ModelRelationsMeta, mcs).__new__(mcs, str(name), bases, attrs)
 
         # Set label for node
         cls.__label__ = '{object_name}RelationMeta'.format(object_name=cls.Meta.model._meta.object_name)
