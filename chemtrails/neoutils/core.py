@@ -73,6 +73,10 @@ class ModelRelationsMeta(NodeMeta):
 
 class ModelRelationsMixin(object):
 
+    @classproperty
+    def has_relations(cls):
+        return len(cls.__related_nodes__) > 0
+
     @staticmethod
     def get_relation_fields(model):
         """
@@ -136,7 +140,10 @@ class ModelRelationsMixin(object):
         return result
 
     @classmethod
-    def sync(cls, *props, **kwargs):
+    def sync(cls, create_empty=False, *props, **kwargs):
+        if not cls.has_relations and not create_empty:
+            return None
+
         result = cls.create_or_update_one([{'uuid': cls.uuid.default_value()}])
 
         # Connect related nodes
