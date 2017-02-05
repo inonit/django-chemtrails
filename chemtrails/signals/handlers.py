@@ -2,11 +2,9 @@
 
 import json
 from django.core import serializers
-from django.utils import six
-
 from neomodel import *
 
-from chemtrails.neoutils import ModelRelationsMeta, ModelRelationsMixin
+from chemtrails.neoutils import get_relations_node_class_for_model
 
 
 def post_migrate_handler(sender, **kwargs):
@@ -14,16 +12,8 @@ def post_migrate_handler(sender, **kwargs):
     Creates a Neo4j node representing the migrated apps models.
     """
     for model in sender.models.values():
-
-        @six.add_metaclass(ModelRelationsMeta)
-        class ModelNode(ModelRelationsMixin, StructuredNode):
-
-            __metaclass_model__ = model
-
-            class Meta:
-                model = None  # Will pick model from parent __metaclass_model__
-
-        ModelNode.sync()
+        ModelRelationsNode = get_relations_node_class_for_model(model)
+        ModelRelationsNode.sync()
 
     # TODO: Should read from settings.py
     install_all_labels()

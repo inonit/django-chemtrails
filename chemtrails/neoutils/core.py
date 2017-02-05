@@ -25,7 +25,7 @@ class Meta(type):
 
 class ModelRelationsMeta(NodeMeta):
     """
-    Meta class for ModelRelationNode
+    Meta class for ModelRelationNode.
     """
     def __new__(mcs, name, bases, attrs):
         cls = super(ModelRelationsMeta, mcs).__new__(mcs, str(name), bases, attrs)
@@ -72,7 +72,10 @@ class ModelRelationsMeta(NodeMeta):
 
 
 class ModelRelationsMixin(object):
-
+    """
+    Mixin class for ``StructuredNode`` which adds a number of class methods
+    in order to calculate relationship fields from a Django model class.
+    """
     @classproperty
     def has_relations(cls):
         return len(cls.__related_nodes__) > 0
@@ -106,7 +109,6 @@ class ModelRelationsMixin(object):
         """
         Instantiate and return the property for ``field``.
         """
-
         class DynamicRelation(StructuredRel):
             relation_type = StringProperty(default=field.__class__.__name__)
             remote_field = StringProperty(default=str(field.remote_field.field).lower())
@@ -124,6 +126,15 @@ class ModelRelationsMixin(object):
 
     @classmethod
     def create_or_update_one(cls, *props, **kwargs):
+        """
+        Call to MERGE with parameters map to create or update a single instance. A new instance
+        will be created and saved if it does not already exists. If an instance already exists,
+        all optional properties specified will be updated.
+        :param props: List of dict arguments to get or create the entity with.
+        :keyword relationship: Optional, relationship to get/create on when new entity is created.
+        :keyword lazy: False by default, specify True to get node with id only without the parameters.
+        :returns: A single ``StructuredNode` instance.
+        """
         with db.transaction:
             result = cls.create_or_update(*props, **kwargs)
             if len(result) > 1:
@@ -140,11 +151,17 @@ class ModelRelationsMixin(object):
         return result
 
     @classmethod
-    def sync(cls, create_empty=False, *props, **kwargs):
+    def sync(cls, create_empty=False, **kwargs):
+        """
+        Write node to the graph and create all relationships.
+        :param create_empty: False by default. If True and no calculated relationships, write the
+                             node to the graph anyway.
+        :param kwargs: Mapping of keyword arguments which will be passed to ``create_or_update_one()``
+        """
         if not cls.has_relations and not create_empty:
             return None
 
-        result = cls.create_or_update_one([{'uuid': cls.uuid.default_value()}])
+        result = cls.create_or_update_one([{'uuid': cls.uuid.default_value()}], **kwargs)
 
         # Connect related nodes
         for attr, related_node in result.__related_nodes__.items():
