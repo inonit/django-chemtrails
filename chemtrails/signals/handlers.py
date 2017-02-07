@@ -25,7 +25,7 @@ def post_save_handler(sender, instance, created, **kwargs):
     """
     serialized = serializers.serialize('json', [instance])
     serialized = json.loads(serialized[1:-1])  # Trim off square brackets!
-
+    brk = ''
     # TODO: Write to graph
 
 

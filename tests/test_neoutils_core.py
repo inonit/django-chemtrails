@@ -19,15 +19,14 @@ class ModelNodeUtilsTestCase(TestCase):
         klass = get_relations_node_class_for_model(Book)
         self.assertTrue(issubclass(klass, StructuredNode))
 
-    # def test_get_node_class_for_model(self):
-    #     klass = get_node_class_for_model(Book)
-    #     self.assertTrue(issubclass(klass, StructuredNode))
-    #
-    # def test_get_node_for_object(self):
-    #     book = BookFixture(Book).create_one(commit=True)
-    #     book_node = get_node_for_object(book)
-    #     self.assertIsInstance(book_node, StructuredNode)
+    def test_get_node_class_for_model(self):
+        klass = get_node_class_for_model(Book)
+        self.assertTrue(issubclass(klass, StructuredNode))
 
+    def test_get_node_for_object(self):
+        book = BookFixture(Book).create_one(commit=True)
+        book_node = get_node_for_object(book)
+        self.assertIsInstance(book_node, StructuredNode)
 
 
 class ModelRelationsNodeTestCase(TestCase):

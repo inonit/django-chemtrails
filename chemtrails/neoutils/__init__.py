@@ -3,11 +3,9 @@
 from django.utils import six
 
 from neomodel import *
-from .core import ModelRelationsMeta, ModelRelationsMixin
+from .core import ModelNodeMeta, ModelNodeMixin, ModelRelationsMeta, ModelRelationsMixin
 
 __all__ = [
-    'ModelRelationsMeta',
-    'ModelRelationsMixin',
     'get_relations_node_class_for_model',
     'get_node_class_for_model',
     'get_node_for_object'
@@ -36,7 +34,14 @@ def get_node_class_for_model(model):
     :param model: Django model class.
     :returns: A ``StructuredNode`` class.
     """
-    raise NotImplemented
+    @six.add_metaclass(ModelNodeMeta)
+    class ModelNode(ModelNodeMixin, StructuredNode):
+        __metaclass_model__ = model
+
+        class Meta:
+            model = None  # Will pick model from parent class __metaclass_model__ attribute
+
+    return ModelNode
 
 
 def get_node_for_object(instance):
@@ -45,4 +50,6 @@ def get_node_for_object(instance):
     :param instance: Django model instance.
     :returns: A ``StructuredNode`` instance.
     """
-    raise NotImplemented
+    ModelNode = get_node_class_for_model(instance._meta.model)
+    return ModelNode.sync(instance)
+
