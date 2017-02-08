@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 from tests.testapp.models import Author, Publisher, Book, Store
 from autofixture import generators, register, AutoFixture
@@ -44,8 +44,8 @@ class BookFixture(AutoFixture):
         'pages': generators.PositiveIntegerGenerator(min_value=200, max_value=2000),
         'price': generators.PositiveDecimalGenerator(max_digits=10, decimal_places=2),
         'rating': generators.FloatGenerator(max_value=10, min_value=0, decimal_digits=2),
-        'pubdate': generators.DateGenerator(min_date=datetime.today() - timedelta(days=36500),
-                                            max_date=datetime.today())
+        'pubdate': generators.DateGenerator(min_date=date.today() - timedelta(days=36500),
+                                            max_date=date.today())
     }
 register(Book, BookFixture)
 

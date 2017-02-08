@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
+import json
 
+from django.core import serializers
 from django.utils import six
 
 from neomodel import *
-from .core import ModelNodeMeta, ModelNodeMixin, ModelRelationsMeta, ModelRelationsMixin
+from .core import ModelNodeMeta, ModelNodeBase, ModelRelationsMeta, ModelRelationsMixin, ModelNodeMixin
 
 __all__ = [
     'get_relations_node_class_for_model',
@@ -51,5 +53,5 @@ def get_node_for_object(instance):
     :returns: A ``StructuredNode`` instance.
     """
     ModelNode = get_node_class_for_model(instance._meta.model)
-    return ModelNode.sync(instance)
+    return ModelNode(instance=instance)
 

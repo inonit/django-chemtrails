@@ -28,6 +28,13 @@ class ModelNodeUtilsTestCase(TestCase):
         book_node = get_node_for_object(book)
         self.assertIsInstance(book_node, StructuredNode)
 
+    def test_get_node_for_multiple_objects(self):
+        books = BookFixture(Book).create(count=3, commit=True)
+        for book in books:
+            book_node = get_node_for_object(book)
+            book_node.save()
+            self.assertIsInstance(book_node, StructuredNode)
+
 
 class ModelRelationsNodeTestCase(TestCase):
 
