@@ -32,7 +32,7 @@ class ModelNodeUtilsTestCase(TestCase):
         books = BookFixture(Book).create(count=3, commit=True)
         for book in books:
             book_node = get_node_for_object(book)
-            book_node.save()
+            book_node.sync()
             self.assertIsInstance(book_node, StructuredNode)
 
 

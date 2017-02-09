@@ -3,7 +3,7 @@
 import operator
 from functools import reduce
 
-from django.core.exceptions import ImproperlyConfigured
+from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.db import models
 
 from neomodel import *
@@ -123,7 +123,7 @@ class ModelNodeMeta(ModelMeta):
             # Add reverse relations
             elif field in reverse_relations:
                 related_name = field.related_name or '%s_set' % field.name
-                node, relationship = cls.get_related_node_property_for_field(field.field)  # FIXME: Improve API
+                node, relationship = cls.get_related_node_property_for_field(field.field)
                 setattr(cls, related_name, relationship)
                 cls.__related_nodes__['reverse'] += ((related_name, node),)
 
@@ -258,6 +258,7 @@ class ModelNodeBase(object):
         :returns: A single ``StructuredNode` instance.
         """
         with db.transaction:
+            # TODO: Rewrite using `cls.nodes.get()`
             result = cls.create_or_update(*props, **kwargs)
             if len(result) > 1:
                 raise MultipleNodesReturned(
@@ -275,28 +276,60 @@ class ModelNodeBase(object):
 
 class ModelNodeMixin(ModelNodeBase):
 
-    instance = ModelProperty()  # FIXME: Crashes without this.. why?
+    # instance = ModelProperty()  # FIXME: Crashes without this.. why?
 
-    def __init__(self, instance, *args, **kwargs):
+    def __init__(self, instance=None, *args, **kwargs):
         self.instance = instance
         for key, _ in self.__all_properties__:
-            kwargs[key] = getattr(self.instance, key, None)
+            kwargs[key] = getattr(self.instance, key, kwargs.get(key, None))
         super(ModelNodeMixin, self).__init__(self, *args, **kwargs)
 
-    @hooks
-    def save(self):
-        super(ModelNodeMixin, self).save()
+    def full_clean(self, exclude=None, validate_unique=True):
+        exclude = exclude or []
 
-        # Connect relations
-        for direction, relations in self.__related_nodes__.items():
-            if direction == 'forward' and relations:
-                for attr, node in relations:
-                    field = getattr(self, attr)
-                    field.connect(node)
-            elif direction == 'reverse' and relations:
-                pass
+        props = self.__properties__
+        for key in exclude:
+            del props[key]
 
-        return self
+        try:
+            self.deflate(props, self)
+
+            if validate_unique:
+                cls = self.__class__
+                unique_props = [attr for attr, prop in cls.defined_properties(aliases=False, rels=False).items()
+                                if prop not in exclude and prop.unique_index]
+                for key in unique_props:
+                    value = self.deflate({key: props[key]}, self)[key]
+                    node = cls.nodes.get_or_none(**{key: value})
+
+                    # if exists and not this node
+                    if node and node.id != getattr(self, 'id', None):
+                        raise ValidationError({key, 'already exists'})
+
+        except DeflateError as e:
+            raise ValidationError({e.property_name: e.msg})
+        except RequiredProperty as e:
+            raise ValidationError({e.property_name: 'is required'})
+
+    def sync(self, update_existing=True):
+        self.full_clean(exclude=['instance'], validate_unique=not update_existing)
+
+        # For now, we assume that `pk` field always is unique for the node type
+        cls = self.__class__
+        node = cls.nodes.get_or_none(**{'pk': self.pk})
+
+        if node and update_existing:
+            # If node is found, update with current attributes and save.
+            # TODO: Should probably be other way around
+            node_props = node.__class__.defined_properties(aliases=False, rels=False)
+            for attr, prop in cls.defined_properties(aliases=False, rels=False).items():
+                db_property = prop.db_property or attr
+                if db_property in node_props:
+                    setattr(node, db_property, prop.inflate(getattr(self, attr)))
+            node.save()
+            return node
+
+        return self.save()
 
 
 class ModelRelationsMeta(ModelMeta):
