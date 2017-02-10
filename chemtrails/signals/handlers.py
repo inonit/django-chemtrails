@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 
-import json
-from django.core import serializers
-from neomodel import *
+from django.conf import settings
 
-from chemtrails.neoutils import get_relations_node_class_for_model
+from chemtrails.neoutils import get_model_string, get_relations_node_class_for_model, get_node_class_for_model
+from chemtrails.settings import CHEMTRAILS_IGNORE_MODELS
 
 
 def post_migrate_handler(sender, **kwargs):
@@ -15,18 +14,16 @@ def post_migrate_handler(sender, **kwargs):
         ModelRelationsNode = get_relations_node_class_for_model(model)
         ModelRelationsNode.sync()
 
-    # TODO: Should read from settings.py
-    install_all_labels()
-
 
 def post_save_handler(sender, instance, created, **kwargs):
     """
     Keep the graph model in sync with the model
     """
-    serialized = serializers.serialize('json', [instance])
-    serialized = json.loads(serialized[1:-1])  # Trim off square brackets!
-    brk = ''
-    # TODO: Write to graph
+    # Check if the model is in the ignore list.
+    if not get_model_string(instance._meta.model) in getattr(
+            settings, 'CHEMTRAILS_IGNORE_MODELS', CHEMTRAILS_IGNORE_MODELS):
+        klass = get_node_class_for_model(instance._meta.model)
+        klass(instance).sync()
 
 
 def pre_delete_handler(sender, instance, **kwargs):

@@ -46,6 +46,14 @@ field_property_map = {
 }
 
 
+def get_model_string(model):
+    """
+    :param model: model
+    :returns: <app_label>.<model_name> string representation for the model
+    """
+    return "{app_label}.{model_name}".format(app_label=model._meta.app_label, model_name=model._meta.model_name)
+
+
 class ModelProperty(Property):
 
     def normalize(self, value):
@@ -101,11 +109,6 @@ class ModelNodeMeta(ModelMeta):
         # Set label for node
         cls.__label__ = '{object_name}Node'.format(object_name=cls.Meta.model._meta.object_name)
 
-        cls.__related_nodes__ = {
-            'forward': (),
-            'reverse': ()
-        }
-
         forward_relations = cls.get_forward_relation_fields()
         reverse_relations = cls.get_reverse_relation_fields()
 
@@ -118,35 +121,26 @@ class ModelNodeMeta(ModelMeta):
             if field in forward_relations:
                 node, relationship = cls.get_related_node_property_for_field(field)
                 setattr(cls, field.name, relationship)
-                cls.__related_nodes__['forward'] += ((field.name, node),)
+                cls.__related_nodes__ += ((field.name, node),)
 
             # Add reverse relations
             elif field in reverse_relations:
                 related_name = field.related_name or '%s_set' % field.name
-                node, relationship = cls.get_related_node_property_for_field(field.field)
+                node, relationship = cls.get_related_node_property_for_field(field)
                 setattr(cls, related_name, relationship)
-                cls.__related_nodes__['reverse'] += ((related_name, node),)
+                cls.__related_nodes__ += ((related_name, node),)
 
             # Add concrete fields
             else:
                 if field is not cls._pk_field:
                     setattr(cls, field.name, cls.get_property_class_for_field(field.__class__)())
 
-        # relations = cls.get_relation_fields(cls.Meta.model)
-        # for field in cls.Meta.model._meta.get_fields():
-        #     if field in relations and hasattr(field, 'field') and field.field.__class__ in field_property_map:
-        #         related_node, related_type = cls.get_related_node_property_for_field(field.field)
-        #         setattr(cls, field.name, related_type)
-        #         cls.__related_nodes__ += ((field.name, related_node),)
-        #     elif field is not cls._pk_field:
-        #         prop = cls.get_property_class_for_field(field.__class__)
-        #         setattr(cls, field.name, cls.get_property_class_for_field(field.__class__)())
-
         # Recalculate definitions
         cls.__all_properties__ = tuple(cls.defined_properties(aliases=False, rels=False).items())
         cls.__all_aliases__ = tuple(cls.defined_properties(properties=False, rels=False).items())
         cls.__all_relationships__ = tuple(cls.defined_properties(aliases=False, properties=False).items())
 
+        install_labels(cls, quiet=True, stdout=None)
         return cls
 
 
@@ -185,11 +179,6 @@ class ModelNodeBase(object):
         return None
 
     @classmethod
-    def get_model_string(cls):
-        return '{app_label}.{model_name}'.format(app_label=cls.Meta.model._meta.app_label,
-                                                 model_name=cls.Meta.model._meta.model_name)
-
-    @classmethod
     def get_forward_relation_fields(cls):
         return [
             field for field in cls.Meta.model._meta.get_fields()
@@ -225,7 +214,7 @@ class ModelNodeBase(object):
             pass
 
         RelatedNode = get_relations_node_class_for_model(model)
-        node = RelatedNode.create_or_update_one([{'model': cls.get_model_string()}])
+        node = RelatedNode.create_or_update_one([{'model': get_model_string(cls.Meta.model)}])
         return node, RelationshipTo(cls_name=RelatedNode, rel_type='TYPE_OF', model=DynamicRelation)
 
     @classmethod
@@ -235,16 +224,23 @@ class ModelNodeBase(object):
         """
         from chemtrails.neoutils import get_relations_node_class_for_model
 
+        # if isinstance(field, (models.ManyToManyRel, models.ManyToOneRel, models.OneToOneRel)):
+        #     brk = ''
+
         class DynamicRelation(StructuredRel):
             relation_type = StringProperty(default=field.__class__.__name__)
-            remote_field = StringProperty(default=str(field.remote_field.field).lower())
+            remote_field = StringProperty(default=str(getattr(field.remote_field, 'field', field.remote_field)).lower())
             target_field = StringProperty(default=str(field.target_field).lower())
 
-        prop = cls.get_property_class_for_field(field.__class__)
+        relationship_type = {
+            RelationshipTo: 'RELATES_TO',
+            RelationshipFrom: 'RELATES_FROM'
+        }
 
+        prop = cls.get_property_class_for_field(field.__class__)
         RelatedNode = get_relations_node_class_for_model(field.remote_field.related_model)
-        node = RelatedNode.create_or_update_one([{'model': cls.get_model_string()}])
-        return node, prop(cls_name=RelatedNode, rel_type='RELATES_TO', model=DynamicRelation)
+        node = RelatedNode.create_or_update_one([{'model': get_model_string(cls.Meta.model)}])
+        return node, prop(cls_name=RelatedNode, rel_type=relationship_type[prop], model=DynamicRelation)
 
     @classmethod
     def create_or_update_one(cls, *props, **kwargs):
@@ -318,18 +314,19 @@ class ModelNodeMixin(ModelNodeBase):
         cls = self.__class__
         node = cls.nodes.get_or_none(**{'pk': self.pk})
 
+        # If found, steal the id. This will cause the existing node to
+        # be saved with data from this instance.
         if node and update_existing:
-            # If node is found, update with current attributes and save.
-            # TODO: Should probably be other way around
-            node_props = node.__class__.defined_properties(aliases=False, rels=False)
-            for attr, prop in cls.defined_properties(aliases=False, rels=False).items():
-                db_property = prop.db_property or attr
-                if db_property in node_props:
-                    setattr(node, db_property, prop.inflate(getattr(self, attr)))
-            node.save()
-            return node
+            self.id = node.id
 
-        return self.save()
+        self.save()
+
+        # Connect relations
+        for attr, related_node in self.__related_nodes__:
+            field = getattr(self, attr)
+            field.connect(related_node)
+
+        return self
 
 
 class ModelRelationsMeta(ModelMeta):
@@ -344,7 +341,7 @@ class ModelRelationsMeta(ModelMeta):
 
         # Add some default fields
         cls.uuid = UniqueIdProperty()
-        cls.model = StringProperty(unique_index=True, default=cls.get_model_string)
+        cls.model = StringProperty(unique_index=True, default=get_model_string(cls.Meta.model))
 
         # Add relations for the model
         for relation in cls.get_relation_fields(cls.Meta.model):
@@ -358,6 +355,7 @@ class ModelRelationsMeta(ModelMeta):
         cls.__all_aliases__ = tuple(cls.defined_properties(properties=False, rels=False).items())
         cls.__all_relationships__ = tuple(cls.defined_properties(aliases=False, properties=False).items())
 
+        install_labels(cls, quiet=True, stdout=None)
         return cls
 
 

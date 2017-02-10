@@ -1,16 +1,20 @@
 # -*- coding: utf-8 -*-
-import json
 
-from django.core import serializers
 from django.utils import six
 
 from neomodel import *
-from .core import ModelNodeMeta, ModelNodeBase, ModelRelationsMeta, ModelRelationsMixin, ModelNodeMixin
+from .core import (
+    ModelNodeBase,
+    ModelNodeMeta, ModelNodeMixin,
+    ModelRelationsMeta, ModelRelationsMixin,
+    get_model_string
+)
 
 __all__ = [
     'get_relations_node_class_for_model',
     'get_node_class_for_model',
-    'get_node_for_object'
+    'get_node_for_object',
+    'get_model_string'
 ]
 
 
