@@ -4,6 +4,7 @@ from django.db import models
 
 
 class Author(models.Model):
+    user = models.OneToOneField('auth.User')
     name = models.CharField(max_length=100)
     age = models.IntegerField()
 

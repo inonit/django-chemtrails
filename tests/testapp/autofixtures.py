@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 
 import random
-from datetime import datetime, timedelta, date
+from datetime import timedelta, date
+
+from django.contrib.auth import get_user_model
 
 from tests.testapp.models import Author, Publisher, Book, Store
 from autofixture import generators, register, AutoFixture
@@ -20,8 +22,24 @@ class PublisherGenerator(generators.Generator):
         return random.choice(self.publishers)
 
 
+class UserGenerator(generators.Generator):
+
+    USER_MODEL = get_user_model()
+
+    def generate(self):
+        defaults = {
+            self.USER_MODEL.USERNAME_FIELD: '{name}{num}'.format(
+                name=generators.LastNameGenerator().generate(),
+                num=generators.SmallIntegerGenerator().generate()
+            ).lower(),
+            'password': generators.StringGenerator(min_length=8, max_length=16).generate()
+        }
+        return self.USER_MODEL.objects.create_user(**defaults)
+
+
 class AuthorFixture(AutoFixture):
     field_values = {
+        'user': UserGenerator(),
         'name': generators.FirstNameGenerator(),
         'age': generators.PositiveIntegerGenerator(min_value=20, max_value=80)
     }

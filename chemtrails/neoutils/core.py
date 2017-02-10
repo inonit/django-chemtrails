@@ -54,12 +54,6 @@ def get_model_string(model):
     return "{app_label}.{model_name}".format(app_label=model._meta.app_label, model_name=model._meta.model_name)
 
 
-class ModelProperty(Property):
-
-    def normalize(self, value):
-        return repr(value)
-
-
 class Meta(type):
 
     model = None
@@ -224,17 +218,18 @@ class ModelNodeBase(object):
         """
         from chemtrails.neoutils import get_relations_node_class_for_model
 
-        # if isinstance(field, (models.ManyToManyRel, models.ManyToOneRel, models.OneToOneRel)):
-        #     brk = ''
+        reverse_field = True if isinstance(field, (
+            models.ManyToManyRel, models.ManyToOneRel, models.OneToOneRel)) else False
 
         class DynamicRelation(StructuredRel):
             relation_type = StringProperty(default=field.__class__.__name__)
-            remote_field = StringProperty(default=str(getattr(field.remote_field, 'field', field.remote_field)).lower())
+            remote_field = StringProperty(default=str(field.target_field if reverse_field
+                                                      else field.remote_field.field).lower())
             target_field = StringProperty(default=str(field.target_field).lower())
 
         relationship_type = {
-            RelationshipTo: 'RELATES_TO',
-            RelationshipFrom: 'RELATES_FROM'
+            RelationshipTo: 'REVERSE_RELATION',
+            RelationshipFrom: 'FORWARD_RELATION'
         }
 
         prop = cls.get_property_class_for_field(field.__class__)
@@ -271,8 +266,6 @@ class ModelNodeBase(object):
 
 
 class ModelNodeMixin(ModelNodeBase):
-
-    # instance = ModelProperty()  # FIXME: Crashes without this.. why?
 
     def __init__(self, instance=None, *args, **kwargs):
         self.instance = instance
@@ -322,6 +315,9 @@ class ModelNodeMixin(ModelNodeBase):
         self.save()
 
         # Connect relations
+        for attr, prop in cls.defined_properties(aliases=False, properties=False).items():
+            brk = ''
+
         for attr, related_node in self.__related_nodes__:
             field = getattr(self, attr)
             field.connect(related_node)

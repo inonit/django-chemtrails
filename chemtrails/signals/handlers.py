@@ -17,7 +17,7 @@ def post_migrate_handler(sender, **kwargs):
 
 def post_save_handler(sender, instance, created, **kwargs):
     """
-    Keep the graph model in sync with the model
+    Keep the graph model in sync with the model.
     """
     # Check if the model is in the ignore list.
     if not get_model_string(instance._meta.model) in getattr(
