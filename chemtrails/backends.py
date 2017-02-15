@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 
-class Neo4jPermissionBackend(object):
+class Neo4jPermissionBackend:
 
     @staticmethod
     def authenticate(username, password):

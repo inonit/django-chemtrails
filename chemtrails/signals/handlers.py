@@ -8,17 +8,18 @@ def post_migrate_handler(sender, **kwargs):
     """
     Creates a Neo4j node representing the migrated apps models.
     """
-    for model in sender.models.values():
-        get_meta_node_class_for_model(model).sync()
+    if settings.ENABLED is True:
+        for model in sender.models.values():
+            get_meta_node_class_for_model(model).sync()
 
 
 def post_save_handler(sender, instance, created, **kwargs):
     """
     Keep the graph model in sync with the model.
     """
-    # Check if the model is in the ignore list.
-    if not get_model_string(instance._meta.model) in settings.IGNORE_MODELS:
-        get_node_for_object(instance).sync()
+    if settings.ENABLED is True:
+        if not get_model_string(instance._meta.model) in settings.IGNORE_MODELS:
+            get_node_for_object(instance).sync()
 
 
 def pre_delete_handler(sender, instance, **kwargs):

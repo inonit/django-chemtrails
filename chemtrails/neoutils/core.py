@@ -10,7 +10,6 @@ from django.db import models
 from django.db.models import Manager
 
 from neomodel import *
-from chemtrails import settings
 
 
 field_property_map = {
@@ -169,7 +168,7 @@ class ModelNodeMeta(NodeBase):
         return cls
 
 
-class ModelNodeMixinBase(object):
+class ModelNodeMixinBase:
     """
     Base mixin class
     """
@@ -345,9 +344,6 @@ class ModelNodeMixin(ModelNodeMixinBase):
         for field_name, relationship in cls.defined_properties(aliases=False, properties=False).items():
             field = getattr(self, field_name)
 
-            # TODO: Connect meta
-            # field.connect(cls._cache[field.name])
-
             # Connect related nodes
             if self._instance and hasattr(self._instance, field.name):
                 attr = getattr(self._instance, field.name)
@@ -360,6 +356,8 @@ class ModelNodeMixin(ModelNodeMixinBase):
                     related_nodes = klass.nodes.filter(pk__in=list(attr.values_list('pk', flat=True)))
                     for n in related_nodes:
                         field.connect(n)
+
+            # Connect the MetaNode
             elif field.name == 'meta':
                 klass = relationship.definition['node_class']
                 node = klass.nodes.get_or_none()

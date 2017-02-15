@@ -24,7 +24,7 @@ DEFAULTS = {
 }
 
 
-class CSettings(object):
+class CSettings:
 
     def __init__(self, user_settings=None, defaults=None):
         self._user_settings = user_settings
