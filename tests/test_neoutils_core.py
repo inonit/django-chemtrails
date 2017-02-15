@@ -42,6 +42,7 @@ class ModelRelationsNodeTestCase(TestCase):
         class RelationNode(MetaNodeMixin, StructuredNode):
             class Meta:
                 model = Book
+                app_label = 'test'
 
         self.assertIsInstance(RelationNode(), StructuredNode)
 
