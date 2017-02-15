@@ -21,7 +21,7 @@ field_property_map = {
     models.ManyToManyRel: RelationshipFrom,
 
     models.AutoField: IntegerProperty,
-    models.BigAutoField: IntegerProperty,
+    # models.BigAutoField: IntegerProperty,  # Breaks Django 1.9 compatibility
     models.BigIntegerField: IntegerProperty,
     models.BooleanField: BooleanProperty,
     models.CharField: StringProperty,
