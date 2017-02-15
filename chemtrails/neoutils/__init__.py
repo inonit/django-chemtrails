@@ -4,14 +4,13 @@ from django.utils import six
 
 from neomodel import *
 from .core import (
-    ModelNodeBase,
     ModelNodeMeta, ModelNodeMixin,
-    ModelRelationsMeta, ModelRelationsMixin,
+    MetaNodeMeta, MetaNodeMixin,
     get_model_string
 )
 
 __all__ = [
-    'get_relations_node_class_for_model',
+    'get_meta_node_class_for_model',
     'get_node_class_for_model',
     'get_node_for_object',
     'get_model_string',
@@ -20,9 +19,10 @@ __all__ = [
 model_cache = {}
 
 
-def get_relations_node_class_for_model(model):
+def get_meta_node_class_for_model(model):
     """
-    Get a ``ModelRelationsNode`` class for ``model``.
+    Meta nodes are used to generate a map of the relationships
+    in the database. There's only a single MetaNode per model.
     :param model: Django model class.
     :returns: A ``StructuredNode`` class.
     """
@@ -30,22 +30,22 @@ def get_relations_node_class_for_model(model):
     if cache_key in model_cache:
         return model_cache[cache_key]
     else:
-        @six.add_metaclass(ModelRelationsMeta)
-        class ModelRelationsNode(ModelRelationsMixin, StructuredNode):
+        @six.add_metaclass(MetaNodeMeta)
+        class MetaNode(MetaNodeMixin, StructuredNode):
             __metaclass_model__ = model
 
             class Meta:
                 model = None  # Will pick model from parent class __metaclass_model__ attribute
 
-        model_cache[cache_key] = ModelRelationsNode
-        return ModelRelationsNode
+        model_cache[cache_key] = MetaNode
+        return MetaNode
 
 
 def get_node_class_for_model(model):
     """
-    Get a ``ModelNode`` class for ``model``.
+    Model nodes represent a model instance in the database.
     :param model: Django model class.
-    :returns: A ``StructuredNode`` class.
+    :returns: A ``ModelNode`` class.
     """
     cache_key = '{object_name}Node'.format(object_name=model._meta.object_name)
     if cache_key in model_cache:
@@ -64,9 +64,9 @@ def get_node_class_for_model(model):
 
 def get_node_for_object(instance):
     """
-    Get a ``StructuredNode`` _instance for the current _instance.
-    :param instance: Django model _instance.
-    :returns: A ``StructuredNode`` _instance.
+    Get a ``ModelNode`` instance for the current object instance.
+    :param instance: Django model instance.
+    :returns: A ``ModelNode`` instance.
     """
     ModelNode = get_node_class_for_model(instance._meta.model)
     return ModelNode(instance=instance)

@@ -2,7 +2,7 @@
 
 from django.conf import settings
 
-from chemtrails.neoutils import get_model_string, get_relations_node_class_for_model, get_node_for_object
+from chemtrails.neoutils import get_model_string, get_meta_node_class_for_model, get_node_for_object
 from chemtrails.settings import CHEMTRAILS_IGNORE_MODELS
 
 
@@ -11,8 +11,7 @@ def post_migrate_handler(sender, **kwargs):
     Creates a Neo4j node representing the migrated apps models.
     """
     for model in sender.models.values():
-        ModelRelationsNode = get_relations_node_class_for_model(model)
-        ModelRelationsNode.sync()
+        get_meta_node_class_for_model(model).sync()
 
 
 def post_save_handler(sender, instance, created, **kwargs):

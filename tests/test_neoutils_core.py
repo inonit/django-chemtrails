@@ -6,8 +6,8 @@ from django.utils import six
 
 from neomodel import *
 
-from chemtrails.neoutils import ModelRelationsMeta, ModelRelationsMixin
-from chemtrails.neoutils import get_relations_node_class_for_model, get_node_class_for_model, get_node_for_object
+from chemtrails.neoutils import MetaNodeMeta, MetaNodeMixin
+from chemtrails.neoutils import get_meta_node_class_for_model, get_node_class_for_model, get_node_for_object
 
 from tests.testapp.autofixtures import BookFixture
 from tests.testapp.models import Book
@@ -16,7 +16,7 @@ from tests.testapp.models import Book
 class ModelNodeUtilsTestCase(TestCase):
 
     def test_get_relations_node_class_for_model(self):
-        klass = get_relations_node_class_for_model(Book)
+        klass = get_meta_node_class_for_model(Book)
         self.assertTrue(issubclass(klass, StructuredNode))
 
     def test_get_node_class_for_model(self):
@@ -39,8 +39,8 @@ class ModelNodeUtilsTestCase(TestCase):
 class ModelRelationsNodeTestCase(TestCase):
 
     def test_create_node(self):
-        @six.add_metaclass(ModelRelationsMeta)
-        class RelationNode(ModelRelationsMixin, StructuredNode):
+        @six.add_metaclass(MetaNodeMeta)
+        class RelationNode(MetaNodeMixin, StructuredNode):
             class Meta:
                 model = Book
 
@@ -48,8 +48,8 @@ class ModelRelationsNodeTestCase(TestCase):
 
     def test_create_node_fails_without_meta_model(self):
         try:
-            @six.add_metaclass(ModelRelationsMeta)
-            class RelationNode(ModelRelationsMixin, StructuredNode):
+            @six.add_metaclass(MetaNodeMeta)
+            class RelationNode(MetaNodeMixin, StructuredNode):
                 class Meta:
                     model = None
 
@@ -59,8 +59,8 @@ class ModelRelationsNodeTestCase(TestCase):
 
     def test_create_node_fails_without_meta_class(self):
         try:
-            @six.add_metaclass(ModelRelationsMeta)
-            class RelationNode(ModelRelationsMixin, StructuredNode):
+            @six.add_metaclass(MetaNodeMeta)
+            class RelationNode(MetaNodeMixin, StructuredNode):
                 pass
 
             self.fail('Did not fail when defining a ModelRelationNode without a Meta class.')

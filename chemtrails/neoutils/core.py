@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import itertools
 import operator
 from functools import reduce
 
@@ -7,7 +8,6 @@ from django.apps import apps
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.db import models
 from django.db.models import Manager
-from django.db.models.options import Options
 
 from neomodel import *
 
@@ -62,6 +62,7 @@ class Meta(type):
     Meta class template.
     """
     model = None
+    app_label = None
 
     def __new__(mcs, name, bases, attrs):
         cls = super(Meta, mcs).__new__(mcs, str(name), bases, attrs)
@@ -75,18 +76,31 @@ class NodeBase(NodeMeta):
     def __new__(mcs, name, bases, attrs):
         cls = super(NodeBase, mcs).__new__(mcs, str(name), bases, attrs)
 
-        cls.__cache__ = {}
         if getattr(cls, 'Meta', None):
-            cls.add_to_class('Meta', Meta('Meta', (Meta,), dict(cls.Meta.__dict__)))
+            module = attrs.get('__module__')
+            meta = Meta('Meta', (Meta,), dict(cls.Meta.__dict__))
 
             # A little hack which helps us dynamically create ModelNode classes
             # where variables holding the model class is out of scope.
-            if hasattr(cls, '__metaclass_model__') and not cls.Meta.model:
-                cls.Meta.model = getattr(cls, '__metaclass_model__', None)
+            if hasattr(cls, '__metaclass_model__') and not meta.model:
+                meta.model = getattr(cls, '__metaclass_model__', None)
                 delattr(cls, '__metaclass_model__')
 
-            if not getattr(cls.Meta, 'model', None):
+            if not getattr(meta, 'model', None):
                 raise ValueError('%s.Meta.model attribute cannot be None.' % name)
+
+            if getattr(meta, 'app_label', None) is None:
+                app_config = apps.get_containing_app_config(module)
+                if app_config is None:
+                    raise RuntimeError(
+                        "ModelNode class %s.%s doesn't declare an explicit "
+                        "app_label and isn't in an application in "
+                        "INSTALLED_APPS." % (module, name)
+                    )
+                else:
+                    meta.app_label = app_config.label
+
+            cls.add_to_class('Meta', meta)
 
         elif not getattr(cls, '__abstract_node__', None):
             raise ImproperlyConfigured('%s must implement a Meta class.' % name)
@@ -110,6 +124,7 @@ class ModelNodeMeta(NodeBase):
         # Add some default fields
         cls.pk = cls.get_property_class_for_field(cls._pk_field.__class__)(unique_index=True)
         cls.model = StringProperty(default=get_model_string(cls.Meta.model))
+        cls.app_label = StringProperty(default=cls.Meta.app_label)
 
         forward_relations = cls.get_forward_relation_fields()
         reverse_relations = cls.get_reverse_relation_fields()
@@ -118,10 +133,6 @@ class ModelNodeMeta(NodeBase):
 
             # Add forward relations
             if field in forward_relations:
-                # node, relationship = cls.get_related_meta_node_property_for_field(field)
-                # cls.__cache__[field.name] = node
-                # setattr(cls, field.name, relationship)
-
                 # TODO: Figure out how to avoid infinity loops on self referencing fields.
                 if hasattr(field, 'to') and field.to == cls.Meta.model:
                     continue
@@ -130,16 +141,15 @@ class ModelNodeMeta(NodeBase):
 
             # Add reverse relations
             elif field in reverse_relations:
-                # TODO: Figure out how to avoid infinity loops on reverse relations
+                # TODO: Figure out how to avoid infinity loops on reverse relations.
+                # NOTE: Seems hard to avoid... =(
                 if hasattr(field, 'to') and field.to == cls.Meta.model:
                     continue
+                # The following block never triggers, but are left here to demonstrate how
+                # I'd like to do it...
                 related_name = field.related_name or '%s_set' % field.name
                 relationship = cls.get_related_node_property_for_field(field)
                 cls.add_to_class(related_name, relationship)
-
-                # node, relationship = cls.get_related_meta_node_property_for_field(field)
-                # cls.__cache__[related_name] = node
-                # setattr(cls, related_name, relationship)
 
             # Add concrete fields
             else:
@@ -155,9 +165,9 @@ class ModelNodeMeta(NodeBase):
         return cls
 
 
-class ModelNodeBase(object):
+class ModelNodeMixinBase(object):
     """
-    Mixin class for ``StructuredNode`` for dealing with Django model instances.
+    Base mixin class
     """
     @classproperty
     def _pk_field(cls):
@@ -165,13 +175,6 @@ class ModelNodeBase(object):
         pk_field = reduce(operator.eq,
                           filter(lambda field: field.primary_key, model._meta.fields))
         return pk_field
-
-    @classproperty
-    def _cache(cls):
-        """
-        Return all cached values.
-        """
-        return cls.__cache__
 
     @classproperty
     def has_relations(cls):
@@ -219,26 +222,43 @@ class ModelNodeBase(object):
         ]
 
     @classmethod
-    def get_related_node_property_for_field(cls, field):
-        from chemtrails.neoutils import get_node_class_for_model
+    def get_related_node_property_for_field(cls, field, meta_node=False):
+        """
+        Get the relationship definition for the related node based on field.
+        :param field: Field to inspect
+        :param meta_node: If True, return the meta node for the related model,
+                          else return the model node.
+        :returns: A ``RelationshipDefinition`` instance.
+        """
+
+        from chemtrails.neoutils import get_node_class_for_model, get_meta_node_class_for_model
 
         reverse_field = True if isinstance(field, (
             models.ManyToManyRel, models.ManyToOneRel, models.OneToOneRel)) else False
 
         class DynamicRelation(StructuredRel):
-            relation_type = StringProperty(default=field.__class__.__name__)
+            type = StringProperty(default=field.__class__.__name__)
             remote_field = StringProperty(default=str(field.remote_field if reverse_field
                                                       else field.remote_field.field).lower())
             target_field = StringProperty(default=str(field.target_field).lower())
 
         relationship_type = {
-            Relationship: 'MUTUAL_RELATION',
-            RelationshipTo: 'FORWARD_RELATION',
-            RelationshipFrom: 'REVERSE_RELATION'
+            Relationship: 'MUTUAL',
+            RelationshipTo: 'FORWARD',
+            RelationshipFrom: 'REVERSE'
         }
         prop = cls.get_property_class_for_field(field.__class__)
+
+        if meta_node:
+            klass = get_meta_node_class_for_model(field.remote_field.related_model)
+            return prop(cls_name=klass, rel_type=relationship_type[prop], model=DynamicRelation)
+
         klass = get_node_class_for_model(field.related_model)
         return prop(cls_name=klass, rel_type=relationship_type[prop], model=DynamicRelation)
+
+    @classmethod
+    def get_meta_node_property_for_field(cls, field):
+        pass
 
     @classmethod
     def create_or_update_one(cls, *props, **kwargs):
@@ -252,7 +272,6 @@ class ModelNodeBase(object):
         :returns: A single ``StructuredNode` _instance.
         """
         with db.transaction:
-            # TODO: Rewrite using `cls.nodes.get()`
             result = cls.create_or_update(*props, **kwargs)
             if len(result) > 1:
                 raise MultipleNodesReturned(
@@ -263,18 +282,18 @@ class ModelNodeBase(object):
                     '{klass} was unable to sync - Did not receive any results.'.format(
                         klass=cls.__class__.__name__))
 
-            # There should be exactly one node for each relation type.
+            # There should be exactly one node.
             result = result[0]
         return result
 
 
-class ModelNodeMixin(ModelNodeBase):
+class ModelNodeMixin(ModelNodeMixinBase):
 
     def __init__(self, instance=None, *args, **kwargs):
         self._instance = instance
         for key, _ in self.__all_properties__:
             kwargs[key] = getattr(self._instance, key, kwargs.get(key, None))
-        super(ModelNodeMixin, self).__init__(self, *args, **kwargs)
+        super(ModelNodeMixinBase, self).__init__(self, *args, **kwargs)
 
     def full_clean(self, exclude=None, validate_unique=True):
         exclude = exclude or []
@@ -336,33 +355,31 @@ class ModelNodeMixin(ModelNodeBase):
                     klass = get_node_class_for_model(attr.model)
                     related_nodes = klass.nodes.filter(pk__in=list(attr.values_list('pk', flat=True)))
                     for n in related_nodes:
-                        try:
-                            field.connect(n)
-                        except ValueError as e:
-                            continue
-                            # raise e
+                        field.connect(n)
         return self
 
 
-class ModelRelationsMeta(NodeBase):
+class MetaNodeMeta(NodeBase):
     """
     Meta class for ``ModelRelationNode``.
     """
     def __new__(mcs, name, bases, attrs):
-        cls = super(ModelRelationsMeta, mcs).__new__(mcs, str(name), bases, attrs)
+        cls = super(MetaNodeMeta, mcs).__new__(mcs, str(name), bases, attrs)
 
         # Set label for node
-        cls.__label__ = '{object_name}RelationMeta'.format(object_name=cls.Meta.model._meta.object_name)
+        cls.__label__ = '{object_name}Meta'.format(object_name=cls.Meta.model._meta.object_name)
 
         # Add some default fields
         cls.model = StringProperty(unique_index=True, default=get_model_string(cls.Meta.model))
 
+        forward_relations = cls.get_forward_relation_fields()
+        reverse_relations = cls.get_reverse_relation_fields()
+
         # Add relations for the model
-        for relation in cls.get_relation_fields(cls.Meta.model):
-            if hasattr(relation, 'field') and relation.field.__class__ in field_property_map:
-                node, relationship = cls.get_related_meta_node_property_for_field(relation.field)
-                cls.__cache__[relation.name] = node
-                setattr(cls, relation.name, relationship)
+        for field in itertools.chain(forward_relations, reverse_relations):
+            if hasattr(field, 'field') and field.field.__class__ in field_property_map:
+                relationship = cls.get_related_node_property_for_field(field.field, meta_node=True)
+                cls.add_to_class(field.name, relationship)
 
         # Recalculate definitions
         cls.__all_properties__ = tuple(cls.defined_properties(aliases=False, rels=False).items())
@@ -373,50 +390,23 @@ class ModelRelationsMeta(NodeBase):
         return cls
 
 
-class ModelRelationsMixin(ModelNodeBase):
+class MetaNodeMixin(ModelNodeMixinBase):
     """
     Mixin class for ``StructuredNode`` which adds a number of class methods
     in order to calculate relationship fields from a Django model class.
     """
 
     @classmethod
-    def get_related_meta_node_property_for_field(cls, field):
-        from chemtrails.neoutils import get_relations_node_class_for_model
-
-        reverse_field = True if isinstance(field, (
-            models.ManyToManyRel, models.ManyToOneRel, models.OneToOneRel)) else False
-
-        class DynamicRelation(StructuredRel):
-            reversed = BooleanProperty(default=reverse_field)
-            relation_type = StringProperty(default=field.__class__.__name__)
-            remote_field = StringProperty(default=str(field.remote_field if reverse_field
-                                                      else field.remote_field.field).lower())
-            target_field = StringProperty(default=str(field.target_field).lower())
-
-        prop_class = cls.get_property_class_for_field(field.__class__)
-
-        MetaNode = get_relations_node_class_for_model(field.remote_field.related_model)
-        node = MetaNode.create_or_update_one([{'model': get_model_string(cls.Meta.model)}])
-        return node, prop_class(cls_name=MetaNode, rel_type='META_RELATION', model=DynamicRelation)
-
-    @classmethod
-    def sync(cls, create_empty=False, **kwargs):
+    def sync(cls, **kwargs):
         """
-        Write node to the graph and create all relationships.
-        :param create_empty: False by default. If True and no calculated relationships, write the
-                             node to the graph anyway.
+        Write meta node to the graph and create all relationships.
         :param kwargs: Mapping of keyword arguments which will be passed to ``create_or_update_one()``
-        :returns: The node _instance or None.
+        :returns: ``MetaNode`` instance.
         """
-        if not cls.has_relations and not create_empty:
-            return None
-
-        result = cls.create_or_update_one([{'model': get_model_string(cls.Meta.model)}], **kwargs)
-
-        # Connect relations
-        for field_name, _ in cls.defined_properties(aliases=False, properties=False).items():
-            if field_name in cls._cache:
-                field = getattr(result, field_name)
-                field.connect(cls._cache[field.name])
-
-        return result
+        node = cls.create_or_update_one([{'model': get_model_string(cls.Meta.model)}], **kwargs)
+        if node.has_relations:
+            for field_name, relationship in cls.defined_properties(aliases=False, properties=False).items():
+                field = getattr(node, field_name)
+                related_node = relationship.definition['node_class'].sync()
+                field.connect(related_node)
+        return node
