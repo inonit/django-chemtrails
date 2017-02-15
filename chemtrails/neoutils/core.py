@@ -77,7 +77,6 @@ class NodeBase(NodeMeta):
         cls = super(NodeBase, mcs).__new__(mcs, str(name), bases, attrs)
 
         if getattr(cls, 'Meta', None):
-            module = attrs.get('__module__')
             meta = Meta('Meta', (Meta,), dict(cls.Meta.__dict__))
 
             # A little hack which helps us dynamically create ModelNode classes
@@ -88,17 +87,6 @@ class NodeBase(NodeMeta):
 
             if not getattr(meta, 'model', None):
                 raise ValueError('%s.Meta.model attribute cannot be None.' % name)
-
-            if getattr(meta, 'app_label', None) is None:
-                app_config = apps.get_containing_app_config(module)
-                if app_config is None:
-                    raise RuntimeError(
-                        "ModelNode class %s.%s doesn't declare an explicit "
-                        "app_label and isn't in an application in "
-                        "INSTALLED_APPS." % (module, name)
-                    )
-                else:
-                    meta.app_label = app_config.label
 
             cls.add_to_class('Meta', meta)
 
@@ -124,8 +112,8 @@ class ModelNodeMeta(NodeBase):
 
         # Add some default fields
         cls.pk = cls.get_property_class_for_field(cls._pk_field.__class__)(unique_index=True)
-        cls.model = StringProperty(default=get_model_string(cls.Meta.model))
-        cls.app_label = StringProperty(default=cls.Meta.app_label)
+        cls.app_label = StringProperty(default=cls.Meta.model._meta.app_label)
+        cls.model_name = StringProperty(default=cls.Meta.model._meta.model_name)
         cls.meta = Relationship(cls_name=get_meta_node_class_for_model(cls.Meta.model),
                                 rel_type='META')
 
@@ -379,7 +367,8 @@ class MetaNodeMeta(NodeBase):
         cls.__label__ = '{object_name}Meta'.format(object_name=cls.Meta.model._meta.object_name)
 
         # Add some default fields
-        cls.model = StringProperty(unique_index=True, default=get_model_string(cls.Meta.model))
+        cls.app_label = StringProperty(default=cls.Meta.model._meta.app_label)
+        cls.model_name = StringProperty(default=cls.Meta.model._meta.model_name)
 
         forward_relations = cls.get_forward_relation_fields()
         reverse_relations = cls.get_reverse_relation_fields()
