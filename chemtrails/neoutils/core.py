@@ -10,6 +10,7 @@ from django.db import models
 from django.db.models import Manager
 
 from neomodel import *
+from chemtrails import settings
 
 
 field_property_map = {

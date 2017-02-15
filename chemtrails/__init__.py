@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from chemtrails.settings import chemtrails_settings as settings
 default_app_config = 'chemtrails.apps.ChemTrailsConfig'
 
 __title__ = 'django-chemtrails'
@@ -7,3 +8,7 @@ __author__ = 'Rolf Haavard Blindheim'
 __license__ = 'MIT License'
 
 VERSION = __version__
+
+__all__ = [
+    'settings'
+]
