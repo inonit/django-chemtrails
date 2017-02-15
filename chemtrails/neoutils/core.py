@@ -17,7 +17,7 @@ field_property_map = {
     models.OneToOneField: Relationship,
     models.ManyToManyField: RelationshipTo,
     models.ManyToOneRel: RelationshipFrom,
-    models.OneToOneRel: RelationshipFrom,
+    models.OneToOneRel: Relationship,
     models.ManyToManyRel: RelationshipFrom,
 
     models.AutoField: IntegerProperty,
@@ -116,6 +116,7 @@ class ModelNodeMeta(NodeBase):
     Meta class for ``ModelNode``.
     """
     def __new__(mcs, name, bases, attrs):
+        from chemtrails.neoutils import get_meta_node_class_for_model
         cls = super(ModelNodeMeta, mcs).__new__(mcs, str(name), bases, attrs)
 
         # Set label for node
@@ -125,6 +126,8 @@ class ModelNodeMeta(NodeBase):
         cls.pk = cls.get_property_class_for_field(cls._pk_field.__class__)(unique_index=True)
         cls.model = StringProperty(default=get_model_string(cls.Meta.model))
         cls.app_label = StringProperty(default=cls.Meta.app_label)
+        cls.meta = Relationship(cls_name=get_meta_node_class_for_model(cls.Meta.model),
+                                rel_type='META')
 
         forward_relations = cls.get_forward_relation_fields()
         reverse_relations = cls.get_reverse_relation_fields()
@@ -338,7 +341,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
         self.save()
 
         # Connect relations
-        for field_name, _ in cls.defined_properties(aliases=False, properties=False).items():
+        for field_name, relationship in cls.defined_properties(aliases=False, properties=False).items():
             field = getattr(self, field_name)
 
             # TODO: Connect meta
@@ -356,6 +359,12 @@ class ModelNodeMixin(ModelNodeMixinBase):
                     related_nodes = klass.nodes.filter(pk__in=list(attr.values_list('pk', flat=True)))
                     for n in related_nodes:
                         field.connect(n)
+            elif field.name == 'meta':
+                klass = relationship.definition['node_class']
+                node = klass.nodes.get_or_none()
+                if not node:
+                    node = klass.sync()
+                field.connect(node)
         return self
 
 
