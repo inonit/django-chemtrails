@@ -10,6 +10,7 @@ CHEMTRAILS = {
 }
 """
 from django.conf import settings
+
 from django.core.signals import setting_changed
 
 # TODO: IGNORE_MODELS should support following formats:

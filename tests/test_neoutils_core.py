@@ -9,8 +9,8 @@ from neomodel import *
 from chemtrails.neoutils import MetaNodeMeta, MetaNodeMixin
 from chemtrails.neoutils import get_meta_node_class_for_model, get_node_class_for_model, get_node_for_object
 
-from tests.testapp.autofixtures import BookFixture
-from tests.testapp.models import Book
+from tests.testapp.autofixtures import StoreFixture
+from tests.testapp.models import Book, Store
 
 
 class ModelNodeUtilsTestCase(TestCase):
@@ -24,15 +24,15 @@ class ModelNodeUtilsTestCase(TestCase):
         self.assertTrue(issubclass(klass, StructuredNode))
 
     def test_get_node_for_object(self):
-        book = BookFixture(Book).create_one(commit=True)
-        book_node = get_node_for_object(book)
-        self.assertIsInstance(book_node, get_node_class_for_model(Book))
+        store = StoreFixture(Store).create_one(commit=True)
+        store_node = get_node_for_object(store)
+        self.assertIsInstance(store_node, get_node_class_for_model(Store))
 
     def test_get_node_for_multiple_objects(self):
-        books = BookFixture(Book).create(count=3, commit=True)
-        for book in books:
-            book_node = get_node_for_object(book).sync()
-            self.assertIsInstance(book_node, get_node_class_for_model(Book))
+        stores = StoreFixture(Store).create(count=3, commit=True)
+        for store in stores:
+            store_node = get_node_for_object(store).sync()
+            self.assertIsInstance(store_node, get_node_class_for_model(Store))
 
 
 class ModelRelationsNodeTestCase(TestCase):

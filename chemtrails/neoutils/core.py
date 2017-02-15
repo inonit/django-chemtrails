@@ -246,9 +246,9 @@ class ModelNodeMixinBase:
             target_field = StringProperty(default=str(field.target_field).lower())
 
         relationship_type = {
-            Relationship: 'MUTUAL',
-            RelationshipTo: 'FORWARD',
-            RelationshipFrom: 'REVERSE'
+            Relationship: 'MUTUAL_RELATION',
+            RelationshipTo: 'RELATES_TO',
+            RelationshipFrom: 'RELATES_FROM'
         }
         prop = cls.get_property_class_for_field(field.__class__)
 
@@ -363,7 +363,8 @@ class ModelNodeMixin(ModelNodeMixinBase):
                 node = klass.nodes.get_or_none()
                 if not node:
                     node = klass.sync()
-                field.connect(node)
+                if node is not None:
+                    field.connect(node)
         return self
 
 
@@ -405,16 +406,21 @@ class MetaNodeMixin(ModelNodeMixinBase):
     """
 
     @classmethod
-    def sync(cls, **kwargs):
+    def sync(cls, create_empty=False, **kwargs):
         """
         Write meta node to the graph and create all relationships.
+        :param create_empty: If the MetaNode has no connected nodes, don't create it.
         :param kwargs: Mapping of keyword arguments which will be passed to ``create_or_update_one()``
         :returns: ``MetaNode`` instance.
         """
+        if not cls.has_relations and not create_empty:
+            return None
+
         node = cls.create_or_update_one([{'model': get_model_string(cls.Meta.model)}], **kwargs)
         if node.has_relations:
             for field_name, relationship in cls.defined_properties(aliases=False, properties=False).items():
                 field = getattr(node, field_name)
                 related_node = relationship.definition['node_class'].sync()
-                field.connect(related_node)
+                if related_node:
+                    field.connect(related_node)
         return node
