@@ -37,8 +37,8 @@ class NodeUtilsTestCase(TestCase):
         self.assertIsInstance(store_node, get_node_class_for_model(Store))
 
     def test_get_nodeset_for_queryset(self):
-        created = StoreFixture(Store).create(count=3, commit=True)
-        queryset = Store.objects.filter(pk__in=map(lambda n: n.pk, created))
+        queryset = Store.objects.filter(pk__in=map(lambda n: n.pk,
+                                                   StoreFixture(Store).create(count=3, commit=True)))
         nodeset = get_nodeset_for_queryset(queryset)
         self.assertIsInstance(nodeset, NodeSet)
         for node in nodeset:
