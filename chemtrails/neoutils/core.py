@@ -4,7 +4,6 @@ import itertools
 import operator
 from functools import reduce
 
-from django.apps import apps
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.db import models
 from django.db.models import Manager
@@ -88,6 +87,9 @@ class NodeBase(NodeMeta):
             if not getattr(meta, 'model', None):
                 raise ValueError('%s.Meta.model attribute cannot be None.' % name)
 
+            if getattr(meta, 'app_label', None) is None:
+                meta.app_label = meta.model._meta.app_label
+
             cls.add_to_class('Meta', meta)
 
         elif not getattr(cls, '__abstract_node__', None):
@@ -112,7 +114,7 @@ class ModelNodeMeta(NodeBase):
 
         # Add some default fields
         cls.pk = cls.get_property_class_for_field(cls._pk_field.__class__)(unique_index=True)
-        cls.app_label = StringProperty(default=cls.Meta.model._meta.app_label)
+        cls.app_label = StringProperty(default=cls.Meta.app_label)
         cls.model_name = StringProperty(default=cls.Meta.model._meta.model_name)
         cls.meta = Relationship(cls_name=get_meta_node_class_for_model(cls.Meta.model),
                                 rel_type='META')
@@ -132,12 +134,6 @@ class ModelNodeMeta(NodeBase):
 
             # Add reverse relations
             elif field in reverse_relations:
-                # TODO: Figure out how to avoid infinity loops on reverse relations.
-                # NOTE: Seems hard to avoid... =(
-                if hasattr(field, 'to') and field.to == cls.Meta.model:
-                    continue
-                # The following block never triggers, but are left here to demonstrate how
-                # I'd like to do it...
                 related_name = field.related_name or '%s_set' % field.name
                 relationship = cls.get_related_node_property_for_field(field)
                 cls.add_to_class(related_name, relationship)
@@ -221,7 +217,6 @@ class ModelNodeMixinBase:
                           else return the model node.
         :returns: A ``RelationshipDefinition`` instance.
         """
-
         from chemtrails.neoutils import get_node_class_for_model, get_meta_node_class_for_model
 
         reverse_field = True if isinstance(field, (
@@ -241,10 +236,10 @@ class ModelNodeMixinBase:
         prop = cls.get_property_class_for_field(field.__class__)
 
         if meta_node:
-            klass = get_meta_node_class_for_model(field.remote_field.related_model)
+            klass = cls if reverse_field else get_meta_node_class_for_model(field.remote_field.related_model)
             return prop(cls_name=klass, rel_type=relationship_type[prop], model=DynamicRelation)
 
-        klass = get_node_class_for_model(field.related_model)
+        klass = cls if reverse_field else get_node_class_for_model(field.related_model)
         return prop(cls_name=klass, rel_type=relationship_type[prop], model=DynamicRelation)
 
     @classmethod
@@ -315,7 +310,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
             raise ValidationError({e.property_name: 'is required'})
 
     def sync(self, update_existing=True):
-        from chemtrails.neoutils import get_node_for_object, get_node_class_for_model
+        from chemtrails.neoutils import get_node_for_object
         self.full_clean(validate_unique=not update_existing)
 
         cls = self.__class__
@@ -337,19 +332,22 @@ class ModelNodeMixin(ModelNodeMixinBase):
                 attr = getattr(self._instance, field.name)
 
                 if isinstance(attr, models.Model):
-                    node = get_node_for_object(attr).sync(update_existing=True)
+                    klass = relationship.definition['node_class']
+                    node = klass.nodes.get_or_none(pk=attr.pk)
+                    if not node or (node and not hasattr(node, 'id')):
+                        node = get_node_for_object(attr).sync(update_existing=True)
                     field.connect(node)
                 elif isinstance(attr, Manager):
-                    klass = get_node_class_for_model(attr.model)
-                    related_nodes = klass.nodes.filter(pk__in=list(attr.values_list('pk', flat=True)))
-                    for n in related_nodes:
-                        field.connect(n)
+                    klass = relationship.definition['node_class']
+                    nodeset = klass.nodes.filter(pk__in=list(attr.values_list('pk', flat=True)))
+                    for node in nodeset:
+                        field.connect(node)
 
             # Connect the MetaNode
             elif field.name == 'meta':
                 klass = relationship.definition['node_class']
                 node = klass.nodes.get_or_none()
-                if not node:
+                if not node or (node and not hasattr(node, 'id')):
                     node = klass.sync()
                 if node is not None:
                     field.connect(node)
@@ -369,6 +367,7 @@ class MetaNodeMeta(NodeBase):
         # Add some default fields
         cls.app_label = StringProperty(default=cls.Meta.model._meta.app_label)
         cls.model_name = StringProperty(default=cls.Meta.model._meta.model_name)
+        cls.permissions = ArrayProperty(default=cls.Meta.model._meta.default_permissions)
 
         forward_relations = cls.get_forward_relation_fields()
         reverse_relations = cls.get_reverse_relation_fields()
