@@ -2,6 +2,7 @@
 
 import itertools
 import operator
+from collections import Sequence
 from functools import reduce
 
 from django.core.exceptions import ImproperlyConfigured, ValidationError
@@ -9,6 +10,7 @@ from django.db import models
 from django.db.models import Manager
 
 from neomodel import *
+from chemtrails.neoutils.query import DeferredAttribute
 
 
 field_property_map = {
@@ -54,6 +56,21 @@ def get_model_string(model):
     :returns: <app_label>.<model_name> string representation for the model
     """
     return "{app_label}.{model_name}".format(app_label=model._meta.app_label, model_name=model._meta.model_name)
+
+
+def flatten(sequence):
+    """
+    Flatten an arbitrary nested sequence.
+    Example usage:
+      >> my_list = list(flatten(nested_lists))
+    :param sequence: A nested list or tuple.
+    :returns: A generator with all values in a flat structure.
+    """
+    for i in sequence:
+        if isinstance(i, Sequence) and not isinstance(i, (str, bytes)):
+            yield from flatten(i)
+        else:
+            yield i
 
 
 class Meta(type):
@@ -277,9 +294,29 @@ class ModelNodeMixin(ModelNodeMixinBase):
 
     def __init__(self, instance=None, *args, **kwargs):
         self._instance = instance
-        for key, _ in self.__all_properties__:
-            kwargs[key] = getattr(self._instance, key, kwargs.get(key, None))
+        defaults = {key: getattr(self._instance, key, kwargs.get(key, None))
+                    for key, _ in self.__all_properties__}
+        kwargs.update(defaults)
         super(ModelNodeMixinBase, self).__init__(self, *args, **kwargs)
+
+        # Query the database for an existing node and set the id if found.
+        # This will make this a "bound" node.
+        if not hasattr(self, 'id') and getattr(self, 'pk', None) is not None:
+            node_id = self._get_id_from_database(self.deflate(self.__properties__))
+            if node_id:
+                self.id = node_id
+
+    def _get_id_from_database(self, params):
+        """
+        Query for node and return id.
+        :param params: Parameters to use in query.
+        :returns: Node id if found, else None
+        """
+        query = ' '.join(('MATCH (n:{label}) WHERE'.format(label=self.__label__),
+                          ' AND '.join(['n.{} = {{{}}}'.format(key, key) for key in params.keys()]),
+                          'RETURN id(n) LIMIT 1'))
+        result, _ = db.cypher_query(query, params)
+        return list(flatten(result))[0] if result else None
 
     def full_clean(self, exclude=None, validate_unique=True):
         exclude = exclude or []
