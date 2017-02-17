@@ -17,9 +17,11 @@ field_property_map = {
     models.ForeignKey: RelationshipTo,
     models.OneToOneField: Relationship,
     models.ManyToManyField: RelationshipTo,
-    models.ManyToOneRel: RelationshipFrom,
+    # models.ManyToOneRel: RelationshipFrom,
+    models.ManyToOneRel: RelationshipTo,
     models.OneToOneRel: Relationship,
-    models.ManyToManyRel: RelationshipFrom,
+    # models.ManyToManyRel: RelationshipFrom,
+    models.ManyToManyRel: RelationshipTo,
 
     models.AutoField: IntegerProperty,
     # models.BigAutoField: IntegerProperty,  # Breaks Django 1.9 compatibility
