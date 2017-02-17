@@ -10,6 +10,7 @@ from django.db import models
 from django.db.models import Manager
 
 from neomodel import *
+from chemtrails import settings
 
 
 field_property_map = {
@@ -47,6 +48,10 @@ field_property_map = {
     models.URLField: StringProperty,
     models.UUIDField: StringProperty
 }
+
+# Caches to avoid infinity loops
+__node_cache__ = {}
+__meta_cache__ = {}
 
 
 def get_model_string(model):
@@ -138,6 +143,9 @@ class ModelNodeMeta(NodeBase):
         forward_relations = cls.get_forward_relation_fields()
         reverse_relations = cls.get_reverse_relation_fields()
 
+        # Add to cache before recursively looking up relationships.
+        __node_cache__.update({cls.Meta.model: cls})
+
         for field in cls.Meta.model._meta.get_fields():
 
             # Add forward relations
@@ -225,6 +233,25 @@ class ModelNodeMixinBase:
         ]
 
     @classmethod
+    def get_relationship_type(cls, field):
+        """
+        Get the relationship type for field. If ``settings.NAMED_RELATIONSHIPS``
+        is True, pick the relationship type from the field. If not,
+        use a pre-defined set of generic types.
+        """
+        generic_types = {
+            Relationship: 'MUTUAL_RELATION',
+            RelationshipTo: 'RELATES_TO',
+            RelationshipFrom: 'RELATES_FROM'
+        }
+        if settings.NAMED_RELATIONSHIPS:
+            return '{related_name}'.format(
+                related_name=getattr(field, 'related_name', field.name) or field.name).upper()
+        else:
+            prop = cls.get_property_class_for_field(field.__class__)
+            return generic_types[prop]
+
+    @classmethod
     def get_related_node_property_for_field(cls, field, meta_node=False):
         """
         Get the relationship definition for the related node based on field.
@@ -244,19 +271,18 @@ class ModelNodeMixinBase:
                                                       else field.remote_field.field).lower())
             target_field = StringProperty(default=str(field.target_field).lower())
 
-        relationship_type = {
-            Relationship: 'MUTUAL_RELATION',
-            RelationshipTo: 'RELATES_TO',
-            RelationshipFrom: 'RELATES_FROM'
-        }
         prop = cls.get_property_class_for_field(field.__class__)
+        relationship_type = cls.get_relationship_type(field)
 
         if meta_node:
-            klass = cls if reverse_field else get_meta_node_class_for_model(field.remote_field.related_model)
-            return prop(cls_name=klass, rel_type=relationship_type[prop], model=DynamicRelation)
-
-        klass = cls if reverse_field else get_node_class_for_model(field.related_model)
-        return prop(cls_name=klass, rel_type=relationship_type[prop], model=DynamicRelation)
+            klass = __meta_cache__[field.remote_field.related_model] if reverse_field and \
+                field.remote_field.related_model in __meta_cache__ \
+                else get_meta_node_class_for_model(field.remote_field.related_model)
+            return prop(cls_name=klass, rel_type=relationship_type, model=DynamicRelation)
+        else:
+            klass = __node_cache__[field.related_model] if reverse_field and field.related_model in __node_cache__ \
+                else get_node_class_for_model(field.related_model)
+            return prop(cls_name=klass, rel_type=relationship_type, model=DynamicRelation)
 
     @classmethod
     def get_meta_node_property_for_field(cls, field):
@@ -340,7 +366,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
 
             if validate_unique:
                 cls = self.__class__
-                unique_props = [attr for attr, prop in cls.defined_properties(aliases=False, rels=False).items()
+                unique_props = [attr for attr, prop in self.defined_properties(aliases=False, rels=False).items()
                                 if prop not in exclude and prop.unique_index]
                 for key in unique_props:
                     value = self.deflate({key: props[key]}, self)[key]
@@ -369,7 +395,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
             self.save()
 
         # Connect relations
-        for field_name, relationship in cls.defined_properties(aliases=False, properties=False).items():
+        for field_name, relationship in self.defined_properties(aliases=False, properties=False).items():
             field = getattr(self, field_name)
 
             # Connect related nodes
@@ -383,10 +409,18 @@ class ModelNodeMixin(ModelNodeMixinBase):
                         node = get_node_for_object(attr).sync(update_existing=True)
                     field.connect(node)
                 elif isinstance(attr, Manager):
+                    queryset = attr.all()
                     klass = relationship.definition['node_class']
-                    nodeset = klass.nodes.filter(pk__in=list(attr.values_list('pk', flat=True)))
+                    nodeset = klass.nodes.filter(pk__in=list(queryset.values_list('pk', flat=True)))
                     for node in nodeset:
                         field.connect(node)
+
+                        # Connect the opposing side back
+                        for _field_name, _relationship in node.defined_properties(aliases=False,
+                                                                                  properties=False).items():
+                            if _relationship.definition['node_class'] == cls:
+                                r_field = getattr(node, _field_name)
+                                r_field.connect(self)
 
             # Connect the MetaNode
             elif field.name == 'meta':
@@ -416,6 +450,9 @@ class MetaNodeMeta(NodeBase):
 
         forward_relations = cls.get_forward_relation_fields()
         reverse_relations = cls.get_reverse_relation_fields()
+
+        # Add to cache before recursively looking up relationships.
+        __meta_cache__.update({cls.Meta.model: cls})
 
         # Add relations for the model
         for field in itertools.chain(forward_relations, reverse_relations):

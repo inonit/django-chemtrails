@@ -19,7 +19,7 @@ def post_save_handler(sender, instance, created, **kwargs):
     """
     if settings.ENABLED is True:
         if not get_model_string(instance._meta.model) in settings.IGNORE_MODELS:
-            get_node_for_object(instance).sync()
+            get_node_for_object(instance).sync(update_existing=True)
 
 
 def pre_delete_handler(sender, instance, **kwargs):

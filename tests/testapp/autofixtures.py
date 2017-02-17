@@ -56,7 +56,8 @@ register(Publisher, PublisherFixture)
 
 class BookFixture(AutoFixture):
     generate_fk = True
-    generate_m2m = {'authors': (1, 3)}
+    generate_m2m = {'authors': (1, 2),
+                    'stores': (1, 2)}
     field_values = {
         'name': generators.StringGenerator(min_length=5, max_length=15),
         'pages': generators.PositiveIntegerGenerator(min_value=200, max_value=2000),
@@ -70,7 +71,7 @@ register(Book, BookFixture)
 
 class StoreFixture(AutoFixture):
     generate_fk = True
-    generate_m2m = {'books': (3, 10)}
+    generate_m2m = {'books': (2, 4)}
     field_values = {
         'name': generators.StringGenerator(min_length=5, max_length=15),
         'registered_users': generators.PositiveSmallIntegerGenerator(10, 1000)

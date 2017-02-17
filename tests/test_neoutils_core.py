@@ -37,7 +37,7 @@ class NodeUtilsTestCase(TestCase):
 
     def test_get_nodeset_for_queryset(self):
         queryset = Store.objects.filter(pk__in=map(lambda n: n.pk,
-                                                   StoreFixture(Store).create(count=3, commit=True)))
+                                                   StoreFixture(Store).create(count=2, commit=True)))
         nodeset = get_nodeset_for_queryset(queryset)
         self.assertIsInstance(nodeset, NodeSet)
         for node in nodeset:
@@ -95,6 +95,29 @@ class ModelNodeTestCase(TestCase):
             self.fail('Did not fail when defining a ModelNode without a Meta class.')
         except ImproperlyConfigured as e:
             self.assertEqual(str(e), '%s must implement a Meta class.' % 'ModelNode')
+
+    def test_sync_create_relations(self):
+        queryset = Store.objects.filter(pk__in=map(lambda n: n.pk,
+                                                   StoreFixture(Store).create(count=2, commit=True)))
+        store_nodeset = get_nodeset_for_queryset(queryset, sync=True)
+        # for store in store_nodeset:
+        #     for book in store.books.all():
+        #         self.assertTrue(store in book.store_set.all())
+
+
+        # book = BookFixture(Book).create_one()
+        # stores = StoreFixture(Store).create(count=3)
+        # book.store_set.add(*stores)
+        #
+        # self.assertNotEqual(book.publisher_id, 0)
+        # self.assertNotEqual(book.authors.count(), 0)
+        # self.assertNotEqual(book.store_set.count(), 0)
+        #
+        # book_node = get_node_for_object(book).sync(update_existing=True)
+        # authors = book_node.authors.all()
+        # stores = book_node.store_set.all()
+
+        brk = ''
 
 
 class MetaNodeTestCase(TestCase):

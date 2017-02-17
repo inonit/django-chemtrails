@@ -19,6 +19,7 @@ from django.core.signals import setting_changed
 # - specific:  'migrations.migration'
 DEFAULTS = {
     'ENABLED': True,
+    'NAMED_RELATIONSHIPS': True,
     'IGNORE_MODELS': [
         'migrations.migration'
     ],
