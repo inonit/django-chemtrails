@@ -13,7 +13,7 @@ def post_migrate_handler(sender, **kwargs):
             get_meta_node_class_for_model(model).sync()
 
 
-def post_save_handler(sender, instance, created, **kwargs):
+def post_save_handler(sender, instance, **kwargs):
     """
     Keep the graph model in sync with the model.
     """

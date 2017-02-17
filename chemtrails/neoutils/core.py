@@ -313,7 +313,6 @@ class ModelNodeMixinBase:
 class ModelNodeMixin(ModelNodeMixinBase):
 
     def __init__(self, instance=None, *args, **kwargs):
-        self._bound = False
         self._instance = instance
         defaults = {key: getattr(self._instance, key, kwargs.get(key, None))
                     for key, _ in self.__all_properties__}
@@ -326,15 +325,10 @@ class ModelNodeMixin(ModelNodeMixinBase):
             node_id = self._get_id_from_database(self.deflate(self.__properties__))
             if node_id:
                 self.id = node_id
-                self._is_bound = True
 
     @property
     def _is_bound(self):
-        return self._bound
-
-    @_is_bound.setter
-    def _is_bound(self, value):
-        self._bound = value
+        return getattr(self, 'id', None) is not None
 
     def _get_id_from_database(self, params):
         """
@@ -376,6 +370,22 @@ class ModelNodeMixin(ModelNodeMixinBase):
         except RequiredProperty as e:
             raise ValidationError({e.property_name: 'is required'})
 
+    def recursive_connect(self, prop, relation):
+        """
+        Recursively connect a related branch.
+        :param prop: For example a ``ZeroOrMore`` instance.
+        :param relation: ``RelationShipDefinition`` instance
+        :returns: None
+        """
+        klass = relation.definition['node_class']
+        for node in klass.nodes.all():
+            prop.connect(node)
+
+            # Connect the "other" side
+            for p, r in node.defined_properties(aliases=False, properties=False).items():
+                if r.definition['node_class'] == self.__class__:
+                    self.recursive_connect(getattr(node, p), r)
+
     def sync(self, update_existing=True):
         from chemtrails.neoutils import get_node_for_object
 
@@ -392,39 +402,51 @@ class ModelNodeMixin(ModelNodeMixinBase):
         # Connect relations
         for field_name, relationship in self.defined_properties(aliases=False, properties=False).items():
             field = getattr(self, field_name)
+            with db.transaction:
+                self.recursive_connect(field, relationship)
+
+            # # TODO: Should recurse
+            # attr = getattr(self, field.name)
+            # klass = relationship.definition['node_class']
+            # nodeset = klass.nodes.all()
+            # if not nodeset:
+            #     pass
+            # else:
+            #     for node in nodeset:
+            #         field.connect(node)
 
             # Connect related nodes
-            if self._instance and hasattr(self._instance, field.name):
-                attr = getattr(self._instance, field.name)
-
-                if isinstance(attr, models.Model):
-                    klass = relationship.definition['node_class']
-                    node = klass.nodes.get_or_none(pk=attr.pk)
-                    if not node or (node and not hasattr(node, 'id')):
-                        node = get_node_for_object(attr).sync(update_existing=True)
-                    field.connect(node)
-                elif isinstance(attr, Manager):
-                    queryset = attr.all()
-                    klass = relationship.definition['node_class']
-                    nodeset = klass.nodes.filter(pk__in=list(queryset.values_list('pk', flat=True)))
-                    for node in nodeset:
-                        field.connect(node)
-
-                        # Connect the opposing side back
-                        for _field_name, _relationship in node.defined_properties(aliases=False,
-                                                                                  properties=False).items():
-                            if _relationship.definition['node_class'] == cls:
-                                r_field = getattr(node, _field_name)
-                                r_field.connect(self)
+            # if self._instance and hasattr(self._instance, field.name):
+            #     attr = getattr(self._instance, field.name)
+            #
+            #     if isinstance(attr, models.Model):
+            #         klass = relationship.definition['node_class']
+            #         node = klass.nodes.get_or_none(pk=attr.pk)
+            #         if not node or (node and not hasattr(node, 'id')):
+            #             node = get_node_for_object(attr).sync(update_existing=True)
+            #         field.connect(node)
+            #     elif isinstance(attr, Manager):
+            #         queryset = attr.all()
+            #         klass = relationship.definition['node_class']
+            #         nodeset = klass.nodes.filter(pk__in=list(queryset.values_list('pk', flat=True)))
+            #         for node in nodeset:
+            #             field.connect(node)
+            #
+            #             # Connect the opposing side back
+            #             for _field_name, _relationship in node.defined_properties(aliases=False,
+            #                                                                       properties=False).items():
+            #                 if _relationship.definition['node_class'] == cls:
+            #                     r_field = getattr(node, _field_name)
+            #                     r_field.connect(self)
 
             # Connect the MetaNode
-            elif field.name == 'meta':
-                klass = relationship.definition['node_class']
-                node = klass.nodes.get_or_none()
-                if not node or (node and not hasattr(node, 'id')):
-                    node = klass.sync()
-                if node is not None:
-                    field.connect(node)
+            # elif field.name == 'meta':
+            #     klass = relationship.definition['node_class']
+            #     node = klass.nodes.get_or_none()
+            #     if not node or (node and not hasattr(node, 'id')):
+            #         node = klass.sync()
+            #     if node is not None:
+            #         field.connect(node)
         return self
 
 

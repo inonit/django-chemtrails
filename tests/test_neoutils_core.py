@@ -99,10 +99,10 @@ class ModelNodeTestCase(TestCase):
     def test_sync_create_relations(self):
         queryset = Store.objects.filter(pk__in=map(lambda n: n.pk,
                                                    StoreFixture(Store).create(count=2, commit=True)))
-        store_nodeset = get_nodeset_for_queryset(queryset, sync=True)
-        # for store in store_nodeset:
-        #     for book in store.books.all():
-        #         self.assertTrue(store in book.store_set.all())
+        store_nodeset = get_nodeset_for_queryset(queryset, sync=False)
+        for store in store_nodeset:
+            for book in store.books.all():
+                self.assertTrue(store in book.store_set.all())
 
 
         # book = BookFixture(Book).create_one()
