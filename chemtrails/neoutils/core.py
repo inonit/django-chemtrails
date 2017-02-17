@@ -10,7 +10,6 @@ from django.db import models
 from django.db.models import Manager
 
 from neomodel import *
-from chemtrails.neoutils.query import DeferredAttribute
 
 
 field_property_map = {
@@ -185,6 +184,15 @@ class ModelNodeMixinBase:
         return len(cls.__all_relationships__) > 0
 
     @staticmethod
+    def get_property_class_for_field(klass):
+        """
+        Returns the appropriate property class for field class.
+        """
+        if klass in field_property_map:
+            return field_property_map[klass]
+        return None
+
+    @staticmethod
     def get_relation_fields(model):
         """
         Get a list of fields on the model which represents relations.
@@ -193,15 +201,6 @@ class ModelNodeMixinBase:
             field for field in model._meta.get_fields()
             if field.is_relation or field.one_to_one or (field.many_to_one and field.related_model)
         ]
-
-    @staticmethod
-    def get_property_class_for_field(klass):
-        """
-        Returns the appropriate property class for field class.
-        """
-        if klass in field_property_map:
-            return field_property_map[klass]
-        return None
 
     @classmethod
     def get_forward_relation_fields(cls):
@@ -293,6 +292,7 @@ class ModelNodeMixinBase:
 class ModelNodeMixin(ModelNodeMixinBase):
 
     def __init__(self, instance=None, *args, **kwargs):
+        self._bound = False
         self._instance = instance
         defaults = {key: getattr(self._instance, key, kwargs.get(key, None))
                     for key, _ in self.__all_properties__}
@@ -305,6 +305,15 @@ class ModelNodeMixin(ModelNodeMixinBase):
             node_id = self._get_id_from_database(self.deflate(self.__properties__))
             if node_id:
                 self.id = node_id
+                self._is_bound = True
+
+    @property
+    def _is_bound(self):
+        return self._bound
+
+    @_is_bound.setter
+    def _is_bound(self, value):
+        self._bound = value
 
     def _get_id_from_database(self, params):
         """
@@ -337,7 +346,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
                     value = self.deflate({key: props[key]}, self)[key]
                     node = cls.nodes.get_or_none(**{key: value})
 
-                    # if exists and not this node
+                    # If exists and not this node
                     if node and node.id != getattr(self, 'id', None):
                         raise ValidationError({key, 'already exists'})
 
@@ -348,17 +357,16 @@ class ModelNodeMixin(ModelNodeMixinBase):
 
     def sync(self, update_existing=True):
         from chemtrails.neoutils import get_node_for_object
-        self.full_clean(validate_unique=not update_existing)
 
         cls = self.__class__
-        node = cls.nodes.get_or_none(**{'pk': self.pk})
+        self.full_clean(validate_unique=not update_existing)
 
-        # If found, steal the id. This will cause the existing node to
-        # be saved with data from this _instance.
-        if node and update_existing:
-            self.id = node.id
-
-        self.save()
+        if update_existing:
+            if not self._is_bound:
+                node = cls.nodes.get_or_none(**{'pk': self.pk})
+                if node:
+                    self.id = node.id
+            self.save()
 
         # Connect relations
         for field_name, relationship in cls.defined_properties(aliases=False, properties=False).items():
