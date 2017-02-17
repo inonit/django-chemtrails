@@ -196,7 +196,7 @@ class ModelNodeMixinBase:
         """
         if klass in field_property_map:
             return field_property_map[klass]
-        return None
+        raise NotImplementedError('Unsupported field. Field %s is currently not supported.' % klass.__name__)
 
     @staticmethod
     def get_relation_fields(model):
@@ -265,8 +265,9 @@ class ModelNodeMixinBase:
 
         class DynamicRelation(StructuredRel):
             type = StringProperty(default=field.__class__.__name__)
-            remote_field = StringProperty(default=str(field.remote_field if reverse_field
-                                                      else field.remote_field.field).lower())
+            remote_field = StringProperty(default=str('{model}.{field}'.format(model=get_model_string(field.model),
+                                                                               field=field.related_name or '%s_set' % field.name)
+                                                      if reverse_field else field.remote_field.field).lower())
             target_field = StringProperty(default=str(field.target_field).lower())
 
         prop = cls.get_property_class_for_field(field.__class__)
@@ -281,10 +282,6 @@ class ModelNodeMixinBase:
             klass = __node_cache__[field.related_model] if reverse_field and field.related_model in __node_cache__ \
                 else get_node_class_for_model(field.related_model)
             return prop(cls_name=klass, rel_type=relationship_type, model=DynamicRelation)
-
-    @classmethod
-    def get_meta_node_property_for_field(cls, field):
-        pass
 
     @classmethod
     def create_or_update_one(cls, *props, **kwargs):
