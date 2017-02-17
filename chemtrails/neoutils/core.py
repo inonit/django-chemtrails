@@ -152,17 +152,13 @@ class ModelNodeMeta(NodeBase):
 
             # Add forward relations
             if field in forward_relations:
-                # TODO: Figure out how to avoid infinity loops on self referencing fields.
-                if hasattr(field, 'to') and field.to == cls.Meta.model:
-                    continue
                 relationship = cls.get_related_node_property_for_field(field)
                 cls.add_to_class(field.name, relationship)
 
             # Add reverse relations
             elif field in reverse_relations:
-                related_name = field.related_name or '%s_set' % field.name
                 relationship = cls.get_related_node_property_for_field(field)
-                cls.add_to_class(related_name, relationship)
+                cls.add_to_class(field.related_name or '%s_set' % field.name, relationship)
 
             # Add concrete fields
             else:
