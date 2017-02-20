@@ -130,7 +130,6 @@ class ModelNodeMeta(NodeBase):
     Meta class for ``ModelNode``.
     """
     def __new__(mcs, name, bases, attrs):
-        from chemtrails.neoutils import get_meta_node_class_for_model
         cls = super(ModelNodeMeta, mcs).__new__(mcs, str(name), bases, attrs)
 
         # Set label for node
@@ -275,13 +274,14 @@ class ModelNodeMixinBase:
         relationship_type = cls.get_relationship_type(field)
 
         if meta_node:
-            klass = __meta_cache__[field.remote_field.related_model] if reverse_field and \
-                field.remote_field.related_model in __meta_cache__ \
-                else get_meta_node_class_for_model(field.remote_field.related_model)
+            klass = (__meta_cache__[field.remote_field.related_model]
+                     if reverse_field and field.remote_field.related_model in __meta_cache__
+                     else get_meta_node_class_for_model(field.remote_field.related_model))
             return prop(cls_name=klass, rel_type=relationship_type, model=DynamicRelation)
         else:
-            klass = __node_cache__[field.related_model] if reverse_field and field.related_model in __node_cache__ \
-                else get_node_class_for_model(field.related_model)
+            klass = (__node_cache__[field.related_model]
+                     if reverse_field and field.related_model in __node_cache__
+                     else get_node_class_for_model(field.related_model))
             return prop(cls_name=klass, rel_type=relationship_type, model=DynamicRelation)
 
     @classmethod
