@@ -131,9 +131,8 @@ class ModelNodeTestCase(TestCase):
         store = Store.objects.create(name='The bookstore', bestseller=book, registered_users=3829)
         store.books.add(book)
 
-        # Sync everything
-        # book_node = get_node_for_object(book).sync(max_depth=10)
-        # publisher_node = get_node_for_object(publisher).sync()
+        # Sync book node one level deep.
+        book_node = get_node_for_object(book).sync(max_depth=1)
 
 
 class MetaNodeTestCase(TestCase):

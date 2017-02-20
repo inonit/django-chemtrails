@@ -394,7 +394,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
         except RequiredProperty as e:
             raise ValidationError({e.property_name: 'is required'})
 
-    def recursive_connect(self, prop, relation, instance=None, max_depth=1):
+    def recursive_connect(self, prop, relation, max_depth, instance=None):
         """
         Recursively connect a related branch.
         :param prop: For example a ``ZeroOrMore`` instance.
