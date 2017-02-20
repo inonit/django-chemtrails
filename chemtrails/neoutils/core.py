@@ -5,9 +5,10 @@ import operator
 from collections import Sequence
 from functools import reduce
 
-from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.db import models
 from django.db.models import Manager
+from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ImproperlyConfigured, ValidationError, ObjectDoesNotExist
 
 from neomodel import *
 from chemtrails import settings
@@ -139,8 +140,8 @@ class ModelNodeMeta(NodeBase):
         cls.pk = cls.get_property_class_for_field(cls._pk_field.__class__)(unique_index=True)
         cls.app_label = StringProperty(default=cls.Meta.app_label)
         cls.model_name = StringProperty(default=cls.Meta.model._meta.model_name)
-        cls.meta = Relationship(cls_name=get_meta_node_class_for_model(cls.Meta.model),
-                                rel_type='META')
+        # cls.meta = Relationship(cls_name=get_meta_node_class_for_model(cls.Meta.model),
+        #                         rel_type='META')
 
         forward_relations = cls.get_forward_relation_fields()
         reverse_relations = cls.get_reverse_relation_fields()
@@ -325,6 +326,9 @@ class ModelNodeMixin(ModelNodeMixinBase):
             node_id = self._get_id_from_database(self.deflate(self.__properties__))
             if node_id:
                 self.id = node_id
+            if not self._instance:
+                # If instantiated without an instance, try to look it up.
+                self._instance = self.get_django_instance()
 
     @property
     def _is_bound(self):
@@ -341,6 +345,16 @@ class ModelNodeMixin(ModelNodeMixinBase):
                           'RETURN id(n) LIMIT 1'))
         result, _ = db.cypher_query(query, params)
         return list(flatten(result))[0] if result else None
+
+    def get_django_instance(self):
+        """
+        :returns: Django model instance if found or None
+        """
+        try:
+            return self._instance or ContentType.objects.get(
+                app_label=self.app_label, model=self.model_name).get_object_for_this_type(pk=self.pk)
+        except ObjectDoesNotExist:
+            return None
 
     def full_clean(self, exclude=None, validate_unique=True):
         exclude = exclude or []
@@ -370,25 +384,50 @@ class ModelNodeMixin(ModelNodeMixinBase):
         except RequiredProperty as e:
             raise ValidationError({e.property_name: 'is required'})
 
-    def recursive_connect(self, prop, relation):
+    def recursive_connect(self, prop, relation, instance=None):
         """
         Recursively connect a related branch.
         :param prop: For example a ``ZeroOrMore`` instance.
         :param relation: ``RelationShipDefinition`` instance
+        :param instance: Optional django model instance.
         :returns: None
         """
-        klass = relation.definition['node_class']
-        for node in klass.nodes.all():
-            prop.connect(node)
-
-            # Connect the "other" side
-            for p, r in node.defined_properties(aliases=False, properties=False).items():
-                if r.definition['node_class'] == self.__class__:
-                    self.recursive_connect(getattr(node, p), r)
-
-    def sync(self, update_existing=True):
         from chemtrails.neoutils import get_node_for_object
 
+        def back_connect(node, klass):
+            for p, r in node.defined_properties(aliases=False, properties=False).items():
+                if r.definition['node_class'] == klass:
+                    self.recursive_connect(getattr(node, p), r)
+
+        # We require a model instance to look for filter values.
+        instance = instance or self.get_django_instance()
+        if not instance or not hasattr(instance, prop.name):
+            return
+
+        klass = relation.definition['node_class']
+        source = getattr(instance, prop.name)
+
+        if isinstance(source, models.Model):
+            node = klass.nodes.get_or_none(pk=source.pk)
+            if not node:
+                node = get_node_for_object(source).sync(update_existing=True)
+            prop.connect(node)
+            back_connect(node, self.__class__)
+
+        elif isinstance(source, Manager):
+            nodeset = klass.nodes.filter(pk__in=list(source.values_list('pk', flat=True)))
+            for node in nodeset:
+                prop.connect(node)
+                back_connect(node, self.__class__)
+
+    def sync(self, update_existing=True):
+        """
+        Synchronizes the current node with data from the database and
+        connect all directly related nodes.
+        :param max_depth: Max recursion depth for related fields to synchronize.
+        :param update_existing: If True, save data from the django model to graph node.
+        :returns: The updated node instance.
+        """
         cls = self.__class__
         self.full_clean(validate_unique=not update_existing)
 
@@ -404,49 +443,6 @@ class ModelNodeMixin(ModelNodeMixinBase):
             field = getattr(self, field_name)
             with db.transaction:
                 self.recursive_connect(field, relationship)
-
-            # # TODO: Should recurse
-            # attr = getattr(self, field.name)
-            # klass = relationship.definition['node_class']
-            # nodeset = klass.nodes.all()
-            # if not nodeset:
-            #     pass
-            # else:
-            #     for node in nodeset:
-            #         field.connect(node)
-
-            # Connect related nodes
-            # if self._instance and hasattr(self._instance, field.name):
-            #     attr = getattr(self._instance, field.name)
-            #
-            #     if isinstance(attr, models.Model):
-            #         klass = relationship.definition['node_class']
-            #         node = klass.nodes.get_or_none(pk=attr.pk)
-            #         if not node or (node and not hasattr(node, 'id')):
-            #             node = get_node_for_object(attr).sync(update_existing=True)
-            #         field.connect(node)
-            #     elif isinstance(attr, Manager):
-            #         queryset = attr.all()
-            #         klass = relationship.definition['node_class']
-            #         nodeset = klass.nodes.filter(pk__in=list(queryset.values_list('pk', flat=True)))
-            #         for node in nodeset:
-            #             field.connect(node)
-            #
-            #             # Connect the opposing side back
-            #             for _field_name, _relationship in node.defined_properties(aliases=False,
-            #                                                                       properties=False).items():
-            #                 if _relationship.definition['node_class'] == cls:
-            #                     r_field = getattr(node, _field_name)
-            #                     r_field.connect(self)
-
-            # Connect the MetaNode
-            # elif field.name == 'meta':
-            #     klass = relationship.definition['node_class']
-            #     node = klass.nodes.get_or_none()
-            #     if not node or (node and not hasattr(node, 'id')):
-            #         node = klass.sync()
-            #     if node is not None:
-            #         field.connect(node)
         return self
 
 

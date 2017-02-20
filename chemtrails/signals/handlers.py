@@ -8,9 +8,9 @@ def post_migrate_handler(sender, **kwargs):
     """
     Creates a Neo4j node representing the migrated apps models.
     """
-    if settings.ENABLED is True:
-        for model in sender.models.values():
-            get_meta_node_class_for_model(model).sync()
+    # if settings.ENABLED is True:
+    #     for model in sender.models.values():
+    #         get_meta_node_class_for_model(model).sync()
 
 
 def post_save_handler(sender, instance, **kwargs):

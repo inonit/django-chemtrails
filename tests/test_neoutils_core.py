@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ImproperlyConfigured
 from django.test import TestCase
-from django.utils import six
+from django.utils import six, timezone
 
 from neomodel import *
 from neomodel.match import NodeSet
@@ -14,7 +15,9 @@ from chemtrails.neoutils import (
 )
 
 from tests.testapp.autofixtures import BookFixture, StoreFixture
-from tests.testapp.models import Book, Store
+from tests.testapp.models import Author, Book, Publisher, Store
+
+USER_MODEL = get_user_model()
 
 
 class NodeUtilsTestCase(TestCase):
@@ -96,28 +99,41 @@ class ModelNodeTestCase(TestCase):
         except ImproperlyConfigured as e:
             self.assertEqual(str(e), '%s must implement a Meta class.' % 'ModelNode')
 
-    def test_sync_create_relations(self):
+    def test_sync_create_related_branch(self):
         queryset = Store.objects.filter(pk__in=map(lambda n: n.pk,
                                                    StoreFixture(Store).create(count=2, commit=True)))
         store_nodeset = get_nodeset_for_queryset(queryset, sync=False)
         for store in store_nodeset:
+            # self.assertEqual(store.bestseller.get(),
+            #                  get_node_for_object(Store.objects.get(pk=store.pk).bestseller))
+
+            # self.assertEqual(len(store.books.all()),
+            #                  Store.objects.get(pk=store.pk).books.count())
             for book in store.books.all():
                 self.assertTrue(store in book.store_set.all())
+                self.assertEqual(len(book.store_set.all()),
+                                 Book.objects.get(pk=book.pk).store_set.count())
 
+            # Make sure publisher on the node matches publisher on model
 
-        # book = BookFixture(Book).create_one()
-        # stores = StoreFixture(Store).create(count=3)
-        # book.store_set.add(*stores)
-        #
-        # self.assertNotEqual(book.publisher_id, 0)
-        # self.assertNotEqual(book.authors.count(), 0)
-        # self.assertNotEqual(book.store_set.count(), 0)
-        #
-        # book_node = get_node_for_object(book).sync(update_existing=True)
-        # authors = book_node.authors.all()
-        # stores = book_node.store_set.all()
+    def test_sync_related_branch(self):
+        user1 = USER_MODEL.objects.create_user(username='user1', password='test123.')
+        user2 = USER_MODEL.objects.create_user(username='user2', password='test123.')
+        author1 = Author.objects.create(user=user1, name='Author 1', age=45)
+        author2 = Author.objects.create(user=user2, name='Author 2', age=67)
+        publisher = Publisher.objects.create(name='Best Publisher', num_awards=43)
 
-        brk = ''
+        book = Book.objects.create(name='The greatest book ever written', pages=358,
+                                   price=16.50, rating=10.0,
+                                   publisher=publisher, pubdate=timezone.now().date())
+        book.authors.add(author1, author2)
+
+        store = Store.objects.create(name='The bookstore', bestseller=book, registered_users=3829)
+        store.books.add(book)
+
+        # Sync everything
+        book_node = get_node_for_object(book).sync()
+        # publisher_node = get_node_for_object(publisher).sync()
 
 
 class MetaNodeTestCase(TestCase):
