@@ -132,7 +132,7 @@ class ModelNodeTestCase(TestCase):
         store.books.add(book)
 
         # Sync everything
-        book_node = get_node_for_object(book).sync()
+        # book_node = get_node_for_object(book).sync(max_depth=10)
         # publisher_node = get_node_for_object(publisher).sync()
 
 

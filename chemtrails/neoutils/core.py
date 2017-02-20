@@ -315,6 +315,8 @@ class ModelNodeMixin(ModelNodeMixinBase):
 
     def __init__(self, instance=None, *args, **kwargs):
         self._instance = instance
+        self.__recursion_depth__ = 0
+
         defaults = {key: getattr(self._instance, key, kwargs.get(key, None))
                     for key, _ in self.__all_properties__}
         kwargs.update(defaults)
@@ -333,6 +335,14 @@ class ModelNodeMixin(ModelNodeMixinBase):
     @property
     def _is_bound(self):
         return getattr(self, 'id', None) is not None
+
+    @property
+    def _recursion_depth(self):
+        return self.__recursion_depth__
+
+    @_recursion_depth.setter
+    def _recursion_depth(self, n):
+        self.__recursion_depth__ = n
 
     def _get_id_from_database(self, params):
         """
@@ -384,20 +394,23 @@ class ModelNodeMixin(ModelNodeMixinBase):
         except RequiredProperty as e:
             raise ValidationError({e.property_name: 'is required'})
 
-    def recursive_connect(self, prop, relation, instance=None):
+    def recursive_connect(self, prop, relation, instance=None, max_depth=1):
         """
         Recursively connect a related branch.
         :param prop: For example a ``ZeroOrMore`` instance.
         :param relation: ``RelationShipDefinition`` instance
         :param instance: Optional django model instance.
+        :param max_depth: Maximum depth of recursive connections to be made.
         :returns: None
         """
         from chemtrails.neoutils import get_node_for_object
 
-        def back_connect(node, klass):
-            for p, r in node.defined_properties(aliases=False, properties=False).items():
-                if r.definition['node_class'] == klass:
-                    self.recursive_connect(getattr(node, p), r)
+        def back_connect(n, depth):
+            if n._recursion_depth >= depth:
+                return
+            n._recursion_depth += 1
+            for p, r in n.defined_properties(aliases=False, properties=False).items():
+                n.recursive_connect(getattr(node, p), r, max_depth=n._recursion_depth - 1)
 
         # We require a model instance to look for filter values.
         instance = instance or self.get_django_instance()
@@ -412,19 +425,19 @@ class ModelNodeMixin(ModelNodeMixinBase):
             if not node:
                 node = get_node_for_object(source).sync(update_existing=True)
             prop.connect(node)
-            back_connect(node, self.__class__)
+            back_connect(node, max_depth)
 
         elif isinstance(source, Manager):
             nodeset = klass.nodes.filter(pk__in=list(source.values_list('pk', flat=True)))
             for node in nodeset:
                 prop.connect(node)
-                back_connect(node, self.__class__)
+                back_connect(node, max_depth)
 
-    def sync(self, update_existing=True):
+    def sync(self, max_depth=1, update_existing=True):
         """
         Synchronizes the current node with data from the database and
         connect all directly related nodes.
-        :param max_depth: Max recursion depth for related fields to synchronize.
+        :param max_depth: Maximum depth of recursive connections to be made.
         :param update_existing: If True, save data from the django model to graph node.
         :returns: The updated node instance.
         """
@@ -439,10 +452,9 @@ class ModelNodeMixin(ModelNodeMixinBase):
             self.save()
 
         # Connect relations
-        for field_name, relationship in self.defined_properties(aliases=False, properties=False).items():
-            field = getattr(self, field_name)
-            with db.transaction:
-                self.recursive_connect(field, relationship)
+        for prop, relation in self.defined_properties(aliases=False, properties=False).items():
+            prop = getattr(self, prop)
+            self.recursive_connect(prop, relation, max_depth=max_depth)
         return self
 
 
