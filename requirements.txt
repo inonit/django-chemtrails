@@ -1,6 +1,8 @@
 Django==1.10.5
+Sphinx==1.5.2
 coverage
 django-autofixture==0.12.1
 neomodel==3.1.0
 nose
 requests[security]
+sphinx_rtd_theme
