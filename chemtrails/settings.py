@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Settings for the django-chemtrails are all namespaced in
+Settings for django-chemtrails are all namespaced in
 the CHEMTRAILS setting. For example:
 CHEMTRAILS = {
     'ENABLED': True,

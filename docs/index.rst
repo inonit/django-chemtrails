@@ -1,15 +1,46 @@
-.. django-chemtrails documentation master file, created by
-   sphinx-quickstart on Mon Feb 20 22:02:56 2017.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+============================
+Chemtrails - Graphing Django
+============================
 
-Welcome to django-chemtrails's documentation!
-=============================================
+.. image:: _static/chemtrails.png
+    :alt: Mind control, no doubt!
+
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
+   01_configuration
+
+About
+=====
+
+This project aims to solve complex object based permissions by the relationship between entities in
+a graph.
+
+`Why the stupid name?` - I just love conspiracy theorists =)
+
+Features
+========
+
+    - Synchronize Django model instances to Neo4j
+    - Recursively connect related nodes
+
+Installation
+============
+
+Soon in a cheese shop near you!
+
+Requirements
+============
+
+    - A Django project
+    - Neo4j running and accepting connections using the bolt protocol
+
+Changelog
+=========
+
+Some day...
 
 
 Indices and tables
