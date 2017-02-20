@@ -265,8 +265,10 @@ class ModelNodeMixinBase:
 
         class DynamicRelation(StructuredRel):
             type = StringProperty(default=field.__class__.__name__)
-            remote_field = StringProperty(default=str('{model}.{field}'.format(model=get_model_string(field.model),
-                                                                               field=field.related_name or '%s_set' % field.name)
+            remote_field = StringProperty(default=str('{model}.{field}'.format(
+                model=get_model_string(field.model), field=(
+                    field.related_name or '%s_set' % field.name
+                    if not isinstance(field, models.OneToOneRel) else field.name))
                                                       if reverse_field else field.remote_field.field).lower())
             target_field = StringProperty(default=str(field.target_field).lower())
 
