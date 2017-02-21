@@ -16,11 +16,11 @@ from chemtrails.utils import get_model_string, flatten
 
 field_property_map = {
     models.ForeignKey: RelationshipTo,
-    models.OneToOneField: Relationship,
+    models.OneToOneField: RelationshipTo,
     models.ManyToManyField: RelationshipTo,
     # models.ManyToOneRel: RelationshipFrom,
     models.ManyToOneRel: RelationshipTo,
-    models.OneToOneRel: Relationship,
+    models.OneToOneRel: RelationshipTo,
     # models.ManyToManyRel: RelationshipFrom,
     models.ManyToManyRel: RelationshipTo,
 
