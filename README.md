@@ -25,14 +25,14 @@ some action on an object, based on the relationship between entities.
 
 ## Meta data
 
-Currently there is two kind of node types; ``MetaNodes`` and ``ModelNodes``.
+Currently there is two kind of node types; `MetaNodes` and `ModelNodes`.
 The `MetaNodes` contains no user data, but are meant to visualize the
 structure of the database. Each node contains meta data such as
-``app_label``, ``model_name`` and so on as well as relations to other
+`app_label`, `model_name` and so on as well as relations to other
 `MetaNodes`. They may also be connected to the actual `ModelNodes` by
 flipping on a setting.
 
-The image below displays all the ``MetaNodes`` for the `Bookstore`` app
+The image below displays all the `MetaNodes` for the `Bookstore` app
 used to test and develop this library.
 
 ![The Bookstore meta graph](/docs/_static/example-meta-graph.png?raw=true "The Bookstore meta graph")
@@ -40,10 +40,10 @@ used to test and develop this library.
 
 ## Node data
 
-``ModelNodes`` on the other hand is more of a copy of a model instance.
+`ModelNodes` on the other hand is more of a copy of a model instance.
 It contains data from the the actual object, as well as relations to
 other nodes.
 
-The image below displays the ``ModelNodes`` for the `Bookstore` app.
+The image below displays the `ModelNodes` for the `Bookstore` app.
 
 ![The Bookstore graph](/docs/_static/example-node-graph.png?raw=true "The Bookstore graph")
