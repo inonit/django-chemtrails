@@ -309,7 +309,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
                 self.id = node_id
             if not self._instance:
                 # If instantiated without an instance, try to look it up.
-                self._instance = self.get_django_instance()
+                self._instance = self.get_object()
 
     @property
     def _is_bound(self):
@@ -335,7 +335,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
         result, _ = db.cypher_query(query, params)
         return list(flatten(result))[0] if result else None
 
-    def get_django_instance(self):
+    def get_object(self):
         """
         :returns: Django model instance if found or None
         """
@@ -392,7 +392,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
                 n.recursive_connect(getattr(node, p), r, max_depth=n._recursion_depth - 1)
 
         # We require a model instance to look for filter values.
-        instance = instance or self.get_django_instance()
+        instance = instance or self.get_object()
         if not instance or not hasattr(instance, prop.name):
             return
 
