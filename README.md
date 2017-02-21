@@ -2,8 +2,11 @@
 
 [![Build Status](https://travis-ci.org/inonit/django-chemtrails.svg?branch=master)](https://travis-ci.org/inonit/django-chemtrails)
 [![Coverage Status](https://coveralls.io/repos/github/inonit/django-chemtrails/badge.svg?branch=master)](https://coveralls.io/github/inonit/django-chemtrails?branch=master)
+[![Documentation Status](https://readthedocs.org/projects/django-chemtrails/badge/?version=latest)](http://django-chemtrails.readthedocs.io/en/latest/?badge=latest)
 
 Neo4j based permission backend for Django.
+
+[Documentation available](http://django-chemtrails.rtfd.io/>) on Read the Docs!
 
 **BIG FAT WARNING**
 
