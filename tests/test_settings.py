@@ -25,3 +25,10 @@ class ChemtrailsSettingsTestCase(TestCase):
         self.assertEqual(settings.NAMED_RELATIONSHIPS, False)
         self.assertEqual(settings.CONNECT_META_NODES, False)
         self.assertEqual(settings.IGNORE_MODELS, ['auth.user'])
+
+    def test_getting_invalid_setting(self):
+        try:
+            settings.INVALID_SETTING
+            self.fail('Did not raise AttributeError when declaring an invalid setting')
+        except AttributeError as e:
+            self.assertEqual(str(e), 'Invalid setting: \'INVALID_SETTING\'')
