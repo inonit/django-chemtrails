@@ -3,7 +3,7 @@
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ImproperlyConfigured
 from django.test import TestCase
-from django.utils import six, timezone
+from django.utils import six
 
 from neomodel import *
 from neomodel.match import NodeSet
@@ -14,8 +14,9 @@ from chemtrails.neoutils import (
     get_node_for_object, get_nodeset_for_queryset
 )
 
+from tests.utils import flush_nodes
 from tests.testapp.autofixtures import BookFixture, StoreFixture
-from tests.testapp.models import Author, Book, Publisher, Store
+from tests.testapp.models import Book, Store
 
 USER_MODEL = get_user_model()
 
@@ -33,11 +34,13 @@ class NodeUtilsTestCase(TestCase):
         klass = get_node_class_for_model(Book)
         self.assertTrue(issubclass(klass, StructuredNode))
 
+    @flush_nodes()
     def test_get_node_for_object(self):
         store = StoreFixture(Store).create_one(commit=True)
         store_node = get_node_for_object(store)
         self.assertIsInstance(store_node, get_node_class_for_model(Store))
 
+    @flush_nodes()
     def test_get_nodeset_for_queryset(self):
         queryset = Store.objects.filter(pk__in=map(lambda n: n.pk,
                                                    StoreFixture(Store).create(count=2, commit=True)))
@@ -49,6 +52,7 @@ class NodeUtilsTestCase(TestCase):
 
 class ModelNodeTestCase(TestCase):
 
+    @flush_nodes()
     def test_create_model_node(self):
         book = BookFixture(Book).create_one()
 
@@ -61,17 +65,21 @@ class ModelNodeTestCase(TestCase):
         self.assertIsInstance(ModelNode(instance=book), StructuredNode)
 
     def test_create_model_node_declaring_model_in_class(self):
+
         @six.add_metaclass(ModelNodeMeta)
         class ModelNode(ModelNodeMixin, StructuredNode):
             __metaclass_model__ = Book
+
             class Meta:
                 model = None
 
         self.assertEqual(ModelNode.Meta.model, Book)
 
     def test_create_model_node_custom_app_label(self):
+
         @six.add_metaclass(ModelNodeMeta)
         class ModelNode(ModelNodeMixin, StructuredNode):
+
             class Meta:
                 model = Book
                 app_label = 'custom_app_label'
@@ -82,6 +90,7 @@ class ModelNodeTestCase(TestCase):
         try:
             @six.add_metaclass(ModelNodeMeta)
             class ModelNode(ModelNodeMixin, StructuredNode):
+
                 class Meta:
                     model = None
 
@@ -99,47 +108,40 @@ class ModelNodeTestCase(TestCase):
         except ImproperlyConfigured as e:
             self.assertEqual(str(e), '%s must implement a Meta class.' % 'ModelNode')
 
-    def test_sync_create_related_branch(self):
+    @flush_nodes()
+    def test_sync_related_branch(self):
         queryset = Store.objects.filter(pk__in=map(lambda n: n.pk,
                                                    StoreFixture(Store).create(count=2, commit=True)))
-        store_nodeset = get_nodeset_for_queryset(queryset, sync=False)
+        store_nodeset = get_nodeset_for_queryset(queryset, sync=True, max_depth=3)
         for store in store_nodeset:
-            # self.assertEqual(store.bestseller.get(),
-            #                  get_node_for_object(Store.objects.get(pk=store.pk).bestseller))
+            store_obj = store.get_object()
 
-            # self.assertEqual(len(store.books.all()),
-            #                  Store.objects.get(pk=store.pk).books.count())
+            if store_obj.bestseller:
+                self.assertEqual(store.bestseller.get(), get_node_for_object(store_obj.bestseller))
+
+            self.assertEqual(len(store.books.all()), store_obj.books.count())
             for book in store.books.all():
+                book_obj = book.get_object()
                 self.assertTrue(store in book.store_set.all())
-                self.assertEqual(len(book.store_set.all()),
-                                 Book.objects.get(pk=book.pk).store_set.count())
+                self.assertEqual(book.publisher.get(), get_node_for_object(book_obj.publisher))
+                self.assertEqual(len(book.store_set.all()), book_obj.store_set.count())
+                self.assertEqual(len(book.bestseller_stores.all()), book_obj.bestseller_stores.count())
 
-            # Make sure publisher on the node matches publisher on model
-
-    def test_sync_related_branch(self):
-        user1 = USER_MODEL.objects.create_user(username='user1', password='test123.')
-        user2 = USER_MODEL.objects.create_user(username='user2', password='test123.')
-        author1 = Author.objects.create(user=user1, name='Author 1', age=45)
-        author2 = Author.objects.create(user=user2, name='Author 2', age=67)
-        publisher = Publisher.objects.create(name='Best Publisher', num_awards=43)
-
-        book = Book.objects.create(name='The greatest book ever written', pages=358,
-                                   price=16.50, rating=10.0,
-                                   publisher=publisher, pubdate=timezone.now().date())
-        book.authors.add(author1, author2)
-
-        store = Store.objects.create(name='The bookstore', bestseller=book, registered_users=3829)
-        store.books.add(book)
-
-        # Sync book node one level deep.
-        book_node = get_node_for_object(book).sync(max_depth=1)
+                self.assertEqual(len(book.authors.all()), book_obj.authors.count())
+                # for author in book.authors.all():
+                #     author_obj = author.get_object()
+                #     l = author.book_set.all()
+                #     self.assertTrue(book in author.book_set.all())
+                #     self.assertEqual(author.user.get(), author_obj.user)
 
 
 class MetaNodeTestCase(TestCase):
 
     def test_create_meta_node(self):
+
         @six.add_metaclass(MetaNodeMeta)
         class MetaNode(MetaNodeMixin, StructuredNode):
+
             class Meta:
                 model = Book
 
@@ -147,17 +149,21 @@ class MetaNodeTestCase(TestCase):
         self.assertIsInstance(MetaNode(), StructuredNode)
 
     def test_create_meta_node_declaring_model_in_class(self):
+
         @six.add_metaclass(MetaNodeMeta)
         class MetaNode(MetaNodeMixin, StructuredNode):
             __metaclass_model__ = Book
+
             class Meta:
                 model = None
 
         self.assertEqual(MetaNode.Meta.model, Book)
 
     def test_create_meta_node_custom_app_label(self):
+
         @six.add_metaclass(MetaNodeMeta)
         class MetaNode(MetaNodeMixin, StructuredNode):
+
             class Meta:
                 model = Book
                 app_label = 'custom_app_label'
@@ -168,6 +174,7 @@ class MetaNodeTestCase(TestCase):
         try:
             @six.add_metaclass(MetaNodeMeta)
             class MetaNode(MetaNodeMixin, StructuredNode):
+
                 class Meta:
                     model = None
 
