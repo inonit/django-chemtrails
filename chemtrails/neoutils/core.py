@@ -114,6 +114,7 @@ class ModelNodeMeta(NodeBase):
 
         # Add some default fields
         cls.pk = cls.get_property_class_for_field(cls._pk_field.__class__)(unique_index=True)
+        cls.type = StringProperty(default='ModelNode')
         cls.app_label = StringProperty(default=cls.Meta.app_label)
         cls.model_name = StringProperty(default=cls.Meta.model._meta.model_name)
 
@@ -240,7 +241,7 @@ class ModelNodeMixinBase:
 
         class DynamicRelation(StructuredRel):
             type = StringProperty(default=field.__class__.__name__)
-            meta_relation = BooleanProperty(default=meta_node)
+            is_meta = BooleanProperty(default=meta_node)
             remote_field = StringProperty(default=str('{model}.{field}'.format(
                 model=get_model_string(field.model), field=(
                     field.related_name or '%s_set' % field.name
@@ -314,7 +315,8 @@ class ModelNodeMixin(ModelNodeMixinBase):
         """
         try:
             return self._instance or ContentType.objects.get(
-                app_label=self.app_label, model=self.model_name).get_object_for_this_type(pk=pk)
+                app_label=self.app_label, model=self.model_name).get_object_for_this_type(
+                pk=pk or getattr(self, 'pk', None))
         except ObjectDoesNotExist:
             return None
 
@@ -428,7 +430,7 @@ class MetaNodeMeta(NodeBase):
         # Add some default fields
         cls.app_label = StringProperty(default=cls.Meta.model._meta.app_label)
         cls.model_name = StringProperty(default=cls.Meta.model._meta.model_name)
-        cls.meta_node = BooleanProperty(default=True)
+        cls.type = StringProperty(default='MetaNode')
         cls.default_permissions = ArrayProperty(default=set(itertools.chain(cls.Meta.model._meta.permissions,
                                                                             cls.Meta.model._meta.default_permissions)))
 
@@ -513,14 +515,14 @@ class MetaNodeMixin(ModelNodeMixin):
                 n.recursive_connect(getattr(n, p), r, max_depth=n._recursion_depth - 1)
 
         klass = relation.definition['node_class']
-        is_meta_relation = relation.definition['model'].meta_relation.default_value()
-        if is_meta_relation:
+        is_meta = relation.definition['model'].is_meta.default_value()
+        if is_meta:
             node = get_meta_node_for_model(klass.Meta.model)
             if not node._is_bound:
                 node.save()
             prop.connect(node)
             back_connect(node, max_depth)
-        elif not is_meta_relation and settings.CONNECT_META_NODES:
+        elif not is_meta and settings.CONNECT_META_NODES:
             for node in relation.definition['node_class'].nodes.all():
                 prop.connect(node)
                 back_connect(node, max_depth)

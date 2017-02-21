@@ -80,18 +80,20 @@ def get_node_for_object(instance):
     return klass(instance=instance)
 
 
-def get_nodeset_for_queryset(queryset, sync=False):
+def get_nodeset_for_queryset(queryset, sync=False, max_depth=1):
     """
     Get a ``NodeSet`` instance for the current queryset instance.
     :param queryset: Django ``QuerySet`` instance.
     :param sync: Sync all items in the queryset before returning.
+    :param max_depth: Maximum depth of recursive connections to be made
+                      while syncing each node in the nodeset.
     :returns: A ``neomodel.match.NodeSet`` instance.
     """
     klass = get_node_class_for_model(queryset.model)
     nodeset = klass.nodes.filter(pk__in=list(queryset.values_list('pk', flat=True)))
     if sync:
         for instance in queryset:
-            get_node_for_object(instance).sync(update_existing=True)
+            get_node_for_object(instance).sync(max_depth=max_depth, update_existing=True)
         nodeset = get_nodeset_for_queryset(queryset, sync=False)
     return nodeset
 
