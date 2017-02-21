@@ -255,7 +255,7 @@ class ModelNodeMixinBase:
             klass = (__meta_cache__[field.related_model]
                      if field.related_model in __meta_cache__
                      else get_meta_node_class_for_model(field.related_model))
-            return prop(cls_name=klass, rel_type='%s_META' % relationship_type, model=DynamicRelation)
+            return prop(cls_name=klass, rel_type=relationship_type, model=DynamicRelation)
         else:
             klass = (__node_cache__[field.related_model]
                      if reverse_field and field.related_model in __node_cache__

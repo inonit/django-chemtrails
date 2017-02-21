@@ -19,12 +19,16 @@ Really... please don't ;)
 # What's all the fuzz about?
 Who doesn't love graphs, charts and visual data? Right, nobody!
 
-This project springs from another project I'm working on which involves a rather complex permission system. As a solution I'm looking into using a graph to help determine if a user has permissions to perform some action on an object, based on the relationship the user has with the object in question.
-
-## Alright... that's stupid!
-No it's not! ..or maybe. I don't know yet..
+This project springs from another project I'm working on which involves
+a rather complex permission system. As a solution I'm looking into
+using a graph to help determine if a user has permissions to perform
+some action on an object, based on the relationship the user has with
+the object in question.
 
 ## So...
-All I've got is this image...
 
-![The Bookstore graph](/docs/_static/example-graph.png?raw=true "The Bookstore graph")
+**Meta graph**
+![The Bookstore meta graph](/docs/_static/example-meta-graph.png?raw=true "The Bookstore meta graph")
+
+**Node graph**
+![The Bookstore graph](/docs/_static/example-node-graph.png?raw=true "The Bookstore graph")
