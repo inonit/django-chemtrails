@@ -116,8 +116,6 @@ class ModelNodeMeta(NodeBase):
         cls.pk = cls.get_property_class_for_field(cls._pk_field.__class__)(unique_index=True)
         cls.app_label = StringProperty(default=cls.Meta.app_label)
         cls.model_name = StringProperty(default=cls.Meta.model._meta.model_name)
-        # cls.meta = Relationship(cls_name=get_meta_node_class_for_model(cls.Meta.model),
-        #                         rel_type='META')
 
         forward_relations = cls.get_forward_relation_fields()
         reverse_relations = cls.get_reverse_relation_fields()
@@ -129,13 +127,13 @@ class ModelNodeMeta(NodeBase):
 
             # Add forward relations
             if field in forward_relations:
-                relationship = cls.get_related_node_property_for_field(field)
-                cls.add_to_class(field.name, relationship)
+                relation = cls.get_related_node_property_for_field(field)
+                cls.add_to_class(field.name, relation)
 
             # Add reverse relations
             elif field in reverse_relations:
-                relationship = cls.get_related_node_property_for_field(field)
-                cls.add_to_class(field.related_name or '%s_set' % field.name, relationship)
+                relation = cls.get_related_node_property_for_field(field)
+                cls.add_to_class(field.related_name or '%s_set' % field.name, relation)
 
             # Add concrete fields
             else:
@@ -242,6 +240,7 @@ class ModelNodeMixinBase:
 
         class DynamicRelation(StructuredRel):
             type = StringProperty(default=field.__class__.__name__)
+            meta_relation = BooleanProperty(default=meta_node)
             remote_field = StringProperty(default=str('{model}.{field}'.format(
                 model=get_model_string(field.model), field=(
                     field.related_name or '%s_set' % field.name
@@ -256,7 +255,7 @@ class ModelNodeMixinBase:
             klass = (__meta_cache__[field.related_model]
                      if field.related_model in __meta_cache__
                      else get_meta_node_class_for_model(field.related_model))
-            return prop(cls_name=klass, rel_type=relationship_type, model=DynamicRelation)
+            return prop(cls_name=klass, rel_type='%s_META' % relationship_type, model=DynamicRelation)
         else:
             klass = (__node_cache__[field.related_model]
                      if reverse_field and field.related_model in __node_cache__
@@ -429,6 +428,7 @@ class MetaNodeMeta(NodeBase):
         # Add some default fields
         cls.app_label = StringProperty(default=cls.Meta.model._meta.app_label)
         cls.model_name = StringProperty(default=cls.Meta.model._meta.model_name)
+        cls.meta_node = BooleanProperty(default=True)
         cls.default_permissions = ArrayProperty(default=set(itertools.chain(cls.Meta.model._meta.permissions,
                                                                             cls.Meta.model._meta.default_permissions)))
 
@@ -443,13 +443,22 @@ class MetaNodeMeta(NodeBase):
 
             # Add forward relations
             if field in forward_relations:
-                relationship = cls.get_related_node_property_for_field(field, meta_node=True)
-                cls.add_to_class(field.name, relationship)
+                relation = cls.get_related_node_property_for_field(field, meta_node=True)
+                cls.add_to_class(field.name, relation)
+
+                if settings.CONNECT_META_NODES:
+                    node_relation = cls.get_related_node_property_for_field(field, meta_node=False)
+                    cls.add_to_class('_%s' % field.name, node_relation)
 
             # Add reverse relations
             elif field in reverse_relations:
-                relationship = cls.get_related_node_property_for_field(field, meta_node=True)
-                cls.add_to_class(field.related_name or '%s_set' % field.name, relationship)
+                related_name = field.related_name or '%s_set' % field.name
+                relation = cls.get_related_node_property_for_field(field, meta_node=True)
+                cls.add_to_class(related_name, relation)
+
+                if settings.CONNECT_META_NODES:
+                    node_relation = cls.get_related_node_property_for_field(field, meta_node=False)
+                    cls.add_to_class('_%s' % related_name, node_relation)
 
         # Recalculate definitions
         cls.__all_properties__ = tuple(cls.defined_properties(aliases=False, rels=False).items())
@@ -504,11 +513,17 @@ class MetaNodeMixin(ModelNodeMixin):
                 n.recursive_connect(getattr(n, p), r, max_depth=n._recursion_depth - 1)
 
         klass = relation.definition['node_class']
-        node = get_meta_node_for_model(klass.Meta.model)
-        if not node._is_bound:
-            node.save()
-        prop.connect(node)
-        back_connect(node, max_depth)
+        is_meta_relation = relation.definition['model'].meta_relation.default_value()
+        if is_meta_relation:
+            node = get_meta_node_for_model(klass.Meta.model)
+            if not node._is_bound:
+                node.save()
+            prop.connect(node)
+            back_connect(node, max_depth)
+        elif not is_meta_relation and settings.CONNECT_META_NODES:
+            for node in relation.definition['node_class'].nodes.all():
+                prop.connect(node)
+                back_connect(node, max_depth)
 
     def sync(self, max_depth=1, update_existing=True, create_empty=False):
         """

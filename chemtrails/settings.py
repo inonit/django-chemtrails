@@ -20,6 +20,7 @@ from django.core.signals import setting_changed
 DEFAULTS = {
     'ENABLED': True,
     'NAMED_RELATIONSHIPS': True,
+    'CONNECT_META_NODES': False,
     'IGNORE_MODELS': [
         'migrations.migration'
     ],
