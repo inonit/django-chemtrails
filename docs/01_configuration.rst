@@ -31,8 +31,8 @@ Settings for ``chemtrails`` are all namespaced in the ``CHEMTRAILS`` setting dic
     #
 
     CHEMTRAILS = {
-        # Flip the chemtrails-switch. Boolean value to indicate if mind-control fluid should
-        # be enabled and data written into the Neo4j database.
+        # Flip the chemtrails-switch. Boolean value to indicate that mind-control fluid should
+        # be released and all the worlds knowledge written to the Neo4j database.
         # Defaults to True.
         'ENABLED': True,
 
@@ -40,11 +40,16 @@ Settings for ``chemtrails`` are all namespaced in the ``CHEMTRAILS`` setting dic
         # on the Django model. If False, relationships will have a generic name of
         # either 'RELATES_TO', 'RELATES_FROM' or 'MUTUAL_RELATION' based on the relationship type.
         # Defaults to True.
-        'NAMED_RELATIONSHIPS': True
+        'NAMED_RELATIONSHIPS': True,
+
+        # If True, make a META relation between the meta-node instance and the node
+        # instances for this type.
+        # Defaults to False.
+        'CONNECT_META_NODES': False,
 
         # A list of models that should be excluded from mirroring.
         # Defaults to the example shown below.
         'IGNORE_MODELS': [
             'migrations.migration'
-        ]
+        ],
     }
