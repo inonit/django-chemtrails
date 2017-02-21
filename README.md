@@ -30,5 +30,6 @@ the object in question.
 **Meta graph**
 ![The Bookstore meta graph](/docs/_static/example-meta-graph.png?raw=true "The Bookstore meta graph")
 
+
 **Node graph**
 ![The Bookstore graph](/docs/_static/example-node-graph.png?raw=true "The Bookstore graph")
