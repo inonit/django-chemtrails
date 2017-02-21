@@ -113,8 +113,8 @@ class ModelNodeMeta(NodeBase):
         cls.__label__ = '{object_name}Node'.format(object_name=cls.Meta.model._meta.object_name)
 
         # Add some default fields
-        cls.pk = cls.get_property_class_for_field(cls._pk_field.__class__)(unique_index=True)
         cls.type = StringProperty(default='ModelNode')
+        cls.pk = cls.get_property_class_for_field(cls._pk_field.__class__)(unique_index=True)
         cls.app_label = StringProperty(default=cls.Meta.app_label)
         cls.model_name = StringProperty(default=cls.Meta.model._meta.model_name)
 
@@ -428,9 +428,9 @@ class MetaNodeMeta(NodeBase):
         cls.__label__ = '{object_name}Meta'.format(object_name=cls.Meta.model._meta.object_name)
 
         # Add some default fields
+        cls.type = StringProperty(default='MetaNode')
         cls.app_label = StringProperty(default=cls.Meta.model._meta.app_label)
         cls.model_name = StringProperty(default=cls.Meta.model._meta.model_name)
-        cls.type = StringProperty(default='MetaNode')
         cls.default_permissions = ArrayProperty(default=set(itertools.chain(cls.Meta.model._meta.permissions,
                                                                             cls.Meta.model._meta.default_permissions)))
 
