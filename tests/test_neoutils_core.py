@@ -2,16 +2,18 @@
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ImproperlyConfigured
-from django.test import TestCase
+from django.core.signals import setting_changed
+from django.test import TestCase, override_settings
 from django.utils import six
 
 from neomodel import *
 from neomodel.match import NodeSet
 
+from chemtrails import settings
 from chemtrails.neoutils import (
     ModelNodeMeta, ModelNodeMixin, MetaNodeMeta, MetaNodeMixin,
-    get_meta_node_class_for_model, get_node_class_for_model,
-    get_node_for_object, get_nodeset_for_queryset
+    get_meta_node_class_for_model, get_meta_node_for_model,
+    get_node_class_for_model, get_node_for_object, get_nodeset_for_queryset
 )
 
 from tests.utils import flush_nodes
@@ -191,3 +193,12 @@ class MetaNodeTestCase(TestCase):
             self.fail('Did not fail when defining a MetaNode without a Meta class.')
         except ImproperlyConfigured as e:
             self.assertEqual(str(e), '%s must implement a Meta class.' % 'MetaNode')
+
+    @override_settings(CHEMTRAILS={
+        'CONNECT_META_NODES': True
+    })
+    def test_connected_meta_node(self):
+        book = BookFixture(Book).create_one()
+        meta = get_meta_node_for_model(Book).sync()
+
+        # FIXME: Settings object is not updated when using override_settings
