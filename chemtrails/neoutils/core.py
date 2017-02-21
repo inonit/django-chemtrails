@@ -253,41 +253,15 @@ class ModelNodeMixinBase:
         relationship_type = cls.get_relationship_type(field)
 
         if meta_node:
-            klass = (__meta_cache__[field.remote_field.related_model]
-                     if reverse_field and field.remote_field.related_model in __meta_cache__
-                     else get_meta_node_class_for_model(field.remote_field.related_model))
+            klass = (__meta_cache__[field.related_model]
+                     if field.related_model in __meta_cache__
+                     else get_meta_node_class_for_model(field.related_model))
             return prop(cls_name=klass, rel_type=relationship_type, model=DynamicRelation)
         else:
             klass = (__node_cache__[field.related_model]
                      if reverse_field and field.related_model in __node_cache__
                      else get_node_class_for_model(field.related_model))
             return prop(cls_name=klass, rel_type=relationship_type, model=DynamicRelation)
-
-    @classmethod
-    def create_or_update_one(cls, *props, **kwargs):
-        """
-        Call to MERGE with parameters map to create or update a single _instance. A new _instance
-        will be created and saved if it does not already exists. If an _instance already exists,
-        all optional properties specified will be updated.
-        :param props: List of dict arguments to get or create the entity with.
-        :keyword relationship: Optional, relationship to get/create on when new entity is created.
-        :keyword lazy: False by default, specify True to get node with id only without the parameters.
-        :returns: A single ``StructuredNode` _instance.
-        """
-        with db.transaction:
-            result = cls.create_or_update(*props, **kwargs)
-            if len(result) > 1:
-                raise MultipleNodesReturned(
-                    'sync() returned more than one {klass} - it returned {num}.'.format(
-                        klass=cls.__class__.__name__, num=len(result)))
-            elif not result:
-                raise cls.DoesNotExist(
-                    '{klass} was unable to sync - Did not receive any results.'.format(
-                        klass=cls.__class__.__name__))
-
-            # There should be exactly one node.
-            result = result[0]
-        return result
 
 
 class ModelNodeMixin(ModelNodeMixinBase):
@@ -389,7 +363,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
                 return
             n._recursion_depth += 1
             for p, r in n.defined_properties(aliases=False, properties=False).items():
-                n.recursive_connect(getattr(node, p), r, max_depth=n._recursion_depth - 1)
+                n.recursive_connect(getattr(n, p), r, max_depth=n._recursion_depth - 1)
 
         # We require a model instance to look for filter values.
         instance = instance or self.get_object(self.pk)
@@ -412,15 +386,20 @@ class ModelNodeMixin(ModelNodeMixinBase):
                 prop.connect(node)
                 back_connect(node, max_depth)
 
-    def sync(self, max_depth=1, update_existing=True):
+    def sync(self, max_depth=1, update_existing=True, create_empty=False):
         """
         Synchronizes the current node with data from the database and
         connect all directly related nodes.
         :param max_depth: Maximum depth of recursive connections to be made.
         :param update_existing: If True, save data from the django model to graph node.
-        :returns: The updated node instance.
+        :param create_empty: If the Node has no relational fields, don't create it.
+        :returns: The ``ModelNode`` instance or None if not created.
         """
         cls = self.__class__
+
+        if not cls.has_relations and not create_empty:
+            return None
+
         self.full_clean(validate_unique=not update_existing)
 
         if update_existing:
@@ -450,7 +429,8 @@ class MetaNodeMeta(NodeBase):
         # Add some default fields
         cls.app_label = StringProperty(default=cls.Meta.model._meta.app_label)
         cls.model_name = StringProperty(default=cls.Meta.model._meta.model_name)
-        cls.permissions = ArrayProperty(default=cls.Meta.model._meta.default_permissions)
+        cls.default_permissions = ArrayProperty(default=set(itertools.chain(cls.Meta.model._meta.permissions,
+                                                                            cls.Meta.model._meta.default_permissions)))
 
         forward_relations = cls.get_forward_relation_fields()
         reverse_relations = cls.get_reverse_relation_fields()
@@ -458,11 +438,18 @@ class MetaNodeMeta(NodeBase):
         # Add to cache before recursively looking up relationships.
         __meta_cache__.update({cls.Meta.model: cls})
 
-        # Add relations for the model
+        # # Add relations for the model
         for field in itertools.chain(forward_relations, reverse_relations):
-            if hasattr(field, 'field') and field.field.__class__ in field_property_map:
-                relationship = cls.get_related_node_property_for_field(field.field, meta_node=True)
+
+            # Add forward relations
+            if field in forward_relations:
+                relationship = cls.get_related_node_property_for_field(field, meta_node=True)
                 cls.add_to_class(field.name, relationship)
+
+            # Add reverse relations
+            elif field in reverse_relations:
+                relationship = cls.get_related_node_property_for_field(field, meta_node=True)
+                cls.add_to_class(field.related_name or '%s_set' % field.name, relationship)
 
         # Recalculate definitions
         cls.__all_properties__ = tuple(cls.defined_properties(aliases=False, rels=False).items())
@@ -473,28 +460,81 @@ class MetaNodeMeta(NodeBase):
         return cls
 
 
-class MetaNodeMixin(ModelNodeMixinBase):
+class MetaNodeMixin(ModelNodeMixin):
     """
     Mixin class for ``StructuredNode`` which adds a number of class methods
     in order to calculate relationship fields from a Django model class.
     """
 
-    @classmethod
-    def sync(cls, create_empty=False, **kwargs):
+    def __init__(self, *args, **kwargs):
+        self._instance = self.__class__.Meta.model
+        self.__recursion_depth__ = 0
+
+        defaults = {key: getattr(self._instance._meta, key, kwargs.get(key, None))
+                    for key, _ in self.__all_properties__}
+        kwargs.update(defaults)
+        StructuredNode.__init__(self, *args, **kwargs)
+
+        if not hasattr(self, 'id'):
+            props = self.deflate(self.__properties__)
+
+            # We don't need to match permissions here.
+            if 'default_permissions' in props:
+                del props['default_permissions']
+
+            node_id = self._get_id_from_database(props)
+            if node_id:
+                self.id = node_id
+
+    def recursive_connect(self, prop, relation, max_depth):
         """
-        Write meta node to the graph and create all relationships.
-        :param create_empty: If the MetaNode has no connected nodes, don't create it.
-        :param kwargs: Mapping of keyword arguments which will be passed to ``create_or_update_one()``
-        :returns: ``MetaNode`` instance.
+        Recursively connect a related branch.
+        :param prop: For example a ``ZeroOrMore`` instance.
+        :param relation: ``RelationShipDefinition`` instance
+        :param max_depth: Maximum depth of recursive connections to be made.
+        :returns: None
         """
+        from chemtrails.neoutils import get_meta_node_for_model
+
+        def back_connect(n, depth):
+            if n._recursion_depth >= depth:
+                return
+            n._recursion_depth += 1
+            for p, r in n.defined_properties(aliases=False, properties=False).items():
+                n.recursive_connect(getattr(n, p), r, max_depth=n._recursion_depth - 1)
+
+        klass = relation.definition['node_class']
+        node = get_meta_node_for_model(klass.Meta.model)
+        if not node._is_bound:
+            node.save()
+        prop.connect(node)
+        back_connect(node, max_depth)
+
+    def sync(self, max_depth=1, update_existing=True, create_empty=False):
+        """
+        Synchronizes the current node with data from the database and
+        connect all directly related nodes.
+        :param max_depth: Maximum depth of recursive connections to be made.
+        :param update_existing: If True, save data from the django model to graph node.
+        :param create_empty: If the Node has no relational fields, don't create it.
+        :returns: The ``MetaNode`` instance or None if not created.
+        """
+        cls = self.__class__
+
         if not cls.has_relations and not create_empty:
             return None
 
-        node = cls.create_or_update_one([{'model': get_model_string(cls.Meta.model)}], **kwargs)
-        if node.has_relations:
-            for field_name, relationship in cls.defined_properties(aliases=False, properties=False).items():
-                field = getattr(node, field_name)
-                related_node = relationship.definition['node_class'].sync()
-                if related_node:
-                    field.connect(related_node)
-        return node
+        if update_existing:
+            if not self._is_bound:
+                node = cls.nodes.get_or_none(**{'app_label': self.app_label,
+                                                'model_name': self.model_name})
+                if node:
+                    self.id = node.id
+            self.save()
+
+        # Connect relations
+        for prop, relation in self.defined_properties(aliases=False, properties=False).items():
+            prop = getattr(self, prop)
+            self.recursive_connect(prop, relation, max_depth=max_depth)
+        return self
+

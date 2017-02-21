@@ -41,6 +41,16 @@ def get_meta_node_class_for_model(model):
         return MetaNode
 
 
+def get_meta_node_for_model(model):
+    """
+    Get a ``MetaNode`` instance for the current model class.
+    :param model: Django model class.
+    :returns: A ``MetaNode`` instance.
+    """
+    klass = get_meta_node_class_for_model(model)
+    return klass()
+
+
 def get_node_class_for_model(model):
     """
     Model nodes represent a model instance in the database.

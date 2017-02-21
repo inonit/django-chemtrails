@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from chemtrails import settings
-from chemtrails.neoutils import get_model_string, get_meta_node_class_for_model, get_node_for_object
+from chemtrails.neoutils import get_model_string, get_meta_node_for_model, get_node_for_object
 
 
 def post_migrate_handler(sender, **kwargs):
@@ -10,7 +10,7 @@ def post_migrate_handler(sender, **kwargs):
     """
     if settings.ENABLED is True:
         for model in sender.models.values():
-            get_meta_node_class_for_model(model).sync()
+            get_meta_node_for_model(model).sync(max_depth=1, update_existing=True)
 
 
 def post_save_handler(sender, instance, **kwargs):
@@ -19,7 +19,7 @@ def post_save_handler(sender, instance, **kwargs):
     """
     if settings.ENABLED is True:
         if not get_model_string(instance._meta.model) in settings.IGNORE_MODELS:
-            get_node_for_object(instance).sync(update_existing=True)
+            get_node_for_object(instance).sync(max_depth=1, update_existing=True)
 
 
 def pre_delete_handler(sender, instance, **kwargs):
