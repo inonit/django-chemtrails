@@ -18,10 +18,8 @@ field_property_map = {
     models.ForeignKey: RelationshipTo,
     models.OneToOneField: RelationshipTo,
     models.ManyToManyField: RelationshipTo,
-    # models.ManyToOneRel: RelationshipFrom,
     models.ManyToOneRel: RelationshipTo,
     models.OneToOneRel: RelationshipTo,
-    # models.ManyToManyRel: RelationshipFrom,
     models.ManyToManyRel: RelationshipTo,
 
     models.AutoField: IntegerProperty,
