@@ -25,11 +25,11 @@ using a graph to help determine if a user has permissions to perform
 some action on an object, based on the relationship the user has with
 the object in question.
 
-## So...
+## Meta data
 
-**Meta graph**
 ![The Bookstore meta graph](/docs/_static/example-meta-graph.png?raw=true "The Bookstore meta graph")
 
 
-**Node graph**
+## Node data
+
 ![The Bookstore graph](/docs/_static/example-node-graph.png?raw=true "The Bookstore graph")
