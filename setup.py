@@ -21,8 +21,8 @@ def get_version(package):
 setup(
     name='django-chemtrails',
     version=get_version('chemtrails'),
-    description='Neo4j Permission Backend for Django',
-    long_description='Calculate permissions based on entity relationship in a Neo4j graph',
+    description='Graphing Django in Neo4j',
+    long_description='Graphing Django in Neo4j slightly longer.',
     author='Rolf Håvard Blindheim',
     author_email='rhblind@gmail.com',
     url='https://github.com/inonit/django-chemtrails',
