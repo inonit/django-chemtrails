@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
 from chemtrails import settings
-from chemtrails.neoutils import get_model_string, get_meta_node_for_model, get_node_for_object
+from chemtrails.neoutils import get_meta_node_for_model, get_node_for_object
+from chemtrails.utils import get_model_string
 
 
 def post_migrate_handler(sender, **kwargs):

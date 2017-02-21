@@ -5,15 +5,13 @@ from django.utils import six
 from neomodel import *
 from .core import (
     ModelNodeMeta, ModelNodeMixin,
-    MetaNodeMeta, MetaNodeMixin,
-    get_model_string
+    MetaNodeMeta, MetaNodeMixin
 )
 
 __all__ = [
     'get_meta_node_class_for_model',
     'get_node_class_for_model',
     'get_node_for_object',
-    'get_model_string',
     'model_cache'
 ]
 model_cache = {}
