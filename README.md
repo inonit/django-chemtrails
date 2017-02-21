@@ -27,13 +27,9 @@ the object in question.
 
 ## Meta data
 
-<p align="center">
 ![The Bookstore meta graph](/docs/_static/example-meta-graph.png?raw=true "The Bookstore meta graph")
-</p>
 
 
 ## Node data
 
-<p align="center">
 ![The Bookstore graph](/docs/_static/example-node-graph.png?raw=true "The Bookstore graph")
-</p>
