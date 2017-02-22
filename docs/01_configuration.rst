@@ -36,6 +36,12 @@ Settings for ``chemtrails`` are all namespaced in the ``CHEMTRAILS`` setting dic
         # Defaults to True.
         'ENABLED': True,
 
+        # Maximum depth of recursive connections to be made when synchronizing a node.
+        # Defaults to 1, which means that the node will recursively connect to other nodes,
+        # which has a direct connection to the source node. Setting a value of 2 will cause
+        # each connected node to recursively connect their directly connected nodes and so on.
+        'RECURSIVE_CONNECTIONS_DEPTH': 1,
+
         # If True, relationships will be named (loosely) after the attribute name
         # on the Django model. If False, relationships will have a generic name of
         # either 'RELATES_TO', 'RELATES_FROM' or 'MUTUAL_RELATION' based on the relationship type.

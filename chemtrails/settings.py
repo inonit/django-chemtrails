@@ -19,6 +19,7 @@ from django.core.signals import setting_changed
 # - specific:  'migrations.migration'
 DEFAULTS = {
     'ENABLED': True,
+    'RECURSIVE_CONNECTIONS_DEPTH': 1,
     'NAMED_RELATIONSHIPS': True,
     'CONNECT_META_NODES': False,
     'IGNORE_MODELS': [

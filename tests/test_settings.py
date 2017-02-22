@@ -8,6 +8,7 @@ class SettingsTestCase(TestCase):
 
     def test_default_settings(self):
         self.assertEqual(settings.ENABLED, True)
+        self.assertEqual(settings.RECURSIVE_CONNECTIONS_DEPTH, 1)
         self.assertEqual(settings.NAMED_RELATIONSHIPS, True)
         self.assertEqual(settings.CONNECT_META_NODES, False)
         self.assertEqual(settings.IGNORE_MODELS, ['migrations.migration'])
