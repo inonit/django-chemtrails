@@ -13,11 +13,11 @@ def clear_neo4j_model_nodes():
 class flush_nodes(ContextDecorator):
     """
     Context decorator which will wipe out the all
-    ``ModelNode`` nodes.
+    ``ModelNode`` nodes on enter and exit.
     """
 
     def __enter__(self):
-        pass
+        clear_neo4j_model_nodes()
 
     def __exit__(self, *exc):
         clear_neo4j_model_nodes()
