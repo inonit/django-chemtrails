@@ -31,7 +31,8 @@ INSTALLED_APPS = [
     'autofixture',
     'tests.testapp',
 
-    'chemtrails'
+    'chemtrails',
+    'chemtrails.contrib.permissions'
 ]
 
 MIDDLEWARE = [
@@ -95,7 +96,7 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
-    'chemtrails.backends.Neo4jPermissionBackend'
+    'chemtrails.contrib.permissions.backends.Neo4jPermissionBackend'
 )
 
 # Internationalization

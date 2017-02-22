@@ -11,7 +11,7 @@ from neomodel import config
 config.AUTO_INSTALL_LABELS = False
 
 
-class ChemTrailsConfig(AppConfig):
+class ChemtrailsConfig(AppConfig):
     name = 'chemtrails'
 
     def ready(self):
