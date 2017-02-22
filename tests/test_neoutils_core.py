@@ -111,6 +111,11 @@ class ModelNodeTestCase(TestCase):
             self.assertEqual(str(e), '%s must implement a Meta class.' % 'ModelNode')
 
     @flush_nodes()
+    def test_sync_recursive_depth(self):
+        # TODO: Implement
+        pass
+
+    @flush_nodes()
     def test_sync_related_branch(self):
         queryset = Store.objects.filter(pk__in=map(lambda n: n.pk,
                                                    StoreFixture(Store).create(count=2, commit=True)))
