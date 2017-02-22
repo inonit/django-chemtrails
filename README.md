@@ -47,3 +47,24 @@ other nodes.
 The image below displays the `ModelNodes` for the `Bookstore` app.
 
 ![The Bookstore graph](/docs/_static/example-node-graph.png?raw=true "The Bookstore graph")
+
+
+# Give it a spin
+
+As stated earlier, for now this project is **not** suitable for any usage,
+except fooling around a bit. If you'd like to try it out follow the steps below.
+
+```
+$ git clone https://github.com/inonit/django-chemtrails.git
+$ cd django-chemtrails
+django-chemtrails:$ docker-compose up -d
+django-chemtrails:$ python manage.py migrate
+django-chemtrails:$ python manage.py testgraph 2  # any number
+```
+
+Open the Neo4j web console at [http://localhost:7474](http://localhost:7474/browser/)
+and enter a Cypher query to fetch everything.
+
+```
+MATCH (n) RETURN n
+```
