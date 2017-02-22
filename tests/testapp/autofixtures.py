@@ -28,9 +28,10 @@ class UserGenerator(generators.Generator):
 
     def generate(self):
         defaults = {
-            self.USER_MODEL.USERNAME_FIELD: '{name}{num}'.format(
+            self.USER_MODEL.USERNAME_FIELD: '{name}{num1}{num2}'.format(
                 name=generators.LastNameGenerator().generate(),
-                num=generators.SmallIntegerGenerator().generate()
+                num1=generators.SmallIntegerGenerator().generate(),
+                num2=generators.SmallIntegerGenerator().generate()
             ).lower(),
             'password': generators.StringGenerator(min_length=8, max_length=16).generate()
         }
