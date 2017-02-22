@@ -16,7 +16,8 @@ Add ``chemtrails`` to ``INSTALLED_APPS`` in your ``settings.py`` file.
         'django.contrib.admin',
         'django.contrib.auth',
         ...
-        'chemtrails'
+        'chemtrails',                     # Core functionality
+        'chemtrails.contrib.permissions'  # If you want to use the permission system
     ]
 
 Chemtrails settings
