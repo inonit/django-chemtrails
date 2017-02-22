@@ -3,7 +3,7 @@
 from django.utils import six
 
 from neomodel import *
-from .core import (
+from chemtrails.neoutils.core import (
     ModelNodeMeta, ModelNodeMixin,
     MetaNodeMeta, MetaNodeMixin
 )
