@@ -60,6 +60,9 @@ $ cd django-chemtrails
 django-chemtrails:$ docker-compose up -d
 django-chemtrails:$ python manage.py migrate
 django-chemtrails:$ python manage.py testgraph 2  # any number
+Hang tight, this might take a little while...
+Successfully created 2 bookstore graphs.
+Check them out in the Neo4j web console!
 ```
 
 Open the Neo4j web console at [http://localhost:7474](http://localhost:7474/browser/)
@@ -67,4 +70,10 @@ and enter a Cypher query to fetch everything.
 
 ```
 MATCH (n) RETURN n
+```
+
+To wipe out the entire Neo4j database, enter the following Cypher query.
+
+```
+MATCH (n) DETACH DELETE n
 ```
