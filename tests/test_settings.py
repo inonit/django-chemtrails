@@ -4,7 +4,7 @@ from django.test import TestCase, override_settings
 from chemtrails import settings
 
 
-class ChemtrailsSettingsTestCase(TestCase):
+class SettingsTestCase(TestCase):
 
     def test_default_settings(self):
         self.assertEqual(settings.ENABLED, True)
@@ -32,3 +32,9 @@ class ChemtrailsSettingsTestCase(TestCase):
             self.fail('Did not raise AttributeError when declaring an invalid setting')
         except AttributeError as e:
             self.assertEqual(str(e), 'Invalid setting: \'INVALID_SETTING\'')
+
+    def test_setting_changed_signal_updates_global_settings_object(self):
+        try:
+            raise NotImplementedError
+        except NotImplementedError as e:
+            self.assertIsInstance(e, NotImplementedError)

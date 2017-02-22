@@ -2,28 +2,26 @@
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ImproperlyConfigured
-from django.core.signals import setting_changed
 from django.test import TestCase, override_settings
 from django.utils import six
 
 from neomodel import *
 from neomodel.match import NodeSet
 
-from chemtrails import settings
 from chemtrails.neoutils import (
     ModelNodeMeta, ModelNodeMixin, MetaNodeMeta, MetaNodeMixin,
     get_meta_node_class_for_model, get_meta_node_for_model,
     get_node_class_for_model, get_node_for_object, get_nodeset_for_queryset
 )
 
-from tests.utils import flush_nodes
+from tests.utils import ChemtrailsTestCase, flush_nodes
 from tests.testapp.autofixtures import BookFixture, StoreFixture
 from tests.testapp.models import Book, Store
 
 USER_MODEL = get_user_model()
 
 
-class NodeUtilsTestCase(TestCase):
+class NodeUtilsTestCase(ChemtrailsTestCase):
     """
     Test various utility functions for dealing with
     model and node instances.
@@ -52,7 +50,7 @@ class NodeUtilsTestCase(TestCase):
             self.assertIsInstance(node, get_node_class_for_model(queryset.model))
 
 
-class ModelNodeTestCase(TestCase):
+class ModelNodeTestCase(ChemtrailsTestCase):
 
     @flush_nodes()
     def test_create_model_node(self):
@@ -142,7 +140,7 @@ class ModelNodeTestCase(TestCase):
                 #     self.assertEqual(author.user.get(), author_obj.user)
 
 
-class MetaNodeTestCase(TestCase):
+class MetaNodeTestCase(ChemtrailsTestCase):
 
     def test_create_meta_node(self):
 
