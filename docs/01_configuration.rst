@@ -40,7 +40,8 @@ Settings for ``chemtrails`` are all namespaced in the ``CHEMTRAILS`` setting dic
         # Defaults to 1, which means that the node will recursively connect to other nodes,
         # which has a direct connection to the source node. Setting a value of 2 will cause
         # each connected node to recursively connect their directly connected nodes and so on.
-        'RECURSIVE_CONNECTIONS_DEPTH': 1,
+        # Setting to 0 will disable connecting relationships.
+        'MAX_CONNECTION_DEPTH': 1,
 
         # If True, relationships will be named (loosely) after the attribute name
         # on the Django model. If False, relationships will have a generic name of

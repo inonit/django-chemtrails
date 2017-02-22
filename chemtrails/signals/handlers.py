@@ -11,7 +11,7 @@ def post_migrate_handler(sender, **kwargs):
     """
     if settings.ENABLED is True:
         for model in sender.models.values():
-            get_meta_node_for_model(model).sync(max_depth=settings.RECURSIVE_CONNECTIONS_DEPTH, update_existing=True)
+            get_meta_node_for_model(model).sync(max_depth=settings.MAX_CONNECTION_DEPTH, update_existing=True)
 
 
 def post_save_handler(sender, instance, **kwargs):
@@ -20,7 +20,7 @@ def post_save_handler(sender, instance, **kwargs):
     """
     if settings.ENABLED is True:
         if not get_model_string(instance._meta.model) in settings.IGNORE_MODELS:
-            get_node_for_object(instance).sync(max_depth=settings.RECURSIVE_CONNECTIONS_DEPTH, update_existing=True)
+            get_node_for_object(instance).sync(max_depth=settings.MAX_CONNECTION_DEPTH, update_existing=True)
 
 
 def pre_delete_handler(sender, instance, **kwargs):
