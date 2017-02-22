@@ -16,7 +16,7 @@ class Command(BaseCommand):
         parser.add_argument('count', type=int, help='Number of separate graph trees to create.')
 
         parser.add_argument(
-            '--recursive-depth', '-r',
+            '--connection-depth', '-c',
             dest='depth',
             default=1,
             type=int,
