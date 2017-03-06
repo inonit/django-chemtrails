@@ -3,6 +3,13 @@
 from django.test import TestCase
 
 
-# TODO: Requires Postgresql
 class ArrayChoiceFieldTestCase(TestCase):
-    pass
+
+    def test_display(self):
+        pass
+
+    def test_to_python(self):
+        pass
+
+    def test_validate(self):
+        pass

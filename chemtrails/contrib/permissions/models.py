@@ -17,6 +17,3 @@ class AccessRule(models.Model):
 
     related_through = ArrayChoiceField(models.CharField(max_length=100, blank=True), blank=True,
                                        choices=get_node_relations_choices())
-
-
-
