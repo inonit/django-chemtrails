@@ -12,7 +12,7 @@ from django.core.exceptions import ImproperlyConfigured, ValidationError, Object
 from neomodel import *
 from chemtrails import settings
 from chemtrails.utils import get_model_string, flatten
-
+from chemtrails.contrib.permissions.fields import ArrayChoiceField
 
 field_property_map = {
     models.ForeignKey: RelationshipTo,
@@ -47,7 +47,10 @@ field_property_map = {
     models.TextField: StringProperty,
     models.TimeField: IntegerProperty,
     models.URLField: StringProperty,
-    models.UUIDField: StringProperty
+    models.UUIDField: StringProperty,
+
+    # Special fields
+    ArrayChoiceField: ArrayProperty
 }
 
 # Caches to avoid infinity loops
