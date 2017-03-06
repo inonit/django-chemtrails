@@ -4,5 +4,6 @@ coverage
 django-autofixture==0.12.1
 neomodel==3.1.0
 nose
+psycopg2
 requests[security]
 sphinx_rtd_theme

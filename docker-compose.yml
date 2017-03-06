@@ -9,3 +9,14 @@ services:
     ports:
       - "7474:7474"
       - "7687:7687"
+  postgres:
+    image: postgres:latest
+    volumes:
+      - .docker-data/postgresql:/var/lib/postgresql
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: mysecretpassword
+    ports:
+      - "5432:5432"
+
