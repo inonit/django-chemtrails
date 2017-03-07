@@ -16,6 +16,16 @@ def get_relationship_types():
     return list(flatten(result))
 
 
+def get_node_permissions():
+    """
+    :returns: A distinct list of all available permissions.
+    :rtype: list
+    """
+    query = 'MATCH (n)-[r]-() WHERE n.type = \'MetaNode\' RETURN DISTINCT n.default_permissions'
+    result, _ = db.cypher_query(query)
+    return list(flatten(result))
+
+
 def get_node_relationship_types(params=None):
     """
     :param: params: Optional node filtering parameters.

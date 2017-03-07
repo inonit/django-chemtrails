@@ -23,8 +23,19 @@ class QueryFunctionsTestCase(TestCase):
             self.assertIsInstance(key, str)
             self.assertIsInstance(val, list)
 
-    def test_test_get_node_relationship_types_with_params(self):
+    def test_get_node_relationship_types_with_params(self):
         params = {'type': 'MetaNode', 'app_label': 'auth'}
         result = query.get_node_relationship_types(params)
         self.assertIsInstance(result, dict)
         self.assertTrue(len(result), 6)
+
+    def test_get_node_permissions(self):
+        result = query.get_node_permissions()
+        self.assertIsInstance(result, list)
+
+    def test_shortest_path(self):
+        from neomodel import db
+        result, _ = db.cypher_query('MATCH (a:UserNode),(b:UserNode), p = allShortestPaths((a)-[*]-(b)) WHERE id(a) = 35 AND id(b) IN [47, 41, 37] RETURN p')
+
+        for r in result:
+            pass
