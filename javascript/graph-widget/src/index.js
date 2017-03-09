@@ -3,8 +3,7 @@ import ReactDOM from 'react-dom';
 import { Provider } from 'react-redux';
 
 import configureStore from './store'
-import App from './App';
-import './index.css';
+import Main from './components/MainComponent'
 
 
 const run = () => {
@@ -13,7 +12,7 @@ const run = () => {
 
   ReactDOM.render(
     <Provider store={store}>
-      <App/>
+      <Main/>
     </Provider>,
     document.getElementById('root')
   );

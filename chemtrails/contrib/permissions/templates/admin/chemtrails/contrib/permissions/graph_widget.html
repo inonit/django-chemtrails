@@ -1,0 +1,8 @@
+{% load i18n %}
+<script type="text/javascript">
+    function writeInitialState() {
+      window.__INITIAL_STATE__ = JSON.parse("{{ INITIAL_STATE|escapejs }}");
+    }
+    document.addEventListener('DOMContentLoaded', writeInitialState);
+</script>
+<span id="root"></span>

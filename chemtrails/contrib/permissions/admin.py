@@ -14,6 +14,10 @@ class AccessRuleAdmin(admin.ModelAdmin):
 
     form = AccessRuleForm
 
+    def get_form(self, request, obj=None, **kwargs):
+        # TODO: Set session data for the widget
+        return super(AccessRuleAdmin, self).get_form(request, obj, **kwargs)
+
     def get_urls(self):
         info = self.model._meta.app_label, self.model._meta.model_name
         urlpatterns = [
