@@ -34,6 +34,7 @@ setup(
     include_package_data=True,
     install_requires=[
         'Django>=1.8.0',
+        'django-cors-headers',
         'neomodel>=3.1.0',
         'psycopg2>=2.6.2',
         'requests[security]',
