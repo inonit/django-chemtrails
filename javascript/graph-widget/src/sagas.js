@@ -2,7 +2,7 @@
  * Application Sagas.
  */
 
-import { take, put, call, fork, takeLatest } from 'redux-saga/effects'
+import { take, put, call, fork } from 'redux-saga/effects'
 import * as accessRuleControls from './reducers/uiState/accessRuleControls'
 import { fetchNodeList } from './webapi'
 

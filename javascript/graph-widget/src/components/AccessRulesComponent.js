@@ -2,6 +2,7 @@ import React, { Component } from 'react'
 import { connect } from 'react-redux'
 import { bindActionCreators } from 'redux'
 
+import { Grid, Dropdown } from 'semantic-ui-react'
 import { fetchNodeList } from '../reducers/uiState/accessRuleControls'
 
 class AccessRules extends Component {
@@ -18,9 +19,11 @@ class AccessRules extends Component {
 
   render() {
     return (
-      <p>
-        Access rules
-      </p>
+      <Grid>
+        <Grid.Column width={4}>
+
+        </Grid.Column>
+      </Grid>
     )
   }
 }
