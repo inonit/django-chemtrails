@@ -1,8 +1,20 @@
 import React, { Component } from 'react'
+import { connect } from 'react-redux'
+import { bindActionCreators } from 'redux'
 
-export default class extends Component {
+import { fetchNodeList } from '../reducers/uiState/accessRuleControls'
+
+class AccessRules extends Component {
 
   displayName = 'Access Rules';
+
+  constructor(props) {
+    super(props)
+  }
+
+  componentDidMount() {
+    this.props.actions.fetchNodeList()
+  }
 
   render() {
     return (
@@ -12,3 +24,12 @@ export default class extends Component {
     )
   }
 }
+
+export default connect(
+  state => ({
+    uiState: state.uiState
+  }),
+  dispatch => ({
+    actions: bindActionCreators(Object.assign({}, { fetchNodeList }), dispatch)
+  })
+)(AccessRules)

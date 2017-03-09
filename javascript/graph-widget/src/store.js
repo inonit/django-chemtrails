@@ -5,7 +5,7 @@
 import { createStore, applyMiddleware, compose } from 'redux'
 import createSagaMiddleware from 'redux-saga'
 import rootReducer from './reducers'
-import appSaga from './sagas'
+import rootSaga from './sagas'
 
 const reducer = compose()(rootReducer);
 const sagaMiddleware = createSagaMiddleware();
@@ -20,7 +20,7 @@ const createConfigureStore = compose(
 
 export default function configureStore(initialState) {
   const store = createConfigureStore(reducer, initialState);
-  sagaMiddleware.run(appSaga);
+  sagaMiddleware.run(rootSaga);
   if (module.hot) {
     module.hot.accept('./reducers', () => {
       const nextReducer = require('./reducers');
