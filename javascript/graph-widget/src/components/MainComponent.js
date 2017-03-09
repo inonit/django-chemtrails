@@ -8,8 +8,8 @@ import { bindActionCreators } from 'redux'
 import { Grid, Menu, Segment } from 'semantic-ui-react'
 
 import { setActiveMenuItem } from '../reducers/uiState/menu'
-
-import GraphView from './GraphViewComponent'
+import AccessRules from './AccessRulesComponent'
+import Help from './HelpComponent'
 
 class Main extends Component {
 
@@ -21,27 +21,39 @@ class Main extends Component {
   };
 
   constructor(props) {
-    super(props)
+    super(props);
+    this.menuItems = [
+      'access rules',
+      'help'
+    ]
   }
 
-  onItemClick = (e, { name }) => this.props.actions.setActiveMenuItem({ activeItem: name });
+  onItemClick = (e, { name }) => this.props.actions.setActiveMenuItem(name);
+
+  getMenuComponent(name) {
+    switch (name) {
+      case 'access rules':
+        return <AccessRules/>
+      default:
+        return <Help/>
+    }
+  }
 
   render() {
-    const activeItem = {...this.props};
+    const activeItem = this.props.menu.get('activeItem');
     return (
       <Grid>
         <Grid.Column width={4}>
           <Menu fluid vertical tabular>
-            <Menu.Item name='bio' active={activeItem === 'bio'} onClick={this.onItemClick}/>
-            <Menu.Item name='pics' active={activeItem === 'pics'} onClick={this.onItemClick}/>
-            <Menu.Item name='companies' active={activeItem === 'companies'} onClick={this.onItemClick}/>
-            <Menu.Item name='links' active={activeItem === 'links'} onClick={this.onItemClick}/>
+            {this.menuItems.map((item, index) => {
+              return <Menu.Item key={index} name={item} active={activeItem === item} onClick={this.onItemClick}/>
+            })}
           </Menu>
         </Grid.Column>
 
         <Grid.Column stretched width={12}>
           <Segment>
-            This is an stretched grid column. This segment will always match the tab height
+            {this.getMenuComponent(activeItem)}
           </Segment>
         </Grid.Column>
 
