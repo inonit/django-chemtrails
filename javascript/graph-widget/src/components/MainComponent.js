@@ -33,9 +33,9 @@ class Main extends Component {
   getMenuComponent(name) {
     switch (name) {
       case 'access rules':
-        return <AccessRules/>
+        return <AccessRules/>;
       default:
-        return <Help/>
+        return <Help/>;
     }
   }
 

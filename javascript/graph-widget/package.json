@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "axios": "^0.15.3",
     "cy-network-store": "^0.9.0",
     "cy-network-viewer": "^0.9.0",
     "immutable": "^3.8.1",
