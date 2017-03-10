@@ -5,6 +5,8 @@ from django import forms
 from django.template.loader import render_to_string
 from django.utils.safestring import mark_safe
 
+from neomodel import config
+
 
 class GraphWidget(forms.Widget):
     """
@@ -26,7 +28,8 @@ class GraphWidget(forms.Widget):
         context = {
             'INITIAL_STATE': json.dumps({
                 'settings': {
-                    'baseUrl': 'localhost'
+                    'baseUrl': 'localhost',
+                    'neo4jUrl': config.DATABASE_URL
                 },
             })
         }
