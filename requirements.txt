@@ -2,6 +2,7 @@ Django==1.10.5
 Sphinx==1.5.2
 coverage
 django-autofixture==0.12.1
+django-cors-headers
 neomodel==3.1.0
 nose
 psycopg2

@@ -24,6 +24,7 @@ class AccessRuleAdmin(admin.ModelAdmin):
             url(r'^nodelist/$', self.get_nodelist_api_view, name='%s_%s_nodelist' % info),
             url(r'^(?P<node_type>.+)/relations/$', self.get_nodetype_relations,
                 name='%s_%s_nodetype_relations' % info),
+            url(r'^test-data/$', self.get_test_data_api_view, name='%s_%s_test_data' % info)
         ] + super(AccessRuleAdmin, self).get_urls()
         return urlpatterns
 
@@ -34,4 +35,10 @@ class AccessRuleAdmin(admin.ModelAdmin):
 
     def get_nodetype_relations(self, request, node_type):
         pass
+
+    def get_test_data_api_view(self, request):
+        from neomodel import db
+        query = 'MATCH (n) RETURN n'
+        res = db.cypher_query(query)
+        return res
 
