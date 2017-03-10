@@ -7,7 +7,12 @@ import Main from './components/MainComponent'
 
 
 const run = () => {
-  const __INITIAL_STATE__ = window.__INITIAL_STATE__ || {};
+  const __INITIAL_STATE__ = window.__INITIAL_STATE__ || {
+    settings: {
+      baseUrl: 'http://localhost:8000',
+      neo4jUrl: 'bolt://neo4j:neo4j@localhost:7687'
+    }
+  };
   const store = configureStore(__INITIAL_STATE__);
 
   ReactDOM.render(
