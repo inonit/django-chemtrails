@@ -2,12 +2,10 @@
  * Component for constructing CYPHER queries.
  */
 
-import React, { Component, PropTypes } from 'react'
-import { connect } from 'react-redux'
-
+import React, { Component, PropTypes } from 'react';
+import { connect } from 'react-redux';
 
 class QueryBuilder extends Component {
-
   displayName = 'QueryBuilder';
 
   static propTypes = {};
@@ -17,11 +15,8 @@ class QueryBuilder extends Component {
       <div>
         Hallo
       </div>
-    )
+    );
   }
 }
 
-export default connect(
-  state => ({}),
-  dispatch => ({})
-)(QueryBuilder)
+export default connect(state => ({}), dispatch => ({}))(QueryBuilder);

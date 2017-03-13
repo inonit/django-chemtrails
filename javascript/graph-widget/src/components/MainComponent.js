@@ -2,18 +2,18 @@
  * The main component for the graph widget.
  */
 
-import React, { Component, PropTypes } from 'react'
-import { connect } from 'react-redux'
-import { bindActionCreators } from 'redux'
-import { Grid, Menu, Segment } from 'semantic-ui-react'
+import React, { Component, PropTypes } from 'react';
+import { connect } from 'react-redux';
+import { bindActionCreators } from 'redux';
+import { Grid, Menu, Segment } from 'semantic-ui-react';
 
-import { setActiveMenuItem } from '../reducers/uiState/menu'
-import { getInitialGraph } from '../reducers/neo4j'
-import AccessRules from './AccessRulesComponent'
-import Help from './HelpComponent'
+import { setActiveMenuItem } from '../reducers/uiState/menu';
+import { getInitialGraph } from '../reducers/neo4j';
+import AccessRules from './AccessRulesComponent';
+import GraphView from './GraphViewComponent';
+import Help from './HelpComponent';
 
 class Main extends Component {
-
   displayName = 'Main';
 
   static propTypes = {
@@ -23,10 +23,7 @@ class Main extends Component {
 
   constructor(props) {
     super(props);
-    this.menuItems = [
-      'access rules',
-      'help'
-    ]
+    this.menuItems = ['access rules', 'help'];
   }
 
   onItemClick = (e, { name }) => this.props.actions.setActiveMenuItem(name);
@@ -34,9 +31,9 @@ class Main extends Component {
   getMenuComponent(name) {
     switch (name) {
       case 'access rules':
-        return <AccessRules/>;
+        return <AccessRules />;
       default:
-        return <Help/>;
+        return <Help />;
     }
   }
 
@@ -51,7 +48,14 @@ class Main extends Component {
         <Grid.Column width={4}>
           <Menu fluid vertical tabular>
             {this.menuItems.map((item, index) => {
-              return <Menu.Item key={index} name={item} active={activeItem === item} onClick={this.onItemClick}/>
+              return (
+                <Menu.Item
+                  key={index}
+                  name={item}
+                  active={activeItem === item}
+                  onClick={this.onItemClick}
+                />
+              );
             })}
           </Menu>
         </Grid.Column>
@@ -63,10 +67,10 @@ class Main extends Component {
         </Grid.Column>
 
         <Grid.Row centered columns={12}>
-          <div><h1>Here be graph</h1></div>
+          <GraphView />
         </Grid.Row>
       </Grid>
-    )
+    );
   }
 }
 
@@ -75,9 +79,15 @@ export default connect(
     menu: state.uiState.menu
   }),
   dispatch => ({
-    actions: bindActionCreators(Object.assign({}, {
-      setActiveMenuItem,
-      getInitialGraph
-    }), dispatch)
+    actions: bindActionCreators(
+      Object.assign(
+        {},
+        {
+          setActiveMenuItem,
+          getInitialGraph
+        }
+      ),
+      dispatch
+    )
   })
-)(Main)
+)(Main);

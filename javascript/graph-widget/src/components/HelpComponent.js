@@ -1,7 +1,6 @@
-import React, { Component } from 'react'
+import React, { Component } from 'react';
 
 export default class extends Component {
-
   displayName = 'Help';
 
   render() {
@@ -9,6 +8,6 @@ export default class extends Component {
       <p>
         This is some help text
       </p>
-    )
+    );
   }
 }
