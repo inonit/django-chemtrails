@@ -8,7 +8,7 @@ import { bindActionCreators } from 'redux'
 import { Grid, Menu, Segment } from 'semantic-ui-react'
 
 import { setActiveMenuItem } from '../reducers/uiState/menu'
-import { connectNeo4j } from '../reducers/neo4j'
+import { getInitialGraph } from '../reducers/neo4j'
 import AccessRules from './AccessRulesComponent'
 import Help from './HelpComponent'
 
@@ -38,6 +38,10 @@ class Main extends Component {
       default:
         return <Help/>;
     }
+  }
+
+  componentDidMount() {
+    this.props.actions.getInitialGraph();
   }
 
   render() {
@@ -73,7 +77,7 @@ export default connect(
   dispatch => ({
     actions: bindActionCreators(Object.assign({}, {
       setActiveMenuItem,
-      connectNeo4j
+      getInitialGraph
     }), dispatch)
   })
 )(Main)

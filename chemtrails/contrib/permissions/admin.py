@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
+import json
 
 from django.conf.urls import url
 from django.contrib import admin
 from django.http import JsonResponse
+
+from neomodel import db
 
 from chemtrails.neoutils.query import get_node_relationship_types
 from chemtrails.contrib.permissions.forms import AccessRuleForm
@@ -21,12 +24,26 @@ class AccessRuleAdmin(admin.ModelAdmin):
     def get_urls(self):
         info = self.model._meta.app_label, self.model._meta.model_name
         urlpatterns = [
+            url(r'^neo4j-query/$', self.get_neo4j_query_api_view, name='%s_%s_neo4j_query' % info),
             url(r'^nodelist/$', self.get_nodelist_api_view, name='%s_%s_nodelist' % info),
             url(r'^(?P<node_type>.+)/relations/$', self.get_nodetype_relations,
                 name='%s_%s_nodetype_relations' % info),
-            url(r'^test-data/$', self.get_test_data_api_view, name='%s_%s_test_data' % info)
         ] + super(AccessRuleAdmin, self).get_urls()
         return urlpatterns
+
+    @staticmethod
+    def sanitize_query(params):
+        return params
+
+    def get_neo4j_query_api_view(self, request):
+        query = request.GET.get('query', None)
+        if query:
+            result, _ = db.cypher_query(query)
+            try:
+                return AlchemyJSResponse(data={})
+            except Exception as e:
+                pass
+        return AlchemyJSResponse(data={})
 
     def get_nodelist_api_view(self, request):
         params = {'type': 'MetaNode'}
@@ -36,9 +53,6 @@ class AccessRuleAdmin(admin.ModelAdmin):
     def get_nodetype_relations(self, request, node_type):
         pass
 
-    def get_test_data_api_view(self, request):
-        from neomodel import db
-        query = 'MATCH (n) RETURN n'
-        res = db.cypher_query(query)
-        return res
 
+class AlchemyJSResponse(JsonResponse):
+    pass
