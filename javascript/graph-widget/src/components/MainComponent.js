@@ -8,6 +8,7 @@ import { bindActionCreators } from 'redux'
 import { Grid, Menu, Segment } from 'semantic-ui-react'
 
 import { setActiveMenuItem } from '../reducers/uiState/menu'
+import { connectNeo4j } from '../reducers/neo4j'
 import AccessRules from './AccessRulesComponent'
 import Help from './HelpComponent'
 
@@ -70,6 +71,9 @@ export default connect(
     menu: state.uiState.menu
   }),
   dispatch => ({
-    actions: bindActionCreators(Object.assign({}, { setActiveMenuItem }), dispatch)
+    actions: bindActionCreators(Object.assign({}, {
+      setActiveMenuItem,
+      connectNeo4j
+    }), dispatch)
   })
 )(Main)

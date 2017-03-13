@@ -5,7 +5,7 @@ import 'isomorphic-fetch'
  */
 export function fetchNodeList() {
   return fetch('//localhost:8000/admin/chemtrails_permissions/accessrule/nodelist/', {
-    credentials: 'include'
+    // credentials: 'include' // Must be enabled in production builds..
   }).then((response) => {
     if (response.status >= 400) {
       throw new Error('Bad response from the server')

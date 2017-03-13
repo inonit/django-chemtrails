@@ -45,6 +45,7 @@ class AccessRules extends Component {
 
 export default connect(
   state => ({
+    settings: state.settings,
     uiState: state.uiState
   }),
   dispatch => ({

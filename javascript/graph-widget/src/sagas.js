@@ -1,8 +1,7 @@
 /**
  * Application Sagas.
  */
-
-import { take, put, call, fork } from 'redux-saga/effects'
+import { take, put, select, call, fork } from 'redux-saga/effects'
 import * as accessRuleControls from './reducers/uiState/accessRuleControls'
 import { fetchNodeList } from './webapi'
 
@@ -12,12 +11,12 @@ import { fetchNodeList } from './webapi'
  */
 export function* getAccessRuleControlNodes() {
   const payload = yield call(fetchNodeList);
-  yield put({type: accessRuleControls.FETCHED_NODELIST, payload})
+  yield put({type: accessRuleControls.FETCHED_NODELIST, payload});
 }
 export function* watchGetAccessRuleControlNodes() {
   while (true) {
     yield take(accessRuleControls.FETCH_NODELIST);
-    yield fork(getAccessRuleControlNodes)
+    yield fork(getAccessRuleControlNodes);
   }
 }
 

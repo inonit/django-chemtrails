@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { Provider } from 'react-redux';
+import { Map } from 'immutable'
 
 import configureStore from './store'
 import Main from './components/MainComponent'
@@ -8,10 +9,10 @@ import Main from './components/MainComponent'
 
 const run = () => {
   const __INITIAL_STATE__ = window.__INITIAL_STATE__ || {
-    settings: {
+    settings: Map({
       baseUrl: 'http://localhost:8000',
       neo4jUrl: 'bolt://neo4j:neo4j@localhost:7687'
-    }
+    })
   };
   const store = configureStore(__INITIAL_STATE__);
 

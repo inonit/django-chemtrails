@@ -6,8 +6,8 @@ const SET_SOURCE_NODE = 'SET_SOURCE_NODE';
 const SET_TARGET_NODE = 'SET_TARGET_NODE';
 
 const initialState = Map({
-  sourceNode: undefined,
-  targetNode: undefined,
+  sourceNode: '',
+  targetNode: '',
   nodeRelations: Map({})
 });
 export default function reducer(state = initialState, action) {
