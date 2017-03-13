@@ -1,20 +1,20 @@
 import { Map, fromJS } from 'immutable'
 
-export const FETCH_INITIAL_GRAPH = 'FETCH_INITIAL_GRAPH';
-export const FETCHED_INITIAL_GRAPH = 'FETCHED_INITIAL_GRAPH';
+export const FETCH_META_GRAPH = 'FETCH_META_GRAPH';
+export const FETCHED_META_GRAPH = 'FETCHED_META_GRAPH';
 
 const initialState = Map({
-  initialGraph: Map({})
+  metaGraph: Map({})
 });
 export default function reducer(state = initialState, action) {
   switch (action.type) {
-    case FETCHED_INITIAL_GRAPH:
-      return state.set('initialGraph', fromJS(action.payload));
+    case FETCHED_META_GRAPH:
+      return state.set('metaGraph', fromJS(action.payload));
     default:
       return state;
   }
 }
 
-export function getInitialGraph() {
-  return {type: FETCH_INITIAL_GRAPH}
+export function getMetaGraph() {
+  return {type: FETCH_META_GRAPH}
 }

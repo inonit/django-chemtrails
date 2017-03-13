@@ -8,7 +8,7 @@ import { bindActionCreators } from 'redux';
 import { Grid, Menu, Segment } from 'semantic-ui-react';
 
 import { setActiveMenuItem } from '../reducers/uiState/menu';
-import { getInitialGraph } from '../reducers/neo4j';
+import { getMetaGraph } from '../reducers/neo4j';
 import AccessRules from './AccessRulesComponent';
 import GraphView from './GraphViewComponent';
 import Help from './HelpComponent';
@@ -38,7 +38,7 @@ class Main extends Component {
   }
 
   componentDidMount() {
-    this.props.actions.getInitialGraph();
+    this.props.actions.getMetaGraph();
   }
 
   render() {
@@ -80,13 +80,10 @@ export default connect(
   }),
   dispatch => ({
     actions: bindActionCreators(
-      Object.assign(
-        {},
-        {
+      Object.assign({}, {
           setActiveMenuItem,
-          getInitialGraph
-        }
-      ),
+          getMetaGraph
+      }),
       dispatch
     )
   })

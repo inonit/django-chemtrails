@@ -4,19 +4,19 @@
 import { take, put, select, call, fork } from 'redux-saga/effects'
 import * as neo4j from './reducers/neo4j'
 import * as accessRuleControls from './reducers/uiState/accessRuleControls'
-import { fetchInitialGraph, fetchNodeList } from './webapi'
+import { fetchInitialMetaGraph, fetchNodeList } from './webapi'
 
 
 /**
  * Fetches the initial graph data for the visualization
  */
 export function* getInitialGraph() {
-  const payload = yield call(fetchInitialGraph);
-  yield put({type: neo4j.FETCHED_INITIAL_GRAPH, payload})
+  const payload = yield call(fetchInitialMetaGraph);
+  yield put({type: neo4j.FETCHED_META_GRAPH, payload})
 }
 export function* watchGetInitialGraph() {
   while (true) {
-    yield take(neo4j.FETCH_INITIAL_GRAPH);
+    yield take(neo4j.FETCH_META_GRAPH);
     yield fork(getInitialGraph);
   }
 }
