@@ -9,7 +9,8 @@ import {
   setSourceNode,
   setTargetNode,
   setRelation,
-  addPath
+  addPath,
+  setDirection
 } from '../reducers/uiState/accessRuleControls';
 
 class AccessRules extends Component {
@@ -25,6 +26,7 @@ class AccessRules extends Component {
     this.props.actions.setTargetNode(value);
   onRelationSelect = (e, { value }) => this.props.actions.setRelation(value);
   onPathAdd = (e, { value }) => this.props.actions.addPath();
+  onSetDirection = (e, { value }) => this.props.actions.setDirection(value);
 
   componentDidMount() {
     this.props.actions.fetchNodeList();
@@ -63,6 +65,16 @@ class AccessRules extends Component {
             disabled={!state.get('tempSourceNode')}
           />
           <Form.Select
+            label="direction"
+            placeholder="Choose a direction"
+            options={[
+              { text: 'to', value: 'to' },
+              { text: 'from', value: 'from' }
+            ]}
+            onChange={this.onSetDirection}
+            disabled={!state.get('tempRelation')}
+          />
+          <Form.Select
             label="Target node"
             placeholder="Choose target node"
             defaultValue={state.get('tempTargetNode')}
@@ -91,7 +103,8 @@ export default connect(
           setSourceNode,
           setTargetNode,
           setRelation,
-          addPath
+          addPath,
+          setDirection
         }
       ),
       dispatch

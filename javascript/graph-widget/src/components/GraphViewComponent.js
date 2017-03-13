@@ -26,16 +26,29 @@ class GraphView extends Component {
   render() {
     const STATE = this.props.uiState.accessRuleControls;
     const PATH = STATE.get('path');
-    console.log(PATH);
+
     return (
       <div>
         <h1>Here be graph!</h1>
-        {PATH}
+        {PATH.map(value => {
+          return mapPath(value);
+        })}
       </div>
     );
   }
 }
-
+function mapPath(value) {
+  return (
+    <p key={value}>
+      {value.toJS().sourceNode}
+      {' '}
+      {value.toJS().direction == 'to' ? '<-' : '->'}
+      {' '}
+      {value.toJS().relation}
+      {value.toJS().direction}
+    </p>
+  );
+}
 export default connect(
   state => ({
     uiState: state.uiState
