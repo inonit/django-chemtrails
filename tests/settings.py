@@ -28,10 +28,13 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
+    # Dependencies
+    'corsheaders',  # Required for chemtrails.contrib.permissions API views.
+
+    # For testing
     'autofixture',
     'tests.testapp',
 
-    'corsheaders',
     'chemtrails',
     'chemtrails.contrib.permissions'
 ]

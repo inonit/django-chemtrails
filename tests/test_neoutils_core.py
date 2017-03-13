@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import json
+
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ImproperlyConfigured
 from django.test import TestCase, override_settings

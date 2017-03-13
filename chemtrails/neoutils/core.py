@@ -487,6 +487,7 @@ class MetaNodeMixin(ModelNodeMixin):
         kwargs.update(defaults)
         StructuredNode.__init__(self, *args, **kwargs)
 
+        # FIXME: Don't look up against id if using inflate with a raw query.
         if not hasattr(self, 'id'):
             props = self.deflate(self.__properties__)
 

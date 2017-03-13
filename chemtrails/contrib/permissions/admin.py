@@ -1,15 +1,20 @@
 # -*- coding: utf-8 -*-
-import json
 
+from django.apps import apps
 from django.conf.urls import url
 from django.contrib import admin
 from django.http import JsonResponse
 
 from neomodel import db
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
 
+from chemtrails.neoutils import get_meta_node_class_for_model
 from chemtrails.neoutils.query import get_node_relationship_types
+from chemtrails.contrib.permissions.api.serializers import NodeSerializer
 from chemtrails.contrib.permissions.forms import AccessRuleForm
 from chemtrails.contrib.permissions.models import AccessRule
+from chemtrails.utils import flatten
 
 
 @admin.register(AccessRule)
@@ -35,15 +40,25 @@ class AccessRuleAdmin(admin.ModelAdmin):
     def sanitize_query(params):
         return params
 
-    def get_neo4j_query_api_view(self, request):
+    @staticmethod
+    @api_view()
+    def get_neo4j_query_api_view(request):
+        response = []
         query = request.GET.get('query', None)
         if query:
             result, _ = db.cypher_query(query)
-            try:
-                return AlchemyJSResponse(data={})
-            except Exception as e:
-                pass
-        return AlchemyJSResponse(data={})
+            for item in list(flatten(result)):
+                try:
+                    if hasattr(item, 'properties') and all(
+                                    value in item.properties for value in ('app_label', 'model_name')):
+                        model = apps.get_model(app_label=item.properties['app_label'],
+                                               model_name=item.properties['model_name'])
+                        klass = get_meta_node_class_for_model(model)
+                        serializer = NodeSerializer(instance=klass.inflate(item), many=False)
+                        response.append(serializer.data)
+                except LookupError:
+                    continue
+        return Response(response)
 
     def get_nodelist_api_view(self, request):
         params = {'type': 'MetaNode'}
