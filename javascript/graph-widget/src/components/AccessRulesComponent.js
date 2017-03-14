@@ -25,7 +25,11 @@ class AccessRules extends Component {
   onTargetNodeSelect = (e, { value }) =>
     this.props.actions.setTargetNode(value);
   onRelationSelect = (e, { value }) => this.props.actions.setRelation(value);
-  onPathAdd = (e, { value }) => this.props.actions.addPath();
+  onPathAdd = (e, { value }) => {
+    e.preventDefault();
+
+    this.props.actions.addPath();
+  };
   onSetDirection = (e, { value }) => this.props.actions.setDirection(value);
 
   componentDidMount() {
@@ -82,7 +86,7 @@ class AccessRules extends Component {
             onChange={this.onTargetNodeSelect}
             disabled={!state.get('tempsourceNode')}
           />
-          <Label onClick={this.onPathAdd}>Add</Label>
+          <Form.Button onClick={this.onPathAdd}>Add</Form.Button>
         </Form.Group>
       </Form>
     );

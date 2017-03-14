@@ -5,6 +5,7 @@
 import React, { Component, PropTypes } from 'react';
 import { connect } from 'react-redux';
 import { toJS } from 'immutable';
+import Faux from 'react-faux-dom';
 
 // import CyViewer from 'cy-viewer'
 
@@ -42,10 +43,9 @@ function mapPath(value) {
     <p key={value}>
       {value.toJS().sourceNode}
       {' '}
-      {value.toJS().direction == 'to' ? '<-' : '->'}
+      {value.toJS().direction === 'to' ? '<-' : '->'}
       {' '}
       {value.toJS().relation}
-      {value.toJS().direction}
     </p>
   );
 }
