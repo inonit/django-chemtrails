@@ -33,7 +33,7 @@ class RelationshipSerializer(serializers.Serializer):
         field_mapping = OrderedDict()
         for key, value in self.instance.items():
             if key == 'node_class':
-                continue
+                field_mapping['to'] = serializers.CharField(default=value.__label__)
             elif isinstance(value, RelationshipMeta):
                 field_mapping['meta'] = serializers.DictField(
                     child=serializers.CharField(),
@@ -56,6 +56,8 @@ class NodeSerializer(serializers.Serializer):
         # Normal properties
         for field, property_class in self.instance.defined_properties(aliases=False, rels=False).items():
             # TODO: Support AliasField - check for __call__ in _field_mapping.
+            field_mapping['id'] = serializers.IntegerField(default=self.instance.id)
+            field_mapping['label'] = serializers.CharField(default=self.instance.__label__)
             field_mapping.update({
                 field: self.get_serializer_field(property_class, **self._get_default_field_kwargs(property_class))
             })
