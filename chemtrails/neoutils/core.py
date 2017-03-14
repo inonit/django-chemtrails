@@ -426,7 +426,7 @@ class MetaNodeMeta(NodeBase):
         cls = super(MetaNodeMeta, mcs).__new__(mcs, str(name), bases, attrs)
 
         # Set label for node
-        cls.__label__ = '{object_name}Meta'.format(object_name=cls.Meta.model._meta.object_name)
+        cls.__label__ = '{object_name}'.format(object_name=cls.Meta.model._meta.object_name)
 
         # Add some default fields
         cls.type = StringProperty(default='MetaNode')
