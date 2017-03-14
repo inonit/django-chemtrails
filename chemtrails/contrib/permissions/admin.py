@@ -43,17 +43,15 @@ class AccessRuleAdmin(admin.ModelAdmin):
 
         response = []
         for item in list(flatten(result)):
-            if hasattr(item, 'properties'):
-                if 'type' in item.properties and item.properties['type'] != 'MetaNode':
-                    continue
             try:
-                if all(value in item.properties for value in ('app_label', 'model_name')):
+                if hasattr(item, 'properties') and all(value in item.properties for value in ('app_label', 'model_name')):
                     model = apps.get_model(app_label=item.properties['app_label'],
                                            model_name=item.properties['model_name'])
                     klass = get_meta_node_class_for_model(model)
                     serializer = NodeSerializer(instance=klass.inflate(item), many=False)
                     response.append(serializer.data)
             except LookupError:
+                # Might trigger if getting data originating from a different source.
                 continue
         return Response(data=response, content_type='application/json')
 
