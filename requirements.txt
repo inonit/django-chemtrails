@@ -8,3 +8,4 @@ nose
 psycopg2
 requests[security]
 sphinx_rtd_theme
+djangorestframework
