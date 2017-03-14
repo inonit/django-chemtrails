@@ -3,16 +3,15 @@
 from django.apps import apps
 from django.conf.urls import url
 from django.contrib import admin
-
 from neomodel import db
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from chemtrails.neoutils import get_meta_node_class_for_model
-from chemtrails.neoutils.query import get_node_relationship_types
-from chemtrails.contrib.permissions.api.serializers import NodeSerializer
 from chemtrails.contrib.permissions.forms import AccessRuleForm
 from chemtrails.contrib.permissions.models import AccessRule
+from chemtrails.contrib.permissions.serializers import NodeSerializer
+from chemtrails.neoutils import get_meta_node_class_for_model
+from chemtrails.neoutils.query import get_node_relationship_types
 from chemtrails.utils import flatten
 
 
