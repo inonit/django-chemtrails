@@ -80,10 +80,13 @@ export default connect(
   }),
   dispatch => ({
     actions: bindActionCreators(
-      Object.assign({}, {
+      Object.assign(
+        {},
+        {
           setActiveMenuItem,
           getMetaGraph
-      }),
+        }
+      ),
       dispatch
     )
   })

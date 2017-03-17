@@ -1,11 +1,10 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { Provider } from 'react-redux';
-import { Map } from 'immutable'
+import { Map } from 'immutable';
 
-import configureStore from './store'
-import Main from './components/MainComponent'
-
+import configureStore from './store';
+import Main from './components/MainComponent';
 
 const run = () => {
   const __INITIAL_STATE__ = window.__INITIAL_STATE__ || {
@@ -18,18 +17,18 @@ const run = () => {
 
   ReactDOM.render(
     <Provider store={store}>
-      <Main/>
+      <Main />
     </Provider>,
     document.getElementById('root')
   );
 };
 
 Promise.all([
-  new Promise((resolve) => {
+  new Promise(resolve => {
     if (window.addEventListener) {
-      window.addEventListener('DOMContentLoaded', resolve)
+      window.addEventListener('DOMContentLoaded', resolve);
     } else {
-      window.attachEvent('onload', resolve)
+      window.attachEvent('onload', resolve);
     }
   })
 ]).then(run);

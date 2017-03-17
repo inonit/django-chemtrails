@@ -39,18 +39,37 @@ class AccessRules extends Component {
   render() {
     const state = this.props.uiState.accessRuleControls;
 
-    let nodeOptions = [];
-    state.get('nodeRelations').map((relations, key) => {
-      nodeOptions.push({ text: key, value: key });
+    let nodes = [];
+    const GRAPH = this.props.neo4j;
+    let rel = [];
+
+    //  console.log(GRAPH.toJS());
+    GRAPH.get('metaGraph').map(item => {
+      //  console.log(item.toJS());
+      nodes.push({ text: item.get('label'), value: item.get('label') });
+
+      item.forEach((value, key, map) => {
+        if (typeof value === 'object' && key !== 'default_permissions') {
+          value.map(item => {
+            if (item.get('to') === state.get('tempSourceNode')) {
+              rel.push({
+                text: item.get('relation_type'),
+                value: item.get('relation_type')
+              });
+            }
+          });
+        }
+      });
     });
-    let relOptions = [];
-    state.get('nodeRelations').map((relations, key) => {
-      if (key === state.get('tempSourceNode')) {
-        relations.map((key, value) => {
-          relOptions.push({ text: key, value: key });
-        });
-      }
-    });
+    var arr = {};
+
+    for (var i = 0, len = rel.length; i < len; i++)
+      arr[rel[i]['text']] = rel[i];
+
+    rel = new Array();
+    for (var key in arr)
+      rel.push(arr[key]);
+
     return (
       <Form>
         <Form.Group widths="equal">
@@ -58,13 +77,13 @@ class AccessRules extends Component {
             label="Source node"
             placeholder="Choose source node"
             defaultValue={state.get('tempSourceNode')}
-            options={nodeOptions}
+            options={nodes}
             onChange={this.onSourceNodeSelect}
           />
           <Form.Select
             label="relations"
             placeholder="Choose a relation"
-            options={relOptions}
+            options={rel}
             onChange={this.onRelationSelect}
             disabled={!state.get('tempSourceNode')}
           />
@@ -82,7 +101,7 @@ class AccessRules extends Component {
             label="Target node"
             placeholder="Choose target node"
             defaultValue={state.get('tempTargetNode')}
-            options={nodeOptions}
+            options={nodes}
             onChange={this.onTargetNodeSelect}
             disabled={!state.get('tempsourceNode')}
           />
@@ -92,11 +111,14 @@ class AccessRules extends Component {
     );
   }
 }
-
+function onlyUnique(value, index, self) {
+  return self.indexOf(value) === index;
+}
 export default connect(
   state => ({
     settings: state.settings,
-    uiState: state.uiState
+    uiState: state.uiState,
+    neo4j: state.neo4j
   }),
   dispatch => ({
     actions: bindActionCreators(
