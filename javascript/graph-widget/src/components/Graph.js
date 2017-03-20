@@ -36,47 +36,46 @@ class Graph extends Component {
       .force('y', d3.forceY(this.props.height / 2));
 
     this.force.on('tick', () => {
-      link
-        .attr('x1', function(d) {
-          return d.source.x;
-        })
-        .attr('y1', function(d) {
-          return d.source.y;
-        })
-        .attr('x2', function(d) {
-          return d.target.x;
-        })
-        .attr('y2', function(d) {
-          return d.target.y;
-        });
       node
-        .attr('cx', function(d) {
+        .attr('cx', d => {
           return d.x;
         })
-        .attr('cy', function(d) {
+        .attr('cy', d => {
           return d.y;
         });
-      nodetext
-        .attr('x', function(d) {
+
+      nodeText
+        .attr('x', d => {
           return d.x;
         })
-        .attr('y', function(d) {
+        .attr('y', d => {
           return d.y;
         });
+
+      path.attr('d', d => {
+        //console.log(d.linkShape);
+        var dx = d.target.x - d.source.x,
+          dy = d.target.y - d.source.y,
+          dr = Math.sqrt(dx * dx + dy * dy);
+        return 'M' +
+          d.source.x +
+          ',' +
+          d.source.y +
+          'A' +
+          (dr + d.linkShape) +
+          ',' +
+          (dr + d.linkShape) +
+          ' 0 0,1 ' +
+          d.target.x +
+          ',' +
+          d.target.y;
+      });
+
       this.setState({
         links: this.state.links,
         nodes: this.state.nodes
       });
     });
-    let link = svg
-      .append('g')
-      .attr('class', 'links')
-      .selectAll('line')
-      .data(this.state.links)
-      .enter()
-      .append('line')
-      .attr('stroke', 'black')
-      .attr('marker-end', 'url(#arrowhead)');
 
     let node = svg
       .append('g')
@@ -108,8 +107,10 @@ class Graph extends Component {
     node.append('title').text(function(d) {
       return d.name;
     });
-    let nodetext = svg
+
+    let nodeText = svg
       .append('g')
+      .attr('class', 'nodeLabels')
       .selectAll('text')
       .data(this.state.nodes)
       .enter()
@@ -118,24 +119,48 @@ class Graph extends Component {
         return d.name;
       })
       .attr('fill', 'black')
-      .attr('x', 3.5)
-      .attr('y', 3.5)
       .attr('text-anchor', 'middle');
+    var linktext = svg
+      .append('svg:g')
+      .selectAll('g.linklabelholder')
+      .data(this.state.links)
+      .enter()
+      .append('g')
+      .attr('class', 'linklabelholder')
+      .append('text')
+      .text(d => {
+        return d.type;
+      })
+      .attr('class', 'linklabel')
+      .style('font-size', '13px')
+      .attr('text-anchor', 'start')
+      .style('fill', '#000')
+      .append('textPath')
+      .attr('xlink:href', function(d, i) {
+        return '#linkId_' + i;
+      })
+      .attr('startOffset', '50%')
+      .text(function(d) {
+        return d.type;
+      });
+
+    var path = svg
+      .append('g')
+      .selectAll('path')
+      .data(this.state.links)
+      .enter()
+      .append('path')
+      .attr('class', function(d) {
+        return 'link ' + d.type;
+      })
+      .attr('id', function(d, i) {
+        return 'linkId_' + i;
+      })
+      .attr('fill', 'none')
+      .attr('stroke', 'black');
+
     this.force.nodes(this.state.nodes);
     this.force.force('link').links(this.state.links);
-    // let node = d3.selectAll('circle');
-    // node.call(
-    //   d3
-    //     .drag()
-    //     .on('start', d => {})
-    //     .on('drag', d => {
-    //       console.log(d);
-    //     })
-    //     .on('end', d => {
-    //       if (!d3.event.active) this.force.alphaTarget(0);
-    //     })
-    // );
-    // console.log(node);
   }
 
   componentWillUnmount() {
