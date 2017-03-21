@@ -18,7 +18,7 @@ class Graph extends Component {
         'collide',
         d3
           .forceCollide(function(d) {
-            return 60;
+            return 100;
           })
           .iterations(16)
       )
@@ -53,7 +53,6 @@ class Graph extends Component {
         });
 
       path.attr('d', d => {
-        //console.log(d.linkShape);
         var dx = d.target.x - d.source.x,
           dy = d.target.y - d.source.y,
           dr = Math.sqrt(dx * dx + dy * dy);
@@ -84,7 +83,7 @@ class Graph extends Component {
       .append('svg:marker') // This section adds in the arrows
       .attr('id', String)
       .attr('viewBox', '0 -5 10 10')
-      .attr('refX', 30)
+      .attr('refX', 50)
       .attr('refY', -1.5)
       .attr('markerWidth', 10)
       .attr('markerHeight', 10)
@@ -107,6 +106,7 @@ class Graph extends Component {
       .attr('fill', 'none')
       .attr('stroke', 'black')
       .attr('marker-end', 'url(#end)');
+
     let node = svg
       .append('g')
       .attr('class', 'nodes')
@@ -115,7 +115,7 @@ class Graph extends Component {
       .enter()
       .append('circle')
       .attr('fill', 'red')
-      .attr('r', 20)
+      .attr('r', 40)
       .call(
         d3
           .drag()
@@ -149,7 +149,8 @@ class Graph extends Component {
         return d.name;
       })
       .attr('fill', 'black')
-      .attr('text-anchor', 'middle');
+      .attr('text-anchor', 'middle')
+      .style('font-size', '10px');
     var linktext = svg
       .append('svg:g')
       .selectAll('g.linklabelholder')
@@ -162,7 +163,7 @@ class Graph extends Component {
         return d.type;
       })
       .attr('class', 'linklabel')
-      .style('font-size', '13px')
+      .style('font-size', '8px')
       .attr('text-anchor', 'start')
       .style('fill', '#000')
       .append('textPath')
@@ -172,7 +173,9 @@ class Graph extends Component {
       .attr('startOffset', '50%')
       .text(function(d) {
         return d.type;
-      });
+      })
+      .attr('refX', 60)
+      .attr('refY', -1.5);
 
     this.force.nodes(this.state.nodes);
     this.force.force('link').links(this.state.links);
@@ -191,8 +194,8 @@ function linkPosition(source, target) {
   return source > target ? source - 40 : source + 40;
 }
 Graph.defaultProps = {
-  width: 1200,
-  height: 600,
+  width: 1500,
+  height: 1200,
   linkDistance: 300,
   forceStrength: -20
 };

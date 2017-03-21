@@ -68,7 +68,7 @@ function setGraphs(oldState, payload) {
     let incr = 0;
     a.forEach((value, key, map) => {
       value.linkShape = incr;
-      incr += 100;
+      incr += 150;
     });
   });
   newState.displayGraph = g;
