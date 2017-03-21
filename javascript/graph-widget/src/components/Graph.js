@@ -189,10 +189,7 @@ class Graph extends Component {
     return <svg width={this.props.width} height={this.props.height} />;
   }
 }
-function linkPosition(source, target) {
-  if (source === 'undefined') return 0;
-  return source > target ? source - 40 : source + 40;
-}
+
 Graph.defaultProps = {
   width: 1500,
   height: 1200,

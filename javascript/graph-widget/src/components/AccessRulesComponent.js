@@ -1,9 +1,8 @@
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
-import { toJS } from 'immutable';
 
-import { Form, Label } from 'semantic-ui-react';
+import { Form } from 'semantic-ui-react';
 import {
   fetchNodeList,
   setSourceNode,
@@ -43,9 +42,7 @@ class AccessRules extends Component {
     const GRAPH = this.props.neo4j;
     let rel = [];
 
-    //  console.log(GRAPH.toJS());
     GRAPH.get('metaGraph').map(item => {
-      //  console.log(item.toJS());
       nodes.push({ text: item.get('label'), value: item.get('label') });
 
       item.forEach((value, key, map) => {
@@ -111,9 +108,7 @@ class AccessRules extends Component {
     );
   }
 }
-function onlyUnique(value, index, self) {
-  return self.indexOf(value) === index;
-}
+
 export default connect(
   state => ({
     settings: state.settings,

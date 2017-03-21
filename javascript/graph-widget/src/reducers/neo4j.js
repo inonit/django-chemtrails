@@ -30,20 +30,17 @@ function setGraphs(oldState, payload) {
     nodes: [],
     links: []
   };
+
   newState.metaGraph.forEach((value, key, map) => {
     g.nodes.push({ name: value.label, label: value.label, id: value.id });
   });
+
   newState.metaGraph.forEach((value, key, map) => {
     let index = key;
     Object.values(value).forEach((property, key, map) => {
       if (typeof property === 'object' && !property[1]) {
         let target = g.nodes.filter(x => {
           if (x.name === property[0].to) {
-            return x;
-          }
-        });
-        let source = g.nodes.filter(x => {
-          if (x.id === value.id) {
             return x;
           }
         });
@@ -58,9 +55,9 @@ function setGraphs(oldState, payload) {
     });
   });
 
+  //add factor for duplicate source and target
   g.links.forEach((value, key, map) => {
-    //add factor for duplicate source and target
-    if (value.linkShape != 0) return;
+    if (value.linkShape !== 0) return;
 
     let a = g.links.filter(l => {
       return value.source === l.source && l.target === value.target;
@@ -71,7 +68,7 @@ function setGraphs(oldState, payload) {
       incr += 150;
     });
   });
+
   newState.displayGraph = g;
-  console.log(newState);
   return newState;
 }
