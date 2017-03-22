@@ -67,7 +67,9 @@ class Main extends Component {
         </Grid.Column>
 
         <Grid.Row centered columns={12}>
-          <GraphView />
+          <Grid.Column width={4} />
+          <Grid.Column width={12}> <GraphView /></Grid.Column>
+
         </Grid.Row>
       </Grid>
     );

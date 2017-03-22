@@ -2,6 +2,7 @@ import { Map, fromJS } from 'immutable';
 
 export const FETCH_META_GRAPH = 'FETCH_META_GRAPH';
 export const FETCHED_META_GRAPH = 'FETCHED_META_GRAPH';
+export const MARK_DISPLAY_NODE = 'MARK_DISPLAY_NODE';
 
 const initialState = Map({
   metaGraph: Map({}),
@@ -14,6 +15,8 @@ export default function reducer(state = initialState, action) {
   switch (action.type) {
     case FETCHED_META_GRAPH:
       return fromJS(setGraphs(state, action.payload));
+    case MARK_DISPLAY_NODE:
+      return fromJS(markDisplayNode(state, action.payload));
     default:
       return state;
   }
@@ -21,6 +24,19 @@ export default function reducer(state = initialState, action) {
 
 export function getMetaGraph() {
   return { type: FETCH_META_GRAPH };
+}
+
+export function selectDisplayNode(payload) {
+  return { type: MARK_DISPLAY_NODE, payload };
+}
+
+function markDisplayNode(oldState, payload) {
+  let newState = oldState.toJS();
+
+  newState.displayGraph.nodes.find(x => {
+    return x.name === payload;
+  }).marked = 1;
+  return newState;
 }
 
 function setGraphs(oldState, payload) {
@@ -32,7 +48,12 @@ function setGraphs(oldState, payload) {
   };
 
   newState.metaGraph.forEach((value, key, map) => {
-    g.nodes.push({ name: value.label, label: value.label, id: value.id });
+    g.nodes.push({
+      name: value.label,
+      label: value.label,
+      id: value.id,
+      marked: 0
+    });
   });
 
   newState.metaGraph.forEach((value, key, map) => {

@@ -11,6 +11,7 @@ import {
   addPath,
   setDirection
 } from '../reducers/uiState/accessRuleControls';
+import { selectDisplayNode } from '../reducers/neo4j';
 
 class AccessRules extends Component {
   displayName = 'Access Rules';
@@ -19,10 +20,14 @@ class AccessRules extends Component {
     super(props);
   }
 
-  onSourceNodeSelect = (e, { value }) =>
+  onSourceNodeSelect = (e, { value }) => {
+    this.props.actions.selectDisplayNode(value);
     this.props.actions.setSourceNode(value);
-  onTargetNodeSelect = (e, { value }) =>
+  };
+  onTargetNodeSelect = (e, { value }) => {
+    this.props.actions.selectDisplayNode(value);
     this.props.actions.setTargetNode(value);
+  };
   onRelationSelect = (e, { value }) => this.props.actions.setRelation(value);
   onPathAdd = (e, { value }) => {
     e.preventDefault();
@@ -38,26 +43,58 @@ class AccessRules extends Component {
   render() {
     const state = this.props.uiState.accessRuleControls;
 
-    let nodes = [];
-    const GRAPH = this.props.neo4j;
-    let rel = [];
+    const GRAPH = this.props.neo4j.toJS().displayGraph;
 
-    GRAPH.get('metaGraph').map(item => {
-      nodes.push({ text: item.get('label'), value: item.get('label') });
-
-      item.forEach((value, key, map) => {
-        if (typeof value === 'object' && key !== 'default_permissions') {
-          value.map(item => {
-            if (item.get('to') === state.get('tempSourceNode')) {
-              rel.push({
-                text: item.get('relation_type'),
-                value: item.get('relation_type')
-              });
-            }
-          });
-        }
-      });
+    let nodeTargets = [];
+    let nodes = GRAPH.nodes.map((x, index) => {
+      return { text: x.name, value: x.name, id: index };
     });
+    let selectedSource = GRAPH.nodes.find(x => {
+      return state.get('tempSourceNode') === x.name;
+    });
+
+    let relObjects = GRAPH.links.filter(x => {
+      return GRAPH.nodes.indexOf(selectedSource) === x.source;
+    });
+    let selectedRel = GRAPH.links.filter(x => {
+      return state.get('tempRelation') === x.type &&
+        GRAPH.nodes.indexOf(selectedSource) === x.source;
+    });
+    console.log(selectedRel);
+    let rel = relObjects.map(x => {
+      return { text: x.type, value: x.type };
+    });
+
+    //  console.log(nodes);
+    // GRAPH.get('metaGraph').map(item => {
+    //   nodes.push({ text: item.get('label'), value: item.get('label') });
+    //   //relation from:
+    //   if (item.toJS().label === state.get('tempSourceNode')) {
+    //     item.forEach((value, key, map) => {
+    //       if (typeof value === 'object' && key !== 'default_permissions') {
+    //         rel.push({
+    //           text: value.toJS()[0].relation_type,
+    //           value: value.toJS()[0].relation_type
+    //         });
+    //       }
+    //     });
+    //   }
+    //   //relations pointing to:
+    //   item.forEach((value, key, map) => {
+    //     if (typeof value === 'object' && key !== 'default_permissions') {
+    //       value.map(item => {
+    //         if (item.get('to') === state.get('tempSourceNode')) {
+    //           rel.push({
+    //             text: item.get('relation_type'),
+    //             value: item.get('relation_type')
+    //           });
+    //         }
+    //       });
+    //     }
+    //   });
+    // });
+    //
+    //filter dups:
     var arr = {};
 
     for (var i = 0, len = rel.length; i < len; i++)
@@ -100,7 +137,7 @@ class AccessRules extends Component {
             defaultValue={state.get('tempTargetNode')}
             options={nodes}
             onChange={this.onTargetNodeSelect}
-            disabled={!state.get('tempsourceNode')}
+            disabled={!state.get('tempSourceNode')}
           />
           <Form.Button onClick={this.onPathAdd}>Add</Form.Button>
         </Form.Group>
@@ -125,7 +162,8 @@ export default connect(
           setTargetNode,
           setRelation,
           addPath,
-          setDirection
+          setDirection,
+          selectDisplayNode
         }
       ),
       dispatch

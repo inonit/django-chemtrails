@@ -114,7 +114,9 @@ class Graph extends Component {
       .data(this.state.nodes)
       .enter()
       .append('circle')
-      .attr('fill', 'red')
+      .attr('fill', d => {
+        return d.marked ? 'blue' : 'red';
+      })
       .attr('r', 40)
       .call(
         d3
@@ -194,6 +196,6 @@ Graph.defaultProps = {
   width: 1500,
   height: 1200,
   linkDistance: 300,
-  forceStrength: -20
+  forceStrength: 1
 };
 export default Graph;

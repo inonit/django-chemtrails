@@ -10,6 +10,7 @@ const SET_DIRECTION = 'SET_DIRECTION';
 
 const INTIAL_STATE = Map({
   path: [],
+  graphPath: { nodes: [], links: [] },
   nodeRelations: Map({}),
   tempSourceNode: undefined,
   tempRelation: undefined,
@@ -79,6 +80,8 @@ function addPathClearTemp(state) {
     targetNode: OLD_STATE.targetNode,
     direction: OLD_STATE.tempDirection
   });
+  NEW_STATE.graphPath.nodes.push({ name: OLD_STATE.tempSourceNode });
+  NEW_STATE.graphPath.nodes.push({ name: OLD_STATE.tempTargetNode });
   NEW_STATE.tempTargetNode = undefined;
   NEW_STATE.tempSourceNode = undefined;
   NEW_STATE.tempRelation = undefined;
