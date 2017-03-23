@@ -1,43 +1,41 @@
+dist: trusty
+sudo: required
+
 language: python
 python:
   - 3.4
   - 3.5
   - 3.6
 
-dist: trusty
-sudo: required
-
-cache:
-  apt: true
-  pip: true
-  directories:
-    - pip_download_cache
-
 env:
   global:
     - PIP_DOWNLOAD_CACHE="pip_download_cache"
   matrix:
-#    - DJANGO_VERSION=">=1.8,<1.9"
+    - DJANGO_VERSION=">=1.8,<1.9"
     - DJANGO_VERSION=">=1.9,<1.10"
     - DJANGO_VERSION=">=1.10,<1.11"
 
-services:
-  - docker
+cache:
+  pip: true
+  directories:
+    - $HOME/.cache/pip
 
-before_install:
-  - mkdir -p $PIP_DOWNLOAD_CACHE
+before_cache:
+  - rm -f $HOME/.cache/pip/log/debug.log
+
+services:
+  - postgresql
+  - neo4j
 
 install:
-  - pip install --upgrade setuptools
-  - pip install coveralls docker-compose "Django${DJANGO_VERSION}"
-  - docker-compose up -d
+  - pip install --Uq pip setuptools coveralls
+  - pip install "Django${DJANGO_VERSION}"
   - python setup.py clean build install
-
-after_success:
-  coveralls
 
 script:
   - python setup.py test
+
+after_success: coveralls
 
 matrix:
   fast_finish: true
