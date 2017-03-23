@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
+from django.contrib.contenttypes.models import ContentType
 from django.db import models
 
 
@@ -10,6 +12,17 @@ class Author(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Tag(models.Model):
+    tag = models.CharField(max_length=20)
+    content_type = models.ForeignKey(ContentType, verbose_name='content type',
+                                     related_name='content_type_set_for_%(class)s')
+    object_pk = models.IntegerField(verbose_name='object ID')
+    content_object = GenericForeignKey('content_type', 'object_pk')
+
+    def __str__(self):
+        return self.tag
 
 
 class Publisher(models.Model):
@@ -26,6 +39,7 @@ class Book(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2)
     rating = models.FloatField()
     authors = models.ManyToManyField(Author)
+    tags = GenericRelation(Tag, object_id_field='object_pk', content_type_field='content_type')
     publisher = models.ForeignKey(Publisher)
     pubdate = models.DateField()
 

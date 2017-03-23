@@ -11,9 +11,9 @@ class QueryFunctionsTestCase(TestCase):
     """
 
     def test_get_relationship_types(self):
-        expected = ['AUTHOR', 'AUTHORS', 'BESTSELLER', 'BESTSELLER_STORES', 'BOOK', 'BOOKS', 'CONTENT_TYPE', 'GROUP',
-                    'GROUPS', 'LOGENTRY', 'PERMISSION', 'PERMISSIONS', 'PUBLISHER', 'STORE', 'USER', 'USER_PERMISSIONS',
-                    'USER_SET']
+        expected = ['AUTHOR', 'AUTHORS', 'BESTSELLER', 'BESTSELLER_STORES', 'BOOK', 'BOOKS', 'CONTENT_TYPE',
+                    'CONTENT_TYPE_SET_FOR_TAG', 'GROUP', 'GROUPS', 'LOGENTRY', 'PERMISSION', 'PERMISSIONS',
+                    'PUBLISHER', 'STORE', 'TAGS', 'USER', 'USER_PERMISSIONS', 'USER_SET']
         self.assertEqual(expected, query.get_relationship_types())
 
     def test_get_node_relationship_types(self):

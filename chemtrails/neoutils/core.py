@@ -417,7 +417,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
 
 class MetaNodeMeta(NodeBase):
     """
-    Meta class for ``ModelRelationNode``.
+    Meta class for ``MetaNode``.
     """
     def __new__(mcs, name, bases, attrs):
         cls = super(MetaNodeMeta, mcs).__new__(mcs, str(name), bases, attrs)

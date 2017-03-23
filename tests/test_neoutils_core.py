@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 
-import json
-
-from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ImproperlyConfigured
 from django.test import TestCase, override_settings
 from django.utils import six
@@ -17,10 +16,10 @@ from chemtrails.neoutils import (
 )
 
 from tests.utils import flush_nodes
-from tests.testapp.autofixtures import BookFixture, StoreFixture
-from tests.testapp.models import Book, Store
-
-USER_MODEL = get_user_model()
+from tests.testapp.autofixtures import (
+    UserGenerator, BookFixture, StoreFixture, TagFixture
+)
+from tests.testapp.models import Book, Store, Tag
 
 
 class NodeUtilsTestCase(TestCase):
@@ -70,6 +69,18 @@ class ModelNodeTestCase(TestCase):
 
         self.assertTrue(issubclass(ModelNode, StructuredNode))
         self.assertIsInstance(ModelNode(instance=book), StructuredNode)
+
+    @flush_nodes()
+    def test_create_model_with_content_types(self):
+        permission = Permission.objects.latest('pk')
+
+        @six.add_metaclass(ModelNodeMeta)
+        class ModelNode(ModelNodeMixin, StructuredNode):
+            class Meta:
+                model = Permission
+
+        self.assertTrue(issubclass(ModelNode, StructuredNode))
+        self.assertIsInstance(ModelNode(instance=permission), StructuredNode)
 
     def test_create_model_node_declaring_model_in_class(self):
 
