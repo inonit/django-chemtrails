@@ -24,7 +24,7 @@ def get_meta_node_class_for_model(model):
     :param model: Django model class.
     :returns: A ``StructuredNode`` class.
     """
-    cache_key = '{object_name}RelationMeta'.format(object_name=model._meta.object_name)
+    cache_key = '{object_name}MetaNode'.format(object_name=model._meta.object_name)
     if cache_key in model_cache:
         return model_cache[cache_key]
     else:
