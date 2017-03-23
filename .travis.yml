@@ -36,6 +36,9 @@ install:
   - pip install "Django${DJANGO_VERSION}"
   - python setup.py clean build install
 
+before_script:
+  - python -c 'from cryptography.hazmat.backends.openssl.backend import backend; print(backend.openssl_version_text())'
+
 script:
   - python setup.py test
 
