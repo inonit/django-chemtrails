@@ -6,6 +6,7 @@ from functools import reduce
 
 from django.db import models
 from django.db.models import Manager
+from django.contrib.contenttypes.fields import GenericRelation, GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ImproperlyConfigured, ValidationError, ObjectDoesNotExist
 
@@ -21,6 +22,8 @@ field_property_map = {
     models.ManyToOneRel: RelationshipTo,
     models.OneToOneRel: RelationshipTo,
     models.ManyToManyRel: RelationshipTo,
+    # GenericForeignKey: RelationshipTo,  # TODO: Implement
+    GenericRelation: RelationshipTo,
 
     models.AutoField: IntegerProperty,
     # models.BigAutoField: IntegerProperty,  # Breaks Django 1.9 compatibility
@@ -50,7 +53,7 @@ field_property_map = {
     models.UUIDField: StringProperty,
 
     # Special fields
-    ArrayChoiceField: ArrayProperty
+    ArrayChoiceField: ArrayProperty,
 }
 
 # Caches to avoid infinity loops
@@ -127,6 +130,9 @@ class ModelNodeMeta(NodeBase):
 
         for field in cls.Meta.model._meta.get_fields():
 
+            if field.__class__ not in field_property_map:
+                continue
+
             # Add forward relations
             if field in forward_relations:
                 relation = cls.get_related_node_property_for_field(field)
@@ -170,20 +176,11 @@ class ModelNodeMixinBase:
     def get_property_class_for_field(klass):
         """
         Returns the appropriate property class for field class.
+        :param klass: Field class which to look up Property type for.
         """
         if klass in field_property_map:
             return field_property_map[klass]
         raise NotImplementedError('Unsupported field. Field %s is currently not supported.' % klass.__name__)
-
-    @staticmethod
-    def get_relation_fields(model):
-        """
-        Get a list of fields on the model which represents relations.
-        """
-        return [
-            field for field in model._meta.get_fields()
-            if field.is_relation or field.one_to_one or (field.many_to_one and field.related_model)
-        ]
 
     @classmethod
     def get_forward_relation_fields(cls):
@@ -238,7 +235,7 @@ class ModelNodeMixinBase:
         from chemtrails.neoutils import get_node_class_for_model, get_meta_node_class_for_model
 
         reverse_field = True if isinstance(field, (
-            models.ManyToManyRel, models.ManyToOneRel, models.OneToOneRel)) else False
+            models.ManyToManyRel, models.ManyToOneRel, models.OneToOneRel, GenericRelation)) else False
 
         class DynamicRelation(StructuredRel):
             type = StringProperty(default=field.__class__.__name__)
@@ -246,7 +243,7 @@ class ModelNodeMixinBase:
             remote_field = StringProperty(default=str('{model}.{field}'.format(
                 model=get_model_string(field.model), field=(
                     field.related_name or '%s_set' % field.name
-                    if not isinstance(field, models.OneToOneRel) else field.name))
+                    if not isinstance(field, (models.OneToOneRel, GenericRelation)) else field.name))
                                                       if reverse_field else field.remote_field.field).lower())
             target_field = StringProperty(default=str(field.target_field).lower())
 
@@ -443,6 +440,9 @@ class MetaNodeMeta(NodeBase):
 
         # # Add relations for the model
         for field in itertools.chain(forward_relations, reverse_relations):
+
+            if field.__class__ not in field_property_map:
+                continue
 
             # Add forward relations
             if field in forward_relations:
