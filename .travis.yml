@@ -25,7 +25,11 @@ before_cache:
 
 services:
   - postgresql
-  - neo4j
+  - docker
+
+before_install:
+  - docker run -d --name neo4j -p 7687:7687 -e NEO4J_AUTH=none neo4j:latest
+  - docker ps -a
 
 install:
   - pip install -Uq pip setuptools coveralls
@@ -36,6 +40,9 @@ script:
   - python setup.py test
 
 after_success: coveralls
+
+after_script:
+  - docker rm -f neo4j
 
 matrix:
   fast_finish: true
