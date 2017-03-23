@@ -28,7 +28,7 @@ services:
   - neo4j
 
 install:
-  - pip install --Uq pip setuptools coveralls
+  - pip install -Uq pip setuptools coveralls
   - pip install "Django${DJANGO_VERSION}"
   - python setup.py clean build install
 
