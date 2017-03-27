@@ -7,7 +7,6 @@ from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.utils.translation import ugettext_lazy as _
 
-from chemtrails.contrib.permissions.fields import ArrayChoiceField
 from chemtrails.neoutils.query import get_node_relationship_types, get_node_permissions, get_relationship_types
 
 
@@ -27,17 +26,14 @@ def get_relationship_types_choices():
 
 
 class AccessRule(models.Model):
-
-    # source = ArrayChoiceField(models.CharField(max_length=100, blank=True), blank=True,
-    #                           choices=get_node_relations_choices())
-    # target = ArrayChoiceField(models.CharField(max_length=100, blank=True), blank=True,
-    #                           choices=get_node_relations_choices())
-    source = models.ForeignKey(ContentType, verbose_name=_('source content type'), related_name='accessrule_source_set')
-    target = models.ForeignKey(ContentType, verbose_name=_('target content type'), related_name='accessrule_target_set')
+    ctype_source = models.ForeignKey(ContentType, verbose_name=_('source content type'),
+                                     related_name='accessrule_ctype_source_set')
+    ctype_target = models.ForeignKey(ContentType, verbose_name=_('target content type'),
+                                     related_name='accessrule_ctype_target_set')
     permissions = models.ManyToManyField(Permission, verbose_name=_('access rule permissions'), blank=True,
                                          help_text=_('Required permissions for target node.'),
                                          related_name='accessrule_permissions', related_query_name='accessrule')
-    cypher = models.TextField(_('cypher query'), blank=True, help_text=_('Cypher query for ths access rule.'))
+    query = models.TextField(_('cypher query'), blank=True, help_text=_('Cypher query for ths access rule.'))
     is_active = models.BooleanField(default=True, help_text=_('Disable to disable evaluation of the rule '
                                                               'in the rule chain.'))
     created = models.DateTimeField(verbose_name=_('created'), auto_now_add=True)
@@ -46,5 +42,12 @@ class AccessRule(models.Model):
     class Meta:
         pass
 
+    def __repr__(self):
+        return '<%(class)s: %(source)s - %(target)s>' % {
+            'class': self.__class__.__name__,
+            'source': self.ctype_source.model,
+            'target': self.ctype_target.model
+        }
+
     def __str__(self):
-        return self.cypher
+        return self.query
