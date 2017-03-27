@@ -11,10 +11,10 @@ class QueryFunctionsTestCase(TestCase):
     """
 
     def test_get_relationship_types(self):
-        expected = ['ACCESSRULE', 'ACCESSRULE_PERMISSIONS', 'ACCESSRULE_SOURCE_SET', 'ACCESSRULE_TARGET_SET',
+        expected = ['ACCESSRULE', 'ACCESSRULE_CTYPE_SOURCE_SET', 'ACCESSRULE_CTYPE_TARGET_SET', 'ACCESSRULE_PERMISSIONS',
                     'AUTHOR', 'AUTHORS', 'BESTSELLER', 'BESTSELLER_STORES', 'BOOK', 'BOOKS', 'CONTENT_TYPE',
-                    'CONTENT_TYPE_SET_FOR_TAG', 'GROUP', 'GROUPS', 'LOGENTRY', 'PERMISSION', 'PERMISSIONS',
-                    'PUBLISHER', 'SOURCE', 'STORE', 'TAGS', 'TARGET', 'USER', 'USER_PERMISSIONS', 'USER_SET']
+                    'CONTENT_TYPE_SET_FOR_TAG', 'CTYPE_SOURCE', 'CTYPE_TARGET', 'GROUP', 'GROUPS', 'LOGENTRY',
+                    'PERMISSION', 'PERMISSIONS', 'PUBLISHER', 'STORE', 'TAGS', 'USER', 'USER_PERMISSIONS', 'USER_SET']
         self.assertEqual(expected, query.get_relationship_types())
 
     def test_get_node_relationship_types(self):
