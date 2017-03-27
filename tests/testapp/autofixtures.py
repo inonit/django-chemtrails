@@ -90,12 +90,12 @@ class StoreFixture(AutoFixture):
 register(Store, StoreFixture, overwrite=True)
 
 
-class TagFixture(AutoFixture):
-    from django.contrib.contenttypes.models import ContentType
-    field_values = {
-        'tag': generators.ChoicesGenerator(values=('sci-fi', 'drama', 'fantasy', 'romance', 'self help', 'satire')),
-        'content_type': generators.StaticGenerator(value=ContentType.objects.get_for_model(Book)),
-        'object_pk': generators.ChoicesGenerator(values=Book.objects.values_list('pk', flat=True)
-                                                 or list(BookFixture(Book).create_one().pk))
-    }
-register(Tag, TagFixture, overwrite=True)
+# class TagFixture(AutoFixture):
+#     from django.contrib.contenttypes.models import ContentType
+#     field_values = {
+#         'tag': generators.ChoicesGenerator(values=('sci-fi', 'drama', 'fantasy', 'romance', 'self help', 'satire')),
+#         'content_type': generators.StaticGenerator(value=ContentType.objects.get_for_model(Book)),
+#         'object_pk': generators.ChoicesGenerator(values=Book.objects.values_list('pk', flat=True)
+#                                                  or list(BookFixture(Book).create_one().pk))
+#     }
+# register(Tag, TagFixture, overwrite=True)

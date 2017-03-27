@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 from django.contrib.auth.models import Permission
-from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ImproperlyConfigured
 from django.test import TestCase, override_settings
 from django.utils import six
@@ -17,9 +16,9 @@ from chemtrails.neoutils import (
 
 from tests.utils import flush_nodes
 from tests.testapp.autofixtures import (
-    UserGenerator, BookFixture, StoreFixture, TagFixture
+    BookFixture, StoreFixture,
 )
-from tests.testapp.models import Book, Store, Tag
+from tests.testapp.models import Book, Store
 
 
 class NodeUtilsTestCase(TestCase):
