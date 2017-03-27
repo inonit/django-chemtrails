@@ -380,6 +380,8 @@ class ModelNodeMixin(ModelNodeMixinBase):
             back_connect(node, max_depth)
 
         elif isinstance(source, Manager):
+            if not source.exists():
+                return
             nodeset = klass.nodes.filter(pk__in=list(source.values_list('pk', flat=True)))
             for node in nodeset:
                 prop.connect(node)
