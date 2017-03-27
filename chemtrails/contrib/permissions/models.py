@@ -3,6 +3,7 @@
 from operator import itemgetter
 
 from django.db import models
+from django.contrib.auth.models import Permission
 from django.utils.translation import ugettext_lazy as _
 
 from chemtrails.contrib.permissions.fields import ArrayChoiceField
@@ -30,4 +31,17 @@ class AccessRule(models.Model):
                               choices=get_node_relations_choices())
     target = ArrayChoiceField(models.CharField(max_length=100, blank=True), blank=True,
                               choices=get_node_relations_choices())
-    action = models.CharField(max_length=20, choices=get_relationship_types_choices(), blank=True)
+    permissions = models.ManyToManyField(Permission, verbose_name=_('access rule permissions'), blank=True,
+                                         help_text=_('Required permissions for target node.'),
+                                         related_name='accessrule_permissions', related_query_name='accessrule')
+    cypher = models.TextField(_('cypher query'), blank=True, help_text=_('Cypher query for ths access rule.'))
+    is_active = models.BooleanField(default=True, help_text=_('Disable to disable evaluation of the rule '
+                                                              'in the rule chain.'))
+    created = models.DateTimeField(verbose_name=_('created'), auto_now_add=True)
+    updated = models.DateTimeField(verbose_name=_('updated'), auto_now=True)
+
+    class Meta:
+        pass
+
+    def __str__(self):
+        return self.cypher

@@ -18,10 +18,12 @@ class GraphWidget(forms.Widget):
     class Media:
         js = (
             'https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react.min.js',
-            'chemtrails/contrib/permissions/main.js'
+            'chemtrails/contrib/permissions/js/main.js'
         )
         css = {
-            'all': ('https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.2.9/semantic.min.css',)
+            'all': (
+                'chemtrails/contrib/permissions/css/graph-widget.css',
+                'https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.2.9/semantic.min.css',)
         }
 
     def render(self, name, value, attrs=None):

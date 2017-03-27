@@ -19,6 +19,11 @@ from chemtrails.utils import flatten
 class AccessRuleAdmin(admin.ModelAdmin):
 
     form = AccessRuleForm
+    filter_horizontal = ('permissions',)
+    fieldsets = (
+        (None, {'fields': ('source', 'target', 'permissions', 'is_active')}),
+        ('Rule editor', {'fields': ('graph',)})
+    )
 
     def get_form(self, request, obj=None, **kwargs):
         # TODO: Set session data for the widget

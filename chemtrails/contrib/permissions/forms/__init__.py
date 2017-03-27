@@ -14,7 +14,7 @@ class GraphField(forms.Field):
 
 class AccessRuleForm(forms.ModelForm):
 
-    graph = GraphField(required=False)
+    graph = GraphField(required=False, label='')
 
     class Meta:
         model = AccessRule
