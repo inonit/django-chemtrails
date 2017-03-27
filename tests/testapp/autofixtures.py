@@ -4,7 +4,6 @@ import random
 from datetime import timedelta, date
 
 from django.contrib.auth import get_user_model
-from django.contrib.contenttypes.models import ContentType
 
 from autofixture import generators, register, AutoFixture
 from tests.testapp.models import Author, Publisher, Book, Store, Tag
@@ -45,7 +44,7 @@ class AuthorFixture(AutoFixture):
         'name': generators.FirstNameGenerator(),
         'age': generators.PositiveIntegerGenerator(min_value=20, max_value=80)
     }
-register(Author, AuthorFixture)
+register(Author, AuthorFixture, overwrite=True)
 
 
 class PublisherFixture(AutoFixture):
@@ -53,7 +52,7 @@ class PublisherFixture(AutoFixture):
         'name': PublisherGenerator(),
         'num_awards': generators.PositiveIntegerGenerator(min_value=0, max_value=10)
     }
-register(Publisher, PublisherFixture)
+register(Publisher, PublisherFixture, overwrite=True)
 
 
 class BookFixture(AutoFixture):
@@ -72,7 +71,7 @@ class BookFixture(AutoFixture):
     #     values = ('sci-fi', 'drama', 'fantasy', 'romance', 'self help', 'satire')
     #     Tag(content_object=instance, tag=random.choice(values)).save()
     #     return instance
-register(Book, BookFixture)
+register(Book, BookFixture, overwrite=True)
 
 
 class StoreFixture(AutoFixture):
@@ -88,14 +87,15 @@ class StoreFixture(AutoFixture):
         if instance.bestseller:
             instance.books.add(instance.bestseller)
         return instance
-register(Store, StoreFixture)
+register(Store, StoreFixture, overwrite=True)
 
 
 class TagFixture(AutoFixture):
+    from django.contrib.contenttypes.models import ContentType
     field_values = {
         'tag': generators.ChoicesGenerator(values=('sci-fi', 'drama', 'fantasy', 'romance', 'self help', 'satire')),
         'content_type': generators.StaticGenerator(value=ContentType.objects.get_for_model(Book)),
         'object_pk': generators.ChoicesGenerator(values=Book.objects.values_list('pk', flat=True)
                                                  or list(BookFixture(Book).create_one().pk))
     }
-register(Tag, TagFixture)
+register(Tag, TagFixture, overwrite=True)

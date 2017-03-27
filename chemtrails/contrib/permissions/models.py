@@ -4,6 +4,7 @@ from operator import itemgetter
 
 from django.db import models
 from django.contrib.auth.models import Permission
+from django.contrib.contenttypes.models import ContentType
 from django.utils.translation import ugettext_lazy as _
 
 from chemtrails.contrib.permissions.fields import ArrayChoiceField
@@ -27,10 +28,12 @@ def get_relationship_types_choices():
 
 class AccessRule(models.Model):
 
-    source = ArrayChoiceField(models.CharField(max_length=100, blank=True), blank=True,
-                              choices=get_node_relations_choices())
-    target = ArrayChoiceField(models.CharField(max_length=100, blank=True), blank=True,
-                              choices=get_node_relations_choices())
+    # source = ArrayChoiceField(models.CharField(max_length=100, blank=True), blank=True,
+    #                           choices=get_node_relations_choices())
+    # target = ArrayChoiceField(models.CharField(max_length=100, blank=True), blank=True,
+    #                           choices=get_node_relations_choices())
+    source = models.ForeignKey(ContentType, verbose_name=_('source content type'), related_name='accessrule_source_set')
+    target = models.ForeignKey(ContentType, verbose_name=_('target content type'), related_name='accessrule_target_set')
     permissions = models.ManyToManyField(Permission, verbose_name=_('access rule permissions'), blank=True,
                                          help_text=_('Required permissions for target node.'),
                                          related_name='accessrule_permissions', related_query_name='accessrule')
