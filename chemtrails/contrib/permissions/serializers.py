@@ -8,6 +8,8 @@ from neomodel.relationship import RelationshipMeta
 
 from rest_framework import serializers
 
+from chemtrails.contrib.permissions.models import AccessRule
+
 _field_mapping = {
     properties.AliasProperty: lambda prop: _field_mapping[prop.target],
     properties.ArrayProperty: serializers.ListField,
@@ -100,3 +102,10 @@ class NodeSerializer(serializers.Serializer):
         """
         field = _field_mapping[property_class.__class__]
         return field(**kwargs)
+
+
+class AccessRuleSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = AccessRule
+        fields = '__all__'
