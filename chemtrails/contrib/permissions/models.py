@@ -45,8 +45,8 @@ class AccessRule(models.Model):
     def __repr__(self):
         return '<%(class)s: %(source)s - %(target)s>' % {
             'class': self.__class__.__name__,
-            'source': self.ctype_source.model,
-            'target': self.ctype_target.model
+            'source': '%s.%s' % (self.ctype_source.app_label, self.ctype_source.model),
+            'target': '%s.%s' % (self.ctype_target.app_label, self.ctype_target.model),
         }
 
     def __str__(self):
