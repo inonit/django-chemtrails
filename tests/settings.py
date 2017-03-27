@@ -127,6 +127,8 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 
-# CHEMTRAILS = {
-#     'NAMED_RELATIONSHIPS': True
-# }
+
+try:
+    from .local_settings import *
+except ImportError:
+    pass
