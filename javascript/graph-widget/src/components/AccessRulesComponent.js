@@ -54,17 +54,19 @@ class AccessRules extends Component {
     });
 
     let relObjects = GRAPH.links.filter(x => {
-      return GRAPH.nodes.indexOf(selectedSource) === x.source;
+      return GRAPH.nodes.indexOf(selectedSource) === x.source ||
+        GRAPH.nodes.indexOf(selectedSource) === x.target;
     });
     let selectedRel = GRAPH.links.filter(x => {
       return state.get('tempRelation') === x.type &&
         GRAPH.nodes.indexOf(selectedSource) === x.source;
     });
-    console.log(selectedRel);
+
     let rel = relObjects.map(x => {
+      console.log(x);
       return { text: x.type, value: x.type };
     });
-
+    let targetObj;
     //  console.log(nodes);
     // GRAPH.get('metaGraph').map(item => {
     //   nodes.push({ text: item.get('label'), value: item.get('label') });
