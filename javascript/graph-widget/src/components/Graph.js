@@ -118,6 +118,11 @@ class Graph extends Component {
         return d.marked ? 'blue' : 'red';
       })
       .attr('r', 40)
+      // .on('click', d => {
+      //   console.log(d);
+      //   if (!d3.event.active) this.force.alphaTarget(0.3).restart();
+      //   d.marked = 1;
+      // })
       .call(
         d3
           .drag()
@@ -196,6 +201,6 @@ Graph.defaultProps = {
   width: 1500,
   height: 1200,
   linkDistance: 300,
-  forceStrength: 1
+  forceStrength: -30
 };
 export default Graph;

@@ -52,7 +52,8 @@ function setGraphs(oldState, payload) {
       name: value.label,
       label: value.label,
       id: value.id,
-      marked: 0
+      marked: 0,
+      item: value
     });
   });
 
