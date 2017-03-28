@@ -355,7 +355,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
         :param max_depth: Maximum depth of recursive connections to be made.
         :returns: None
         """
-        from chemtrails.neoutils import get_node_for_object
+        from chemtrails.neoutils import get_node_for_object, get_nodeset_for_queryset
 
         def back_connect(n, depth):
             if n._recursion_depth >= depth:
@@ -376,16 +376,25 @@ class ModelNodeMixin(ModelNodeMixinBase):
             node = klass.nodes.get_or_none(pk=source.pk)
             if not node:
                 node = get_node_for_object(source).sync(update_existing=True)
-            prop.connect(node)
-            back_connect(node, max_depth)
+            if isinstance(node, prop.definition['node_class']):
+                prop.connect(node)
+                back_connect(node, max_depth)
 
         elif isinstance(source, Manager):
             if not source.exists():
                 return
             nodeset = klass.nodes.filter(pk__in=list(source.values_list('pk', flat=True)))
+            if len(nodeset) != source.count():
+                # Save missing nodes
+                existing = list(map(lambda n: n.pk, nodeset))
+                for obj in source.exclude(pk__in=existing):
+                    get_node_for_object(obj).save()
+                nodeset = klass.nodes.filter(pk__in=list(source.values_list('pk', flat=True)))
+
             for node in nodeset:
-                prop.connect(node)
-                back_connect(node, max_depth)
+                if isinstance(node, prop.definition['node_class']):
+                    prop.connect(node)
+                    back_connect(node, max_depth)
 
     def sync(self, max_depth=1, update_existing=True, create_empty=False):
         """
