@@ -11,7 +11,7 @@ class SettingsTestCase(TestCase):
         self.assertEqual(settings.MAX_CONNECTION_DEPTH, 1)
         self.assertEqual(settings.NAMED_RELATIONSHIPS, True)
         self.assertEqual(settings.CONNECT_META_NODES, False)
-        self.assertEqual(settings.IGNORE_MODELS, ['migrations.migration'])
+        self.assertEqual(settings.IGNORE_MODELS, ['admin.logentry', 'migrations.migration'])
 
     @override_settings(CHEMTRAILS={
         'ENABLED': False,
