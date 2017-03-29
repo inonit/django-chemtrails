@@ -305,6 +305,18 @@ class ModelNodeMixin(ModelNodeMixinBase):
     def _recursion_depth(self, n):
         self.__recursion_depth__ = n
 
+    def _log_connection(self, action: str, node, prop, level: int = 10):
+        prop_direction = {-1: 'INCOMING', 0: 'MUTUAL', 1: 'OUTGOING'}
+        message = ('%(action)s %(direction)s relation %(relation_type)s '
+                   'between %(source)r and %(node)r' % {
+                       'action': action,
+                       'direction': prop_direction[prop.definition['direction']],
+                       'relation_type': prop.definition['relation_type'],
+                       'source': prop.source,
+                       'node': node
+                   })
+        logger.log(level=level, msg=message)
+
     def _get_id_from_database(self, params):
         """
         Query for node and return id.
@@ -381,19 +393,12 @@ class ModelNodeMixin(ModelNodeMixinBase):
 
         klass = relation.definition['node_class']
         source = getattr(instance, prop.name)
-        prop_direction = {-1: 'INCOMING', 0: 'MUTUAL', 1: 'OUTGOING'}
 
         if isinstance(source, models.Model):
             disconnect = prop.filter(pk__in=list(source._meta.model.objects.exclude(pk=source.pk)
                                                  .values_list('pk', flat=True)))
             for node in disconnect:
-                logger.debug('Disconnected %(direction)s relation %(relation_type)s '
-                             'between %(source)r and %(node)r' % {
-                                 'direction': prop_direction[prop.definition['direction']],
-                                 'relation_type': prop.definition['relation_type'],
-                                 'source': prop.source,
-                                 'node': node
-                             })
+                self._log_connection('Disconnected', node, prop)
                 prop.disconnect(node)
 
             node = klass.nodes.get_or_none(pk=source.pk)
@@ -402,26 +407,14 @@ class ModelNodeMixin(ModelNodeMixinBase):
 
             if node not in disconnect and isinstance(node, prop.definition['node_class']):
                 prop.connect(node)
-                logger.debug('Connected %(direction)s relation %(relation_type)s '
-                             'between %(source)r and %(node)r' % {
-                                 'direction': prop_direction[prop.definition['direction']],
-                                 'relation_type': prop.definition['relation_type'],
-                                 'source': prop.source,
-                                 'node': node
-                             })
+                self._log_connection('Connected', node, prop)
                 back_connect(node, max_depth)
 
         elif isinstance(source, Manager):
             disconnect = prop.filter(pk__in=list(source.model.objects.exclude(pk__in=source.values('pk'))
                                      .values_list('pk', flat=True)))
             for node in disconnect:
-                logger.debug('Disconnected %(direction)s relation %(relation_type)s '
-                             'between %(source)r and %(node)r' % {
-                                 'direction': prop_direction[prop.definition['direction']],
-                                 'relation_type': prop.definition['relation_type'],
-                                 'source': prop.source,
-                                 'node': node
-                             })
+                self._log_connection('Disconnected', node, prop)
                 prop.disconnect(node)
 
             if not source.exists():
@@ -438,13 +431,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
             for node in nodeset:
                 if node not in disconnect and isinstance(node, prop.definition['node_class']):
                     prop.connect(node)
-                    logger.debug('Connected %(direction)s relation %(relation_type)s '
-                                 'between %(source)r and %(node)r' % {
-                                     'direction': prop_direction[prop.definition['direction']],
-                                     'relation_type': prop.definition['relation_type'],
-                                     'source': prop.source,
-                                     'node': node
-                                 })
+                    self._log_connection('Connected', node, prop)
                     back_connect(node, max_depth)
 
     def sync(self, max_depth=1, update_existing=True, create_empty=False):
