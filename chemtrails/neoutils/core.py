@@ -164,6 +164,18 @@ class ModelNodeMixinBase:
     """
     Base mixin class
     """
+    def _log_relationship_definition(self, action: str, node, prop, level: int = 10):
+        prop_direction = {-1: 'INCOMING', 0: 'MUTUAL', 1: 'OUTGOING'}
+        message = ('%(action)s %(direction)s relation %(relation_type)s '
+                   'between %(source)r and %(node)r' % {
+                       'action': action,
+                       'direction': prop_direction[prop.definition['direction']],
+                       'relation_type': prop.definition['relation_type'],
+                       'source': prop.source,
+                       'node': node
+                   })
+        logger.log(level=level, msg=message)
+
     @classproperty
     def _pk_field(cls):
         model = cls.Meta.model
@@ -287,7 +299,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
                 self._instance = self.get_object(self.pk)
 
     def __repr__(self):
-        return '<%(class)s %(ctype)s: %(id)s>' % {
+        return '<%(class)s: %(ctype)s (%(id)s)>' % {
             'class': self.__class__.__name__,
             'ctype': '.'.join((self.app_label, self.model_name)),
             'id': str(self.id) if self.id else str(None)
@@ -304,18 +316,6 @@ class ModelNodeMixin(ModelNodeMixinBase):
     @_recursion_depth.setter
     def _recursion_depth(self, n):
         self.__recursion_depth__ = n
-
-    def _log_connection(self, action: str, node, prop, level: int = 10):
-        prop_direction = {-1: 'INCOMING', 0: 'MUTUAL', 1: 'OUTGOING'}
-        message = ('%(action)s %(direction)s relation %(relation_type)s '
-                   'between %(source)r and %(node)r' % {
-                       'action': action,
-                       'direction': prop_direction[prop.definition['direction']],
-                       'relation_type': prop.definition['relation_type'],
-                       'source': prop.source,
-                       'node': node
-                   })
-        logger.log(level=level, msg=message)
 
     def _get_id_from_database(self, params):
         """
@@ -391,32 +391,22 @@ class ModelNodeMixin(ModelNodeMixinBase):
         if not instance or not hasattr(instance, prop.name):
             return
 
+        relations = prop.all()
         klass = relation.definition['node_class']
         source = getattr(instance, prop.name)
 
         if isinstance(source, models.Model):
-            disconnect = prop.filter(pk__in=list(source._meta.model.objects.exclude(pk=source.pk)
-                                                 .values_list('pk', flat=True)))
-            for node in disconnect:
-                self._log_connection('Disconnected', node, prop)
-                prop.disconnect(node)
-
             node = klass.nodes.get_or_none(pk=source.pk)
             if not node:
                 node = get_node_for_object(source).sync(update_existing=True)
 
-            if node not in disconnect and isinstance(node, prop.definition['node_class']):
-                prop.connect(node)
-                self._log_connection('Connected', node, prop)
-                back_connect(node, max_depth)
+            if node not in relations:
+                if isinstance(node, prop.definition['node_class']):
+                    prop.connect(node)
+                    self._log_relationship_definition('Connected', node, prop)
+                    back_connect(node, max_depth)
 
         elif isinstance(source, Manager):
-            disconnect = prop.filter(pk__in=list(source.model.objects.exclude(pk__in=source.values('pk'))
-                                     .values_list('pk', flat=True)))
-            for node in disconnect:
-                self._log_connection('Disconnected', node, prop)
-                prop.disconnect(node)
-
             if not source.exists():
                 return
 
@@ -429,10 +419,50 @@ class ModelNodeMixin(ModelNodeMixinBase):
                 nodeset = klass.nodes.filter(pk__in=list(source.values_list('pk', flat=True)))
 
             for node in nodeset:
-                if node not in disconnect and isinstance(node, prop.definition['node_class']):
-                    prop.connect(node)
-                    self._log_connection('Connected', node, prop)
-                    back_connect(node, max_depth)
+                if node not in relations:
+                    if isinstance(node, prop.definition['node_class']):
+                        prop.connect(node)
+                        self._log_relationship_definition('Connected', node, prop)
+                        back_connect(node, max_depth)
+
+    def recursive_disconnect(self, prop, relation, max_depth, instance=None):
+        """
+        Recursively disconnect a related branch.
+        :param prop: For example a ``ZeroOrMore`` instance.
+        :param relation: ``RelationShipDefinition`` instance
+        :param instance: Optional django model instance.
+        :param max_depth: Maximum depth of recursive connections to be made.
+        :returns: None
+        """
+        def back_disconnect(n, depth):
+            if n._recursion_depth >= depth:
+                return
+            n._recursion_depth += 1
+            for p, r in n.defined_properties(aliases=False, properties=False).items():
+                n.recursive_disconnect(getattr(n, p), r, max_depth=n._recursion_depth - 1)
+
+        # We require a model instance to look for filter values.
+        instance = instance or self.get_object(self.pk)
+        if not instance or not hasattr(instance, prop.name):
+            return
+
+        source = getattr(instance, prop.name)
+
+        if isinstance(source, models.Model):
+            disconnect = prop.filter(pk__in=list(source._meta.model.objects.exclude(pk=source.pk)
+                                                 .values_list('pk', flat=True)))
+            for node in disconnect:
+                prop.disconnect(node)
+                self._log_relationship_definition('Disconnected', node, prop)
+                back_disconnect(node, max_depth)
+
+        elif isinstance(source, Manager):
+            disconnect = prop.filter(pk__in=list(source.model.objects.exclude(pk__in=source.values('pk'))
+                                     .values_list('pk', flat=True)))
+            for node in disconnect:
+                prop.disconnect(node)
+                self._log_relationship_definition('Disconnected', node, prop)
+                back_disconnect(node, max_depth)
 
     def sync(self, max_depth=1, update_existing=True, create_empty=False):
         """
@@ -461,6 +491,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
         for prop, relation in self.defined_properties(aliases=False, properties=False).items():
             prop = getattr(self, prop)
             self.recursive_connect(prop, relation, max_depth=max_depth)
+            self.recursive_disconnect(prop, relation, max_depth=max_depth)
         return self
 
 
@@ -565,18 +596,23 @@ class MetaNodeMixin(ModelNodeMixin):
             for p, r in n.defined_properties(aliases=False, properties=False).items():
                 n.recursive_connect(getattr(n, p), r, max_depth=n._recursion_depth - 1)
 
+        relations = prop.all()
         klass = relation.definition['node_class']
         is_meta = relation.definition['model'].is_meta.default_value()
         if is_meta:
             node = get_meta_node_for_model(klass.Meta.model)
             if not node._is_bound:
                 node.save()
-            prop.connect(node)
-            back_connect(node, max_depth)
+            if node not in relations:
+                prop.connect(node)
+                self._log_relationship_definition('Connected', node, prop)
+                back_connect(node, max_depth)
         elif not is_meta and settings.CONNECT_META_NODES:
             for node in relation.definition['node_class'].nodes.all():
-                prop.connect(node)
-                back_connect(node, max_depth)
+                if node not in relations:
+                    prop.connect(node)
+                    self._log_relationship_definition('Connected', node, prop)
+                    back_connect(node, max_depth)
 
     def sync(self, max_depth=1, update_existing=True, create_empty=False):
         """
