@@ -299,11 +299,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
                 self._instance = self.get_object(self.pk)
 
     def __repr__(self):
-        return '<%(class)s: %(ctype)s (%(id)s)>' % {
-            'class': self.__class__.__name__,
-            'ctype': '.'.join((self.app_label, self.model_name)),
-            'id': str(self.id) if self.id else str(None)
-        }
+        return '<{label}: {id}>'.format(label=self.__class__.__label__, id=self.id if self._is_bound else None)
 
     @property
     def _is_bound(self):
