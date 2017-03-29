@@ -4,6 +4,9 @@
 import os
 import sys
 import nose
+import logging
+
+logging.disable(logging.DEBUG)  # Disable debug logging when running the test suite.
 
 
 def start(argv=None):
