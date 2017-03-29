@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import itertools
+import logging
 import operator
 from functools import reduce
 
@@ -14,6 +15,8 @@ from neomodel import *
 from chemtrails import settings
 from chemtrails.utils import get_model_string, flatten
 from chemtrails.contrib.permissions.fields import ArrayChoiceField
+
+logger = logging.getLogger(__name__)
 
 field_property_map = {
     models.ForeignKey: RelationshipTo,
@@ -283,6 +286,13 @@ class ModelNodeMixin(ModelNodeMixinBase):
                 # If instantiated without an instance, try to look it up.
                 self._instance = self.get_object(self.pk)
 
+    def __repr__(self):
+        return '<%(class)s %(ctype)s: %(id)s>' % {
+            'class': self.__class__.__name__,
+            'ctype': '.'.join((self.app_label, self.model_name)),
+            'id': str(self.id) if self.id else str(None)
+        }
+
     @property
     def _is_bound(self):
         return getattr(self, 'id', None) is not None
@@ -355,7 +365,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
         :param max_depth: Maximum depth of recursive connections to be made.
         :returns: None
         """
-        from chemtrails.neoutils import get_node_for_object, get_nodeset_for_queryset
+        from chemtrails.neoutils import get_node_for_object
 
         def back_connect(n, depth):
             if n._recursion_depth >= depth:
@@ -371,18 +381,52 @@ class ModelNodeMixin(ModelNodeMixinBase):
 
         klass = relation.definition['node_class']
         source = getattr(instance, prop.name)
+        prop_direction = {-1: 'INCOMING', 0: 'MUTUAL', 1: 'OUTGOING'}
 
         if isinstance(source, models.Model):
+            disconnect = prop.filter(pk__in=list(source._meta.model.objects.exclude(pk=source.pk)
+                                                 .values_list('pk', flat=True)))
+            for node in disconnect:
+                logger.debug('Disconnected %(direction)s relation %(relation_type)s '
+                             'between %(source)r and %(node)r' % {
+                                 'direction': prop_direction[prop.definition['direction']],
+                                 'relation_type': prop.definition['relation_type'],
+                                 'source': prop.source,
+                                 'node': node
+                             })
+                prop.disconnect(node)
+
             node = klass.nodes.get_or_none(pk=source.pk)
             if not node:
                 node = get_node_for_object(source).sync(update_existing=True)
-            if isinstance(node, prop.definition['node_class']):
+
+            if node not in disconnect and isinstance(node, prop.definition['node_class']):
                 prop.connect(node)
+                logger.debug('Connected %(direction)s relation %(relation_type)s '
+                             'between %(source)r and %(node)r' % {
+                                 'direction': prop_direction[prop.definition['direction']],
+                                 'relation_type': prop.definition['relation_type'],
+                                 'source': prop.source,
+                                 'node': node
+                             })
                 back_connect(node, max_depth)
 
         elif isinstance(source, Manager):
+            disconnect = prop.filter(pk__in=list(source.model.objects.exclude(pk__in=source.values('pk'))
+                                     .values_list('pk', flat=True)))
+            for node in disconnect:
+                logger.debug('Disconnected %(direction)s relation %(relation_type)s '
+                             'between %(source)r and %(node)r' % {
+                                 'direction': prop_direction[prop.definition['direction']],
+                                 'relation_type': prop.definition['relation_type'],
+                                 'source': prop.source,
+                                 'node': node
+                             })
+                prop.disconnect(node)
+
             if not source.exists():
                 return
+
             nodeset = klass.nodes.filter(pk__in=list(source.values_list('pk', flat=True)))
             if len(nodeset) != source.count():
                 # Save missing nodes
@@ -392,8 +436,15 @@ class ModelNodeMixin(ModelNodeMixinBase):
                 nodeset = klass.nodes.filter(pk__in=list(source.values_list('pk', flat=True)))
 
             for node in nodeset:
-                if isinstance(node, prop.definition['node_class']):
+                if node not in disconnect and isinstance(node, prop.definition['node_class']):
                     prop.connect(node)
+                    logger.debug('Connected %(direction)s relation %(relation_type)s '
+                                 'between %(source)r and %(node)r' % {
+                                     'direction': prop_direction[prop.definition['direction']],
+                                     'relation_type': prop.definition['relation_type'],
+                                     'source': prop.source,
+                                     'node': node
+                                 })
                     back_connect(node, max_depth)
 
     def sync(self, max_depth=1, update_existing=True, create_empty=False):
