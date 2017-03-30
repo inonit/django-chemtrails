@@ -21,7 +21,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('query', models.TextField(blank=True, help_text='Cypher query for ths access rule.', verbose_name='cypher query')),
-                ('is_active', models.BooleanField(default=True, help_text='Disable to disable evaluation of the rule in the rule chain.')),
+                ('is_active', models.BooleanField(default=True, help_text='Uncheck to disable evaluation of the rule in the rule chain.')),
                 ('created', models.DateTimeField(auto_now_add=True, verbose_name='created')),
                 ('updated', models.DateTimeField(auto_now=True, verbose_name='updated')),
                 ('ctype_source', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='accessrule_ctype_source_set', to='contenttypes.ContentType', verbose_name='source content type')),

@@ -34,7 +34,7 @@ class AccessRule(models.Model):
                                          help_text=_('Required permissions for target node.'),
                                          related_name='accessrule_permissions', related_query_name='accessrule')
     query = models.TextField(_('cypher query'), blank=True, help_text=_('Cypher query for ths access rule.'))
-    is_active = models.BooleanField(default=True, help_text=_('Disable to disable evaluation of the rule '
+    is_active = models.BooleanField(default=True, help_text=_('Uncheck to disable evaluation of the rule '
                                                               'in the rule chain.'))
     created = models.DateTimeField(verbose_name=_('created'), auto_now_add=True)
     updated = models.DateTimeField(verbose_name=_('updated'), auto_now=True)
