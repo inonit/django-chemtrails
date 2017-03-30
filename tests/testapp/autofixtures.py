@@ -75,7 +75,7 @@ register(Book, BookFixture, overwrite=True)
 
 
 class StoreFixture(AutoFixture):
-    follow_fk = True
+    generate_fk = True
     generate_m2m = {'books': (2, 4)}
     field_values = {
         'name': generators.StringGenerator(min_length=5, max_length=15),

@@ -109,3 +109,4 @@ class AccessRuleSerializer(serializers.ModelSerializer):
     class Meta:
         model = AccessRule
         fields = '__all__'
+        read_only_fields = ('created', 'updated')
