@@ -401,6 +401,8 @@ class ModelNodeMixin(ModelNodeMixinBase):
                     prop.connect(node)
                     self._log_relationship_definition('Connected', node, prop)
                     back_connect(node, max_depth)
+            elif self._recursion_depth <= max_depth:
+                back_connect(node, max_depth)
 
         elif isinstance(source, Manager):
             if not source.exists():
@@ -411,7 +413,11 @@ class ModelNodeMixin(ModelNodeMixinBase):
                 # Save missing nodes
                 existing = list(map(lambda n: n.pk, nodeset))
                 for obj in source.exclude(pk__in=existing):
-                    get_node_for_object(obj).save()
+                    node = get_node_for_object(obj).save()
+                    logger.debug('Created missing node %(node)r while synchronizing %(instance)r' % {
+                        'node': node,
+                        'instance': instance
+                    })
                 nodeset = klass.nodes.filter(pk__in=list(source.values_list('pk', flat=True)))
 
             for node in nodeset:
@@ -420,6 +426,8 @@ class ModelNodeMixin(ModelNodeMixinBase):
                         prop.connect(node)
                         self._log_relationship_definition('Connected', node, prop)
                         back_connect(node, max_depth)
+                elif self._recursion_depth <= max_depth:
+                    back_connect(node, max_depth)
 
     def recursive_disconnect(self, prop, relation, max_depth, instance=None):
         """
@@ -637,4 +645,3 @@ class MetaNodeMixin(ModelNodeMixin):
             prop = getattr(self, prop)
             self.recursive_connect(prop, relation, max_depth=max_depth)
         return self
-

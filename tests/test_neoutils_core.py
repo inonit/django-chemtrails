@@ -16,9 +16,8 @@ from chemtrails.neoutils import (
 
 from tests.utils import flush_nodes
 from tests.testapp.autofixtures import (
-    BookFixture, StoreFixture,
+    Book, BookFixture, Store, StoreFixture,
 )
-from tests.testapp.models import Book, Store
 
 
 class NodeUtilsTestCase(TestCase):
@@ -56,7 +55,9 @@ class NodeUtilsTestCase(TestCase):
 
 
 class ModelNodeTestCase(TestCase):
-
+    """
+    Test that we can create ModelNode instances.
+    """
     @flush_nodes()
     def test_create_model_node(self):
         book = BookFixture(Book).create_one()
@@ -125,45 +126,11 @@ class ModelNodeTestCase(TestCase):
         except ImproperlyConfigured as e:
             self.assertEqual(str(e), '%s must implement a Meta class.' % 'ModelNode')
 
-    @flush_nodes()
-    def test_sync_recursive_depth(self):
-        # TODO: Implement
-        pass
-
-    @flush_nodes()
-    def test_sync_related_branch(self):
-        queryset = Store.objects.filter(pk__in=map(lambda n: n.pk,
-                                                   StoreFixture(Store).create(count=2, commit=True)))
-        store_nodeset = get_nodeset_for_queryset(queryset, sync=True, max_depth=1)
-        for store in store_nodeset:
-            store_obj = store.get_object()
-
-            if store_obj.bestseller:
-                self.assertEqual(store.bestseller.get(), get_node_for_object(store_obj.bestseller))
-
-            self.assertEqual(len(store.books.all()), store_obj.books.count())
-            for book in store.books.all():
-                book_obj = book.get_object()
-                self.assertTrue(store in book.store_set.all())
-                self.assertEqual(book.publisher.get(), get_node_for_object(book_obj.publisher))
-                self.assertEqual(len(book.store_set.all()), book_obj.store_set.count())
-                self.assertEqual(len(book.bestseller_stores.all()), book_obj.bestseller_stores.count())
-                self.assertEqual(len(book.authors.all()), book_obj.authors.count())
-
-                # We have currently some issues with recursive max_depth. See #7
-                # FIXME: workaround - Sync nodeset for related queryset.
-                get_nodeset_for_queryset(book_obj.authors.all(), sync=True, max_depth=1)
-                for author in book.authors.all():
-                    author_obj = author.get_object()
-                    self.assertTrue(book in author.book_set.all())
-
-                    user = author.user.get()
-                    self.assertEqual(user, get_node_for_object(author_obj.user).sync())
-                    self.assertEqual(author, user.author.get())
-
 
 class MetaNodeTestCase(TestCase):
-
+    """
+    Test that we can create "singleton" meta nodes
+    """
     def test_create_meta_node(self):
 
         @six.add_metaclass(MetaNodeMeta)
@@ -228,3 +195,49 @@ class MetaNodeTestCase(TestCase):
         meta = get_meta_node_for_model(Book).sync()
 
         # FIXME: Settings object is not updated when using override_settings
+
+
+class GraphMapperTestCase(TestCase):
+    """
+    Test that node relationships are mapped correctly
+    """
+
+    @flush_nodes()
+    @override_settings(CHEMTRAILS={'MAX_CONNECTION_DEPTH': 1})
+    def test_sync_recursive_depth_one(self):
+        book = BookFixture(Book, {
+            'generate_fk': True,
+            'generate_m2m': {'authors': 1}
+        }).create_one()
+        book_node = get_node_for_object(book)
+        # TODO: This does nothing for now... Not quite sure how to test?
+        self.assertTrue(True)
+
+    @flush_nodes()
+    def test_sync_related_branch(self):
+        queryset = Store.objects.filter(pk__in=map(lambda n: n.pk,
+                                                   StoreFixture(Store).create(count=1, commit=True)))
+        store_nodeset = get_nodeset_for_queryset(queryset, sync=True, max_depth=1)
+        for store in store_nodeset:
+            store_obj = store.get_object()
+
+            if store_obj.bestseller:
+                self.assertEqual(store.bestseller.get(), get_node_for_object(store_obj.bestseller))
+
+            self.assertEqual(len(store.books.all()), store_obj.books.count())
+            for book in store.books.all():
+                book_obj = book.get_object()
+                self.assertTrue(store in book.store_set.all())
+                self.assertEqual(book.publisher.get(), get_node_for_object(book_obj.publisher))
+                self.assertEqual(len(book.store_set.all()), book_obj.store_set.count())
+                self.assertEqual(len(book.bestseller_stores.all()), book_obj.bestseller_stores.count())
+                self.assertEqual(len(book.authors.all()), book_obj.authors.count())
+
+                for author in book.authors.all():
+                    author_obj = author.get_object()
+                    self.assertTrue(book in author.book_set.all())
+
+                    user = author.user.get()
+                    self.assertEqual(user, get_node_for_object(author_obj.user).sync())
+                    self.assertEqual(author, user.author.get())
+
