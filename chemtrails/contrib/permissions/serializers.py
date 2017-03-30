@@ -2,6 +2,11 @@
 
 from collections import OrderedDict
 
+from django.contrib.auth.models import Permission
+from django.contrib.contenttypes.models import ContentType
+from django.utils import six
+from django.utils.translation import ugettext_lazy as _
+
 from neomodel import properties
 from neomodel.cardinality import One
 from neomodel.relationship import RelationshipMeta
@@ -28,7 +33,7 @@ _field_mapping = {
 
 class RelationshipSerializer(serializers.Serializer):
     """
-    REST Framework based serializer which dynamically
+    REST Framework based Serializer which dynamically
     serializes a ``StructuredRel`` instance.
     """
     def get_fields(self):
@@ -49,7 +54,7 @@ class RelationshipSerializer(serializers.Serializer):
 
 class NodeSerializer(serializers.Serializer):
     """
-    REST Framework based serializer which dynamically
+    REST Framework based Serializer which dynamically
     serializes a ``StructuredNode`` instance.
     """
     def get_fields(self):
@@ -76,7 +81,7 @@ class NodeSerializer(serializers.Serializer):
     def _get_default_field_kwargs(property_class):
         """
         Return default kwargs used to initialize
-        the serializer field with.
+        the Serializer field with.
         :param property_class: Neomodel property class
         """
         defaults = property_class.__dict__.copy()
@@ -95,16 +100,80 @@ class NodeSerializer(serializers.Serializer):
     
     def get_serializer_field(self, property_class, **kwargs):
         """
-        Returns the serializer field instance that should be
+        Returns the Serializer field instance that should be
         used for validating and deserializing the field.
         :param property_class: Neomodel property class.
-        :param kwargs: Mapping with options used to initialize the serializer field instance.
+        :param kwargs: Mapping with options used to initialize the Serializer field instance.
         """
         field = _field_mapping[property_class.__class__]
         return field(**kwargs)
 
 
+class ContentTypeIdentityField(serializers.RelatedField):
+    """
+    REST Framework related field for ContentType objects.
+    This field represents related ContentType objects by their natural key.
+    """
+    default_error_messages = {
+        'required': _('This field is required.'),
+        'does_not_exist': _('Invalid content type "{ctype}" - object does not exist.'),
+        'incorrect_type': _('Incorrect type. Expected content type string identifier, received {data_type}.'),
+        'incorrect_length': _('Incorrect length. Expected content type string, '
+                              'separated by punctuation. Received "{data}".')
+    }
+
+    def to_internal_value(self, data):
+        if not isinstance(data, six.text_type):
+            self.fail('incorrect_type', data_type=type(data).__name__)
+
+        try:
+            app_label, model = data.split('.', 1)
+            return ContentType.objects.get_by_natural_key(app_label=app_label, model=model)
+        except ContentType.DoesNotExist:
+            self.fail('does_not_exist', ctype=data)
+        except ValueError:
+            self.fail('incorrect_length', data=data)
+
+    def to_representation(self, value):
+        return '{app_label}.{model}'.format(app_label=value.app_label, model=value.model)
+
+
+class PermissionIdentityField(serializers.RelatedField):
+    """
+    REST Framework related field for Permission objects.
+    This field represents related Permission objects by their natural key.
+    """
+    default_error_messages = {
+        'does_not_exist': _('Invalid permission "{data}" - object does not exist.'),
+        'incorrect_type': _('Incorrect type. Expected permission string identifier, received {data_type}.'),
+        'incorrect_length': _('Incorrect length. Expected permission string identifier, '
+                              'separated by punctuation. Received "{data}".')
+    }
+
+    def to_internal_value(self, data):
+        if not isinstance(data, six.text_type):
+            self.fail('incorrect_type', data_type=type(data).__name__)
+
+        try:
+            app_label, model, codename = data.split('.', 2)
+            return Permission.objects.get_by_natural_key(codename=codename, app_label=app_label, model=model)
+        except Permission.DoesNotExist:
+            self.fail('does_not_exist', data=data)
+        except ValueError:
+            self.fail('incorrect_length', data=data)
+
+    def to_representation(self, value):
+        codename, app_label, model = value.natural_key()
+        return '{app_label}.{model}.{codename}'.format(app_label=app_label, model=model, codename=codename)
+
+
 class AccessRuleSerializer(serializers.ModelSerializer):
+    """
+    REST Framework Serializer for AccessRule objects.
+    """
+    ctype_source = ContentTypeIdentityField(queryset=ContentType.objects.all(), required=True)
+    ctype_target = ContentTypeIdentityField(queryset=ContentType.objects.all(), required=True)
+    permissions = PermissionIdentityField(queryset=Permission.objects.all(), many=True)
 
     class Meta:
         model = AccessRule

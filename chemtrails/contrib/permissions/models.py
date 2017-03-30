@@ -40,14 +40,14 @@ class AccessRule(models.Model):
     updated = models.DateTimeField(verbose_name=_('updated'), auto_now=True)
 
     class Meta:
-        pass
+        ordering = ('ctype_target', '-created',)
 
     def __repr__(self):
-        return '<%(class)s: %(source)s - %(target)s>' % {
+        return '<%(class)s: [%(source)s]-[*]-[%(target)s]>' % {
             'class': self.__class__.__name__,
             'source': '%s.%s' % (self.ctype_source.app_label, self.ctype_source.model),
             'target': '%s.%s' % (self.ctype_target.app_label, self.ctype_target.model),
         }
 
-    def __str__(self):
-        return self.query
+    # def __str__(self):
+        # return '{source}-{target}: {query}'.format(source=self.ctype_source, target=self.ctype_target)
