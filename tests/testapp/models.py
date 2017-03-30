@@ -29,6 +29,11 @@ class Publisher(models.Model):
     name = models.CharField(max_length=300)
     num_awards = models.IntegerField()
 
+    class Meta:
+        permissions = (
+            ('can_publish', 'Can publish'),
+        )
+
     def __str__(self):
         return self.name
 
