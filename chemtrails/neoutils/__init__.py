@@ -10,8 +10,10 @@ from chemtrails.neoutils.core import (
 
 __all__ = [
     'get_meta_node_class_for_model',
+    'get_meta_node_for_model',
     'get_node_class_for_model',
     'get_node_for_object',
+    'get_nodeset_for_queryset',
     'model_cache'
 ]
 model_cache = {}
