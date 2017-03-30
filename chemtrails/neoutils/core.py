@@ -108,6 +108,12 @@ class NodeBase(NodeMeta):
     def add_to_class(cls, name, value):
         setattr(cls, name, value)
 
+    @staticmethod
+    def get_model_permissions(model):
+        default_permissions = ['{perm}_{object_name}'.format(perm=p, object_name=model._meta.object_name.lower())
+                               for p in model._meta.default_permissions]
+        return sorted(set(itertools.chain(map(operator.itemgetter(0), model._meta.permissions), default_permissions)))
+
 
 class ModelNodeMeta(NodeBase):
     """
@@ -513,8 +519,9 @@ class MetaNodeMeta(NodeBase):
         cls.type = StringProperty(default='MetaNode')
         cls.app_label = StringProperty(default=cls.Meta.model._meta.app_label)
         cls.model_name = StringProperty(default=cls.Meta.model._meta.model_name)
-        cls.default_permissions = ArrayProperty(default=set(itertools.chain(cls.Meta.model._meta.permissions,
-                                                                            cls.Meta.model._meta.default_permissions)))
+        # cls.default_permissions = ArrayProperty(default=set(itertools.chain(cls.Meta.model._meta.permissions,
+        #                                                                     cls.Meta.model._meta.default_permissions)))
+        cls.model_permissions = ArrayProperty(default=cls.get_model_permissions(cls.Meta.model))
 
         forward_relations = cls.get_forward_relation_fields()
         reverse_relations = cls.get_reverse_relation_fields()
@@ -576,8 +583,8 @@ class MetaNodeMixin(ModelNodeMixin):
             props = self.deflate(self.__properties__)
 
             # We don't need to match permissions here.
-            if 'default_permissions' in props:
-                del props['default_permissions']
+            if 'model_permissions' in props:
+                del props['model_permissions']
 
             node_id = self._get_id_from_database(props)
             if node_id:

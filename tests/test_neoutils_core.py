@@ -16,7 +16,7 @@ from chemtrails.neoutils import (
 
 from tests.utils import flush_nodes
 from tests.testapp.autofixtures import (
-    Book, BookFixture, Store, StoreFixture,
+    Book, BookFixture, Publisher, PublisherFixture, Store, StoreFixture,
 )
 
 
@@ -163,6 +163,15 @@ class MetaNodeTestCase(TestCase):
                 app_label = 'custom_app_label'
 
         self.assertEqual(MetaNode.Meta.app_label, 'custom_app_label')
+
+    def test_create_meta_node_custom_permissions(self):
+
+        @six.add_metaclass(MetaNodeMeta)
+        class MetaNode(MetaNodeMixin, StructuredNode):
+            class Meta:
+                model = Publisher
+
+        self.assertEqual(MetaNode.Meta.model, Publisher)
 
     def test_create_meta_node_fails_without_meta_model(self):
         try:
