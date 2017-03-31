@@ -49,5 +49,8 @@ class AccessRule(models.Model):
             'target': '%s.%s' % (self.ctype_target.app_label, self.ctype_target.model),
         }
 
-    # def __str__(self):
-        # return '{source}-{target}: {query}'.format(source=self.ctype_source, target=self.ctype_target)
+    def __str__(self):
+        return '[%(source)s]-[*]-[%(target)s]' % {
+            'source': self.ctype_source,
+            'target': self.ctype_target
+        }
