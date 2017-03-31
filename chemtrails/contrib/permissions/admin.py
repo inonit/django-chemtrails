@@ -22,6 +22,8 @@ from chemtrails.utils import flatten
 class AccessRuleAdmin(admin.ModelAdmin):
 
     form = AccessRuleForm
+    list_display = ('ctype_target', 'ctype_source', 'is_active', 'created')
+    list_filter = ('is_active', 'ctype_target')
     filter_horizontal = ('permissions',)
     fieldsets = (
         (None, {'fields': ('ctype_source', 'ctype_target', 'permissions', 'query', 'is_active')}),
