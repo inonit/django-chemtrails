@@ -144,6 +144,7 @@ class PermissionIdentityField(serializers.RelatedField):
     This field represents related Permission objects by their natural key.
     """
     default_error_messages = {
+        'required': _('This field is required.'),
         'does_not_exist': _('Invalid permission "{data}" - object does not exist.'),
         'incorrect_type': _('Incorrect type. Expected permission string identifier, received {data_type}.'),
         'incorrect_length': _('Incorrect length. Expected permission string identifier, '
@@ -156,7 +157,7 @@ class PermissionIdentityField(serializers.RelatedField):
 
         try:
             app_label, model, codename = data.split('.', 2)
-            return Permission.objects.get_by_natural_key(codename=codename, app_label=app_label, model=model)
+            return Permission.objects.get_by_natural_key(app_label=app_label, model=model, codename=codename)
         except Permission.DoesNotExist:
             self.fail('does_not_exist', data=data)
         except ValueError:
