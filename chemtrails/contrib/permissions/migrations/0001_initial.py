@@ -12,7 +12,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('contenttypes', '0002_remove_content_type_name'),
-        ('auth', '0008_alter_user_username_max_length'),
+        ('auth', '0006_require_contenttypes_0002'),
     ]
 
     operations = [
