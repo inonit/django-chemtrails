@@ -1,5 +1,6 @@
 # django-chemtrails
 
+[![Code Health](https://landscape.io/github/inonit/django-chemtrails/master/landscape.svg?style=flat)](https://landscape.io/github/inonit/django-chemtrails/master)
 [![Build Status](https://travis-ci.org/inonit/django-chemtrails.svg?branch=master)](https://travis-ci.org/inonit/django-chemtrails)
 [![Coverage Status](https://coveralls.io/repos/github/inonit/django-chemtrails/badge.svg?branch=master)](https://coveralls.io/github/inonit/django-chemtrails?branch=master)
 [![Documentation Status](https://readthedocs.org/projects/django-chemtrails/badge/?version=latest)](http://django-chemtrails.readthedocs.io/en/latest/?badge=latest)
