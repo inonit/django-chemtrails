@@ -245,31 +245,6 @@ class ModelNodeMixinBase:
             return generic_types[prop]
 
     @classmethod
-    def get_relationship_cardinality(cls, field):
-        """
-        Returns the correct cardinality for the field.
-        @:param field: Django field to inspect for determining cardinality.
-        @:returns: Cardinality
-        @:rtype: Object
-        """
-        # We can't enforce One or OneOrMore cardinalities because
-        # when doing recursive connections we can't be sure that
-        # the "other" side of the relationship yet has been written
-        # to the graph.
-        cardinality_map = {
-            models.ForeignKey: ZeroOrOne,
-            models.OneToOneField: ZeroOrOne,
-            models.ManyToManyField: ZeroOrMore,
-            models.ManyToOneRel: ZeroOrMore,
-            models.OneToOneRel: ZeroOrOne,
-            models.ManyToManyRel: ZeroOrMore,
-            GenericRelation: ZeroOrOne
-        }
-        if field.__class__ not in cardinality_map:
-            return ZeroOrMore
-        return cardinality_map[field.__class__]
-
-    @classmethod
     def get_related_node_property_for_field(cls, field, meta_node=False):
         """
         Get the relationship definition for the related node based on field.
@@ -305,8 +280,7 @@ class ModelNodeMixinBase:
             klass = (__node_cache__[field.related_model]
                      if reverse_field and field.related_model in __node_cache__
                      else get_node_class_for_model(field.related_model))
-            return prop(cls_name=klass, rel_type=relationship_type,
-                        model=DynamicRelation, cardinality=cls.get_relationship_cardinality(field))
+            return prop(cls_name=klass, rel_type=relationship_type, model=DynamicRelation)
 
 
 class ModelNodeMixin(ModelNodeMixinBase):
