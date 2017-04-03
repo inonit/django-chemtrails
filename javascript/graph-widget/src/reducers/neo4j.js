@@ -3,10 +3,16 @@ import { Map, fromJS } from 'immutable';
 export const FETCH_META_GRAPH = 'FETCH_META_GRAPH';
 export const FETCHED_META_GRAPH = 'FETCHED_META_GRAPH';
 export const MARK_DISPLAY_NODE = 'MARK_DISPLAY_NODE';
+export const ADD_NODE_TO_SELECTED_GRAPH = 'ADD_NODE_TO_SELECTED_GRAPH';
+export const ADD_LINK_TO_SELECTED_GRAPH = 'ADD_LINK_TO_SELECTED_GRAPH';
 
 const initialState = Map({
   metaGraph: Map({}),
   displayGraph: {
+    nodes: [],
+    links: []
+  },
+  selectedGraph: {
     nodes: [],
     links: []
   }
@@ -17,17 +23,39 @@ export default function reducer(state = initialState, action) {
       return fromJS(setGraphs(state, action.payload));
     case MARK_DISPLAY_NODE:
       return fromJS(markDisplayNode(state, action.payload));
+    case ADD_NODE_TO_SELECTED_GRAPH:
+      return fromJS(addNode(state, action.payload));
+    case ADD_LINK_TO_SELECTED_GRAPH:
+      return fromJS(addLink(state, action.payload));
+    case MARK_DISPLAY_NODE:
+      return fromJS(markDisplayNode(state, action.payload));
     default:
       return state;
   }
 }
-
+export function addNodeToSelectedGraph(payload) {
+  return { type: ADD_NODE_TO_SELECTED_GRAPH, payload };
+}
+export function addLinkToSelectedGraph(payload) {
+  return { type: ADD_LINK_TO_SELECTED_GRAPH, payload };
+}
 export function getMetaGraph() {
   return { type: FETCH_META_GRAPH };
 }
 
 export function selectDisplayNode(payload) {
   return { type: MARK_DISPLAY_NODE, payload };
+}
+
+function addNode(oldState, payload) {
+  let newState = oldState.toJS();
+  newState.selectedGraph.nodes.push(payload);
+  return newState;
+}
+function addLink(oldState, payload) {
+  let newState = oldState.toJS();
+  newState.selectedGraph.links.push(payload);
+  return newState;
 }
 
 function markDisplayNode(oldState, payload) {
@@ -71,7 +99,8 @@ function setGraphs(oldState, payload) {
           source: index,
           target: g.nodes.indexOf(target[0]),
           type: property[0].relation_type,
-          linkShape: 0
+          linkShape: 0,
+          marked: 0
         });
       }
     });

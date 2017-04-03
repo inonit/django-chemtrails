@@ -1,5 +1,12 @@
 import React, { Component, PropTypes } from 'react';
+import { connect } from 'react-redux';
+import { bindActionCreators } from 'redux';
 import * as d3 from 'd3';
+import {
+  selectDisplayNode,
+  addLinkToSelectedGraph,
+  addNodeToSelectedGraph
+} from '../reducers/neo4j';
 
 class Graph extends Component {
   constructor(props) {
@@ -42,6 +49,9 @@ class Graph extends Component {
         })
         .attr('cy', d => {
           return d.y;
+        })
+        .attr('fill', d => {
+          return d.marked ? 'blue' : 'red';
         });
 
       nodeText
@@ -52,28 +62,52 @@ class Graph extends Component {
           return d.y;
         });
 
-      path.attr('d', d => {
-        var dx = d.target.x - d.source.x,
-          dy = d.target.y - d.source.y,
-          dr = Math.sqrt(dx * dx + dy * dy);
-        return 'M' +
-          d.source.x +
-          ',' +
-          d.source.y +
-          'A' +
-          (dr + d.linkShape) +
-          ',' +
-          (dr + d.linkShape) +
-          ' 0 0,1 ' +
-          d.target.x +
-          ',' +
-          d.target.y;
-      });
-
-      this.setState({
-        links: this.state.links,
-        nodes: this.state.nodes
-      });
+      path
+        .attr('d', d => {
+          var dx = d.target.x - d.source.x,
+            dy = d.target.y - d.source.y,
+            dr = Math.sqrt(dx * dx + dy * dy);
+          return 'M' +
+            d.source.x +
+            ',' +
+            d.source.y +
+            'A' +
+            (dr + d.linkShape) +
+            ',' +
+            (dr + d.linkShape) +
+            ' 0 0,1 ' +
+            d.target.x +
+            ',' +
+            d.target.y;
+        })
+        .attr('stroke', d => {
+          return d.marked ? 'black' : 'red';
+        });
+      pathshadow
+        .attr('d', d => {
+          var dx = d.target.x - d.source.x,
+            dy = d.target.y - d.source.y,
+            dr = Math.sqrt(dx * dx + dy * dy);
+          return 'M' +
+            d.source.x +
+            ',' +
+            d.source.y +
+            'A' +
+            (dr + d.linkShape) +
+            ',' +
+            (dr + d.linkShape) +
+            ' 0 0,1 ' +
+            d.target.x +
+            ',' +
+            d.target.y;
+        })
+        .attr('stroke', d => {
+          return !d.hoover ? 'transparent' : 'yellow';
+        });
+      // this.setState({
+      //   links: this.state.links,
+      //   nodes: this.state.nodes
+      // });
     });
     svg
       .append('svg:defs')
@@ -104,9 +138,49 @@ class Graph extends Component {
         return 'linkId_' + i;
       })
       .attr('fill', 'none')
-      .attr('stroke', 'black')
-      .attr('marker-end', 'url(#end)');
-
+      .attr('stroke', d => {
+        return d.marked ? 'black' : 'red';
+      })
+      .attr('marker-end', 'url(#end)')
+      .on('click', d => {
+        console.log(d);
+        d.marked = !d.marked ? 1 : 0;
+        this.props.actions.addLinkToSelectedGraph(d);
+        if (!d3.event.active) this.force.alphaTarget(0.3).restart();
+      });
+    var pathshadow = svg
+      .append('g')
+      .selectAll('path')
+      .data(this.state.links)
+      .enter()
+      .append('path')
+      .attr('class', function(d) {
+        return 'link ' + d.type;
+      })
+      .attr('id', function(d, i) {
+        return 'linkId_' + i;
+      })
+      .attr('fill', 'none')
+      .attr('stroke', 'blue')
+      .attr('stroke-width', '5')
+      .on('click', d => {
+        console.log(d);
+        d.marked = !d.marked ? 1 : 0;
+        this.props.actions.addLinkToSelectedGraph(d);
+        if (!d3.event.active) this.force.alphaTarget(0.3).restart();
+      })
+      .on('mouseenter', d => {
+        console.log('enter');
+        d.hoover = 1;
+        console.log(d.hoover);
+        if (!d3.event.active) this.force.alphaTarget(0).restart();
+      })
+      .on('mouseleave', d => {
+        console.log('leave');
+        d.hoover = 0;
+        console.log(d.hoover);
+        if (!d3.event.active) this.force.alphaTarget(0).restart();
+      });
     let node = svg
       .append('g')
       .attr('class', 'nodes')
@@ -118,11 +192,23 @@ class Graph extends Component {
         return d.marked ? 'blue' : 'red';
       })
       .attr('r', 40)
-      // .on('click', d => {
-      //   console.log(d);
-      //   if (!d3.event.active) this.force.alphaTarget(0.3).restart();
-      //   d.marked = 1;
-      // })
+      .on('click', d => {
+        //  console.log(d);
+        d.marked = !d.marked ? 1 : 0;
+
+        path
+          .select(f => {
+            if (f.source === d) {
+              //  console.log(f);
+              f.marked = !f.marked ? 1 : 0;
+            }
+          })
+          .attr('fill', 'green');
+
+        this.props.actions.selectDisplayNode(d.name);
+        this.props.actions.addNodeToSelectedGraph(d);
+        //if (!d3.event.active) this.force.alphaTarget(0.3).restart();
+      })
       .call(
         d3
           .drag()
@@ -158,6 +244,7 @@ class Graph extends Component {
       .attr('fill', 'black')
       .attr('text-anchor', 'middle')
       .style('font-size', '10px');
+
     var linktext = svg
       .append('svg:g')
       .selectAll('g.linklabelholder')
@@ -203,4 +290,21 @@ Graph.defaultProps = {
   linkDistance: 300,
   forceStrength: -30
 };
-export default Graph;
+export default connect(
+  state => ({
+    neo4j: state.neo4j
+  }),
+  dispatch => ({
+    actions: bindActionCreators(
+      Object.assign(
+        {},
+        {
+          selectDisplayNode,
+          addLinkToSelectedGraph,
+          addNodeToSelectedGraph
+        }
+      ),
+      dispatch
+    )
+  })
+)(Graph);

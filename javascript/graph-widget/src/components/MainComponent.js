@@ -11,6 +11,7 @@ import { setActiveMenuItem } from '../reducers/uiState/menu';
 import { getMetaGraph } from '../reducers/neo4j';
 import AccessRules from './AccessRulesComponent';
 import GraphView from './GraphViewComponent';
+import GraphItem from './GraphItem';
 import Help from './HelpComponent';
 
 class Main extends Component {
@@ -67,7 +68,7 @@ class Main extends Component {
         </Grid.Column>
 
         <Grid.Row centered columns={12}>
-          <Grid.Column width={4} />
+          <Grid.Column width={4}><GraphItem /></Grid.Column>
           <Grid.Column width={12}> <GraphView /></Grid.Column>
 
         </Grid.Row>

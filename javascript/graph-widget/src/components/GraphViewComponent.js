@@ -10,6 +10,7 @@ import { Menu, Segment } from 'semantic-ui-react';
 import { setActiveGraphItem } from '../reducers/uiState/menu';
 
 import Graph from './Graph';
+import GraphPath from './GraphPath';
 
 class GraphView extends Component {
   displayName = 'GraphView';
@@ -43,9 +44,18 @@ class GraphView extends Component {
           />
         );
       default:
-        return PATH.map((value, index) => {
-          return mapPath(value, index);
-        });
+        return (
+          <div>
+            {PATH.map((value, index) => {
+              return mapPath(value, index);
+            })}
+            <GraphPath
+              data="hest"
+              nodes={NEO.toJS().displayGraph.nodes}
+              links={NEO.toJS().displayGraph.links}
+            />
+          </div>
+        );
     }
   }
   render() {
