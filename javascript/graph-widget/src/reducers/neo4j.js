@@ -3,6 +3,7 @@ import { Map, fromJS } from 'immutable';
 export const FETCH_META_GRAPH = 'FETCH_META_GRAPH';
 export const FETCHED_META_GRAPH = 'FETCHED_META_GRAPH';
 export const MARK_DISPLAY_NODE = 'MARK_DISPLAY_NODE';
+export const MARK_DISPLAY_LINK = 'MARK_DISPLAY_LINK';
 export const ADD_NODE_TO_SELECTED_GRAPH = 'ADD_NODE_TO_SELECTED_GRAPH';
 export const ADD_LINK_TO_SELECTED_GRAPH = 'ADD_LINK_TO_SELECTED_GRAPH';
 
@@ -29,6 +30,8 @@ export default function reducer(state = initialState, action) {
       return fromJS(addLink(state, action.payload));
     case MARK_DISPLAY_NODE:
       return fromJS(markDisplayNode(state, action.payload));
+    case MARK_DISPLAY_LINK:
+      return fromJS(markDisplayLink(state, action.payload));
     default:
       return state;
   }
@@ -46,6 +49,9 @@ export function getMetaGraph() {
 export function selectDisplayNode(payload) {
   return { type: MARK_DISPLAY_NODE, payload };
 }
+export function selectDisplayLink(payload) {
+  return { type: MARK_DISPLAY_LINK, payload };
+}
 
 function addNode(oldState, payload) {
   let newState = oldState.toJS();
@@ -61,9 +67,19 @@ function addLink(oldState, payload) {
 function markDisplayNode(oldState, payload) {
   let newState = oldState.toJS();
 
-  newState.displayGraph.nodes.find(x => {
+  let node = newState.displayGraph.nodes.find(x => {
     return x.name === payload;
-  }).marked = 1;
+  });
+  node.marked = !node.marked;
+  return newState;
+}
+function markDisplayLink(oldState, payload) {
+  let newState = oldState.toJS();
+
+  let link = newState.displayGraph.links.find(x => {
+    return x.name === payload;
+  });
+  link.marked = !link.marked;
   return newState;
 }
 
@@ -81,6 +97,7 @@ function setGraphs(oldState, payload) {
       label: value.label,
       id: value.id,
       marked: 0,
+      hoover: 0,
       item: value
     });
   });
@@ -100,7 +117,8 @@ function setGraphs(oldState, payload) {
           target: g.nodes.indexOf(target[0]),
           type: property[0].relation_type,
           linkShape: 0,
-          marked: 0
+          marked: 0,
+          hoover: 0
         });
       }
     });

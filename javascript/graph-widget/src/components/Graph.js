@@ -4,6 +4,7 @@ import { bindActionCreators } from 'redux';
 import * as d3 from 'd3';
 import {
   selectDisplayNode,
+  selectDisplayLink,
   addLinkToSelectedGraph,
   addNodeToSelectedGraph
 } from '../reducers/neo4j';
@@ -166,19 +167,19 @@ class Graph extends Component {
       .on('click', d => {
         console.log(d);
         d.marked = !d.marked ? 1 : 0;
-        this.props.actions.addLinkToSelectedGraph(d);
+        //this.props.actions.addLinkToSelectedGraph(d);
+        this.props.actions.selectDisplayLink(d.name);
+
         if (!d3.event.active) this.force.alphaTarget(0.3).restart();
       })
       .on('mouseenter', d => {
-        console.log('enter');
         d.hoover = 1;
-        console.log(d.hoover);
+
         if (!d3.event.active) this.force.alphaTarget(0).restart();
       })
       .on('mouseleave', d => {
-        console.log('leave');
         d.hoover = 0;
-        console.log(d.hoover);
+
         if (!d3.event.active) this.force.alphaTarget(0).restart();
       });
     let node = svg
@@ -206,7 +207,7 @@ class Graph extends Component {
           .attr('fill', 'green');
 
         this.props.actions.selectDisplayNode(d.name);
-        this.props.actions.addNodeToSelectedGraph(d);
+        //this.props.actions.addNodeToSelectedGraph(d);
         //if (!d3.event.active) this.force.alphaTarget(0.3).restart();
       })
       .call(
@@ -300,6 +301,7 @@ export default connect(
         {},
         {
           selectDisplayNode,
+          selectDisplayLink,
           addLinkToSelectedGraph,
           addNodeToSelectedGraph
         }
