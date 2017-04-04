@@ -6,6 +6,8 @@ export const MARK_DISPLAY_NODE = 'MARK_DISPLAY_NODE';
 export const MARK_DISPLAY_LINK = 'MARK_DISPLAY_LINK';
 export const ADD_NODE_TO_SELECTED_GRAPH = 'ADD_NODE_TO_SELECTED_GRAPH';
 export const ADD_LINK_TO_SELECTED_GRAPH = 'ADD_LINK_TO_SELECTED_GRAPH';
+export const POST_GRAPH_RULE = 'POST_GRAPH_RULE';
+export const POSTED_GRAPH_RULE = 'POSTED_GRAPH_RULE';
 
 const initialState = Map({
   metaGraph: Map({}),
@@ -32,6 +34,8 @@ export default function reducer(state = initialState, action) {
       return fromJS(markDisplayNode(state, action.payload));
     case MARK_DISPLAY_LINK:
       return fromJS(markDisplayLink(state, action.payload));
+    case POSTED_GRAPH_RULE:
+      return fromJS(markDisplayGraph(state, action.payload));
     default:
       return state;
   }
@@ -51,6 +55,9 @@ export function selectDisplayNode(payload) {
 }
 export function selectDisplayLink(payload) {
   return { type: MARK_DISPLAY_LINK, payload };
+}
+export function postNewRule(payload) {
+  return { type: POST_GRAPH_RULE, payload };
 }
 
 function addNode(oldState, payload) {
@@ -77,12 +84,16 @@ function markDisplayLink(oldState, payload) {
   let newState = oldState.toJS();
 
   let link = newState.displayGraph.links.find(x => {
-    return x.name === payload;
+    return x.source === payload.source.index && x.target === payload.target.index;
   });
   link.marked = !link.marked;
   return newState;
 }
-
+function markDisplayGraph(oldState, payload) {
+  let newState = oldState.toJS();
+  console.log('finaly');
+  return newState;
+}
 function setGraphs(oldState, payload) {
   let newState = oldState.toJS();
   newState.metaGraph = payload;

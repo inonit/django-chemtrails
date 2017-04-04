@@ -6,7 +6,8 @@ import {
   selectDisplayNode,
   selectDisplayLink,
   addLinkToSelectedGraph,
-  addNodeToSelectedGraph
+  addNodeToSelectedGraph,
+  postNewRule
 } from '../reducers/neo4j';
 
 class Graph extends Component {
@@ -19,6 +20,7 @@ class Graph extends Component {
   }
 
   componentDidMount() {
+    this.props.actions.postNewRule('hello');
     var svg = d3.select('svg').append('svg');
     this.force = d3
       .forceSimulation()
@@ -168,7 +170,7 @@ class Graph extends Component {
         console.log(d);
         d.marked = !d.marked ? 1 : 0;
         //this.props.actions.addLinkToSelectedGraph(d);
-        this.props.actions.selectDisplayLink(d.name);
+        this.props.actions.selectDisplayLink(d);
 
         if (!d3.event.active) this.force.alphaTarget(0.3).restart();
       })
@@ -200,8 +202,9 @@ class Graph extends Component {
         path
           .select(f => {
             if (f.source === d) {
-              //  console.log(f);
+              console.log(f);
               f.marked = !f.marked ? 1 : 0;
+              this.props.actions.selectDisplayLink(f);
             }
           })
           .attr('fill', 'green');
@@ -303,7 +306,8 @@ export default connect(
           selectDisplayNode,
           selectDisplayLink,
           addLinkToSelectedGraph,
-          addNodeToSelectedGraph
+          addNodeToSelectedGraph,
+          postNewRule
         }
       ),
       dispatch
