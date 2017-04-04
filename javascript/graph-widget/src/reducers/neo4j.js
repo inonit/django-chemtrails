@@ -83,10 +83,11 @@ function markDisplayNode(oldState, payload) {
 function markDisplayLink(oldState, payload) {
   let newState = oldState.toJS();
 
-  let link = newState.displayGraph.links.find(x => {
-    return x.source === payload.source.index && x.target === payload.target.index;
+  newState.displayGraph.links.forEach(x => {
+    if (x.source === payload.source.index && x.target === payload.target.index) {
+      x.marked = !x.marked;
+    }
   });
-  link.marked = !link.marked;
   return newState;
 }
 function markDisplayGraph(oldState, payload) {
