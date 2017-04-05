@@ -101,7 +101,10 @@ class PathManager:
                 ),
                 'target': 'target{ident}: {label}'.format(
                     ident=config['target_class'].creation_counter,
-                    label=config['target_class'].__label__
+                    label='{0} {{{1}}}'.format(config['target_class'].__label__,
+                                               ', '.join(['{}: {}'.format(key, value) for key, value in
+                                                          config['filters'].items()]))
+                    if config['filters'] else config['target_class'].__label__
                 )
             })
             relation_str = config['atom'].format(**defaults)
@@ -115,7 +118,7 @@ class PathManager:
 
         return ''.join(statements)
 
-    def add(self, relation_type=None, properties=None):
+    def add(self, relation_type=None, properties=None, **filters):
         """
         Adds a relationship matching string, based on relation type.
         
@@ -126,6 +129,9 @@ class PathManager:
                            to gather properties for the generated relationship
                            statement.
         :type properties: dict
+        :param filters: Filters which should be applied to the relations types
+                        end node.
+        :type filters: dict
         :returns: self
         """
         traversal = self.get_traversal(relation_type)
@@ -146,6 +152,7 @@ class PathManager:
             'source_class': self.next_class,
             'target_class': traversal.target_class,
             'params': params,
+            'filters': filters,
             'atom': build_relation_string(lhs='{source}', rhs='{target}',
                                           ident='r%d' % traversal.source_class.creation_counter,
                                           props=relation_properties, **traversal.definition)
@@ -162,7 +169,7 @@ class PathManager:
                 return traversal
         return None
     
-    def get_path_statement(self):
+    def get_path(self):
         """
         :returns: The calculated statement as MATCH path = (...) RETURN path
         :rtype str
