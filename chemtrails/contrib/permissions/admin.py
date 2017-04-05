@@ -26,7 +26,7 @@ class AccessRuleAdmin(admin.ModelAdmin):
     list_filter = ('is_active', 'ctype_target')
     filter_horizontal = ('permissions',)
     fieldsets = (
-        (None, {'fields': ('ctype_source', 'ctype_target', 'permissions', 'query', 'is_active')}),
+        (None, {'fields': ('ctype_source', 'ctype_target', 'permissions', 'relation_types', 'is_active')}),
         ('Rule editor', {'fields': ('graph',)})
     )
 

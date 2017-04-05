@@ -2,6 +2,7 @@
 
 from operator import itemgetter
 
+from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
@@ -33,7 +34,9 @@ class AccessRule(models.Model):
     permissions = models.ManyToManyField(Permission, verbose_name=_('access rule permissions'), blank=True,
                                          help_text=_('Required permissions for target node.'),
                                          related_name='accessrule_permissions', related_query_name='accessrule')
-    query = models.TextField(_('cypher query'), blank=True, help_text=_('Cypher query for ths access rule.'))
+    relation_types = ArrayField(verbose_name=_('relation types'), default=[],
+                                base_field=models.TextField(blank=True),
+                                help_text=_('Required relation types for generating a Cypher path.'))
     is_active = models.BooleanField(default=True, help_text=_('Uncheck to disable evaluation of the rule '
                                                               'in the rule chain.'))
     created = models.DateTimeField(verbose_name=_('created'), auto_now_add=True)

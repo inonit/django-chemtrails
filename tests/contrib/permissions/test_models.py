@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 
+from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
 
-from chemtrails.contrib.permissions.models import get_node_relations_choices, get_node_permissions_choices
+from chemtrails.contrib.permissions.models import (
+    AccessRule,
+    get_node_relations_choices, get_node_permissions_choices
+)
 
 
 class ChoicesHelperFunctionsTestCase(TestCase):

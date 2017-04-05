@@ -80,8 +80,12 @@ class NodeBase(NodeMeta):
     """
     Base Meta class for ``StructuredNode`` which adds a model class.
     """
+    creation_counter = 0
+
     def __new__(mcs, name, bases, attrs):
         cls = super(NodeBase, mcs).__new__(mcs, str(name), bases, attrs)
+        cls.creation_counter = NodeBase.creation_counter
+        NodeBase.creation_counter += 1
 
         if getattr(cls, 'Meta', None):
             meta = Meta('Meta', (Meta,), dict(cls.Meta.__dict__))
@@ -173,11 +177,11 @@ class ModelNodeMixinBase:
     def _log_relationship_definition(self, action: str, node, prop, level: int = 10):
         prop_direction = {-1: 'INCOMING', 0: 'MUTUAL', 1: 'OUTGOING'}
         message = ('%(action)s %(direction)s relation %(relation_type)s '
-                   'between %(source)r and %(node)r' % {
+                   'between %(klass)r and %(node)r' % {
                        'action': action,
                        'direction': prop_direction[prop.definition['direction']],
                        'relation_type': prop.definition['relation_type'],
-                       'source': prop.source,
+                       'klass': prop.source,
                        'node': node
                    })
         logger.log(level=level, msg=message)
@@ -192,6 +196,24 @@ class ModelNodeMixinBase:
     @classproperty
     def has_relations(cls):
         return len(cls.__all_relationships__) > 0
+
+    # @classproperty
+    # def paths(cls):
+    #     """
+    #     Returns a ``PathManager`` object which can be used to build
+    #     traversal paths originating from this node.
+    #     """
+    #     from chemtrails.neoutils.managers import PathManager
+    #     return PathManager(cls)
+
+    @property
+    def paths(self):
+        """
+        Returns a ``PathManager`` object which can be used to build 
+        traversal paths originating from this node.
+        """
+        from chemtrails.neoutils.managers import PathManager
+        return PathManager(self)
 
     @staticmethod
     def get_property_class_for_field(klass):
