@@ -4,8 +4,8 @@ export const FETCH_META_GRAPH = 'FETCH_META_GRAPH';
 export const FETCHED_META_GRAPH = 'FETCHED_META_GRAPH';
 export const MARK_DISPLAY_NODE = 'MARK_DISPLAY_NODE';
 export const MARK_DISPLAY_LINK = 'MARK_DISPLAY_LINK';
-export const ADD_NODE_TO_SELECTED_GRAPH = 'ADD_NODE_TO_SELECTED_GRAPH';
-export const ADD_LINK_TO_SELECTED_GRAPH = 'ADD_LINK_TO_SELECTED_GRAPH';
+export const TOGGLE_NODE_TO_SELECTED_GRAPH = 'ADD_NODE_TO_SELECTED_GRAPH';
+export const TOGGLE_LINK_TO_SELECTED_GRAPH = 'ADD_LINK_TO_SELECTED_GRAPH';
 export const POST_GRAPH_RULE = 'POST_GRAPH_RULE';
 export const POSTED_GRAPH_RULE = 'POSTED_GRAPH_RULE';
 
@@ -26,10 +26,10 @@ export default function reducer(state = initialState, action) {
       return fromJS(setGraphs(state, action.payload));
     case MARK_DISPLAY_NODE:
       return fromJS(markDisplayNode(state, action.payload));
-    case ADD_NODE_TO_SELECTED_GRAPH:
-      return fromJS(addNode(state, action.payload));
-    case ADD_LINK_TO_SELECTED_GRAPH:
-      return fromJS(addLink(state, action.payload));
+    case TOGGLE_NODE_TO_SELECTED_GRAPH:
+      return fromJS(toggleNode(state, action.payload));
+    case TOGGLE_LINK_TO_SELECTED_GRAPH:
+      return fromJS(toggleLink(state, action.payload));
     case MARK_DISPLAY_NODE:
       return fromJS(markDisplayNode(state, action.payload));
     case MARK_DISPLAY_LINK:
@@ -40,11 +40,11 @@ export default function reducer(state = initialState, action) {
       return state;
   }
 }
-export function addNodeToSelectedGraph(payload) {
-  return { type: ADD_NODE_TO_SELECTED_GRAPH, payload };
+export function toggleNodeToSelectedGraph(payload) {
+  return { type: TOGGLE_NODE_TO_SELECTED_GRAPH, payload };
 }
-export function addLinkToSelectedGraph(payload) {
-  return { type: ADD_LINK_TO_SELECTED_GRAPH, payload };
+export function toggleLinkToSelectedGraph(payload) {
+  return { type: TOGGLE_LINK_TO_SELECTED_GRAPH, payload };
 }
 export function getMetaGraph() {
   return { type: FETCH_META_GRAPH };
@@ -60,14 +60,40 @@ export function postNewRule(payload) {
   return { type: POST_GRAPH_RULE, payload };
 }
 
-function addNode(oldState, payload) {
+function toggleNode(oldState, payload) {
   let newState = oldState.toJS();
-  newState.selectedGraph.nodes.push(payload);
+
+  //look for node and index:
+  let node = newState.selectedGraph.nodes.find(x => {
+    return x.id === payload.item.id;
+  });
+  let i = newState.selectedGraph.nodes.indexOf(node);
+
+  //add if not present and return:
+  if (i === -1) {
+    newState.selectedGraph.nodes.push(payload.item);
+    return newState;
+  }
+  //else remove:
+  newState.selectedGraph.nodes.splice(i, 1);
   return newState;
 }
-function addLink(oldState, payload) {
+function toggleLink(oldState, payload) {
   let newState = oldState.toJS();
-  newState.selectedGraph.links.push(payload);
+
+  //look for node and index:
+  let link = newState.selectedGraph.links.find(x => {
+    return x.index === payload.index;
+  });
+  let i = newState.selectedGraph.links.indexOf(link);
+
+  //add if not present and return:
+  if (i === -1) {
+    newState.selectedGraph.links.push(payload);
+    return newState;
+  }
+  //else remove
+  newState.selectedGraph.links.splice(i, 1);
   return newState;
 }
 

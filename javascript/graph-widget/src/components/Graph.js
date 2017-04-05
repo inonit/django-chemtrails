@@ -5,8 +5,8 @@ import * as d3 from 'd3';
 import {
   selectDisplayNode,
   selectDisplayLink,
-  addLinkToSelectedGraph,
-  addNodeToSelectedGraph,
+  toggleLinkToSelectedGraph,
+  toggleNodeToSelectedGraph,
   postNewRule
 } from '../reducers/neo4j';
 
@@ -148,7 +148,7 @@ class Graph extends Component {
       .on('click', d => {
         console.log(d);
         d.marked = !d.marked ? 1 : 0;
-        this.props.actions.addLinkToSelectedGraph(d);
+        this.props.actions.toggleLinkToSelectedGraph(d);
         if (!d3.event.active) this.force.alphaTarget(0.3).restart();
       });
     var pathshadow = svg
@@ -169,7 +169,7 @@ class Graph extends Component {
       .on('click', d => {
         console.log(d);
         d.marked = !d.marked ? 1 : 0;
-        //this.props.actions.addLinkToSelectedGraph(d);
+        this.props.actions.toggleLinkToSelectedGraph(d);
         this.props.actions.selectDisplayLink(d);
 
         if (!d3.event.active) this.force.alphaTarget(0.3).restart();
@@ -205,12 +205,13 @@ class Graph extends Component {
               console.log(f);
               f.marked = !f.marked ? 1 : 0;
               this.props.actions.selectDisplayLink(f);
+              this.props.actions.toggleLinkToSelectedGraph(f);
             }
           })
           .attr('fill', 'green');
 
         this.props.actions.selectDisplayNode(d.name);
-        //this.props.actions.addNodeToSelectedGraph(d);
+        this.props.actions.toggleNodeToSelectedGraph(d);
         //if (!d3.event.active) this.force.alphaTarget(0.3).restart();
       })
       .call(
@@ -305,8 +306,8 @@ export default connect(
         {
           selectDisplayNode,
           selectDisplayLink,
-          addLinkToSelectedGraph,
-          addNodeToSelectedGraph,
+          toggleLinkToSelectedGraph,
+          toggleNodeToSelectedGraph,
           postNewRule
         }
       ),
