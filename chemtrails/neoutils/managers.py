@@ -102,8 +102,9 @@ class PathManager:
                 'target': 'target{ident}: {label}'.format(
                     ident=config['target_class'].creation_counter,
                     label='{0} {{{1}}}'.format(config['target_class'].__label__,
-                                               ', '.join(['{}: {}'.format(key, value) for key, value in
-                                                          config['filters'].items()]))
+                                               ', '.join(['{}: {}'.format(
+                                                   key, '"%s"' % value if isinstance(value, str) else value)
+                                                   for key, value in config['filters'].items()]))
                     if config['filters'] else config['target_class'].__label__
                 )
             })

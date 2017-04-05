@@ -7,7 +7,7 @@ from neomodel import db
 from chemtrails.neoutils import get_node_for_object
 from chemtrails.neoutils.managers import PathManager
 
-from tests.testapp.autofixtures import Book, BookFixture
+from tests.testapp.autofixtures import get_user_model, Book, BookFixture
 from tests.utils import flush_nodes
 
 
@@ -24,9 +24,13 @@ class PathManagerTestCase(TestCase):
         self.assertIsInstance(self.node.paths, PathManager)
 
     def test_path_manager_add_relationship(self):
-        query = self.node.paths.add('AUTHORS').add('USER').get_path_statement()
-        try:
-            result, meta = db.cypher_query(query)
-        except Exception as e:
-            raise e
-        self.assertEqual(True, True)
+        user = get_user_model().objects.latest('pk')
+        query = self.node.paths.add('AUTHORS').add('USER', **{
+            'pk': user.pk,
+            'username': user.username,
+            'is_active': user.is_active
+        }).get_path()
+        print(query)
+        result, meta = db.cypher_query(query)
+        self.assertTrue(len(result))
+        self.assertEqual(meta, ('path',))
