@@ -9,6 +9,7 @@ from neomodel.match import OUTGOING, INCOMING, EITHER
 def build_relation_string(lhs, rhs, ident=None, relation_type=None, direction=None, props=None, **kwargs):
     """
     Generate a relationship matching string, with specified parameters.
+    
     Basically a rewrite of ``neomodel.match._rel_helper`` except that it 
     returns a string suitable for doing string formatting on.
     
@@ -87,7 +88,6 @@ class PathManager:
         # Matches ie. (source1: UserNode) as long as it's followed
         # by a "-[" which indicates the beginning of a relationship.
         regex = r'^(\(source\d+:.\w+\)(?=-\[))'
-
         statements = []
         for n, config in enumerate(self._statements):
             # Replace placeholders with actual values.
@@ -138,7 +138,8 @@ class PathManager:
         # Instantiate a fake relationship model in order
         # to pick attributes for the relationship.
         fake = model(**properties)
-        params = {prop: value for prop, value in model.deflate(fake.__properties__).items()}
+        params = {prop: '"%s"' % value if isinstance(value, str) else value
+                  for prop, value in model.deflate(fake.__properties__).items()}
         relation_properties = {key: '{{{0}}}'.format(key) for key in params.keys()}
 
         self._statements.append({
