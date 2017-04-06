@@ -12,9 +12,17 @@ env:
     - NEO4J_VERSION="latest"
     - PIP_DOWNLOAD_CACHE="pip_download_cache"
   matrix:
-    - DJANGO_VERSION=">=1.8,<1.9"
     - DJANGO_VERSION=">=1.9,<1.10"
     - DJANGO_VERSION=">=1.10,<1.11"
+    - DJANGO_VERSION=">=1.11,<1.12"
+
+addons:
+  apt:
+    sources:
+      - sourceline: 'ppa:cleishm/neo4j'
+    packages:
+      - build-essential
+      - libcypher-parser-dev
 
 cache:
   pip: true
