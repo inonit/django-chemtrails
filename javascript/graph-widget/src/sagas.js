@@ -39,7 +39,7 @@ export function* watchGetAccessRuleControlNodes() {
  */
 export function* sagaPostGraphRule(data) {
   console.log(data);
-  const payload = yield call(postGraphRule, [data]);
+  const payload = yield call(postGraphRule, data);
   yield put({ type: neo4j.POSTED_GRAPH_RULE, payload });
 }
 export function* watchSagaPostGraphRule(data) {

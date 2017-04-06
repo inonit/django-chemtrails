@@ -78,6 +78,7 @@ function toggleNode(oldState, payload) {
   newState.selectedGraph.nodes.splice(i, 1);
   return newState;
 }
+
 function toggleLink(oldState, payload) {
   let newState = oldState.toJS();
 
@@ -106,6 +107,7 @@ function markDisplayNode(oldState, payload) {
   node.marked = !node.marked;
   return newState;
 }
+
 function markDisplayLink(oldState, payload) {
   let newState = oldState.toJS();
 
@@ -116,11 +118,13 @@ function markDisplayLink(oldState, payload) {
   });
   return newState;
 }
+
 function markDisplayGraph(oldState, payload) {
   let newState = oldState.toJS();
-  console.log('finaly');
+  console.log(payload);
   return newState;
 }
+
 function setGraphs(oldState, payload) {
   let newState = oldState.toJS();
   newState.metaGraph = payload;

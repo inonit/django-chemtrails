@@ -1,23 +1,42 @@
 import React, { Component, PropTypes } from 'react';
 import { connect } from 'react-redux';
+import { bindActionCreators } from 'redux';
 import { Button, Card, Image, Feed, Dropdown } from 'semantic-ui-react';
+import { postNewRule } from '../reducers/neo4j';
 
 class GraphItem extends Component {
   displayName = 'GraphItem';
+
   constructor(props) {
     super(props);
     this.permissions = [];
   }
+
   static propTypes = {};
+
   onDropDownChange = (e, { value }) => {
     this.permissions = value;
-    console.log(this.permissions);
   };
+  onSaveClick = (e, { value }) => {
+    e.preventDefault();
+    let graph = this.props.graph.toJS().selectedGraph;
+    let postData = {
+      sourceNode: graph.nodes[0],
+      targetNode: graph.nodes[graph.nodes.length - 1],
+      permissions: this.permissions,
+      relationTypes: graph.links.map(x => {
+        return x.type;
+      })
+    };
+    this.props.actions.postNewRule(postData);
+  };
+
   render() {
     let graph = this.props.graph.toJS().selectedGraph;
 
     return (
       <div>
+        <Button floated="right" onClick={this.onSaveClick}>Save Rule</Button>
         <Card.Group>
           {graph.nodes.map((node, i) => {
             return (
@@ -31,7 +50,6 @@ class GraphItem extends Component {
                     {i === 0
                       ? '  This is the start position of your rule, normally the User Object'
                       : ''}
-                    This is the start position of your rule, normally the User Object
                   </Card.Description>
                   <Feed>
                     <Feed.Event>
@@ -44,7 +62,10 @@ class GraphItem extends Component {
                       </Feed.Content>
                     </Feed.Event>
                   </Feed>
-                  <div hidden={i != graph.nodes.length - 1 || i === 0}>
+                  <div hidden={i !== graph.nodes.length - 1 || i === 0}>
+                    <Card.Meta>
+                      Select the premissions this rule will be applied to
+                    </Card.Meta>
                     <Dropdown
                       placeholder="rights"
                       fluid
@@ -67,4 +88,19 @@ class GraphItem extends Component {
   }
 }
 
-export default connect(state => ({ graph: state.neo4j }), dispatch => ({}))(GraphItem);
+export default connect(
+  state => ({
+    graph: state.neo4j
+  }),
+  dispatch => ({
+    actions: bindActionCreators(
+      Object.assign(
+        {},
+        {
+          postNewRule
+        }
+      ),
+      dispatch
+    )
+  })
+)(GraphItem);
