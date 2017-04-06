@@ -6,8 +6,7 @@ import {
   selectDisplayNode,
   selectDisplayLink,
   toggleLinkToSelectedGraph,
-  toggleNodeToSelectedGraph,
-  postNewRule
+  toggleNodeToSelectedGraph
 } from '../reducers/neo4j';
 
 class Graph extends Component {
@@ -20,7 +19,6 @@ class Graph extends Component {
   }
 
   componentDidMount() {
-    this.props.actions.postNewRule('hello');
     var svg = d3.select('svg').append('svg');
     this.force = d3
       .forceSimulation()
@@ -307,8 +305,7 @@ export default connect(
           selectDisplayNode,
           selectDisplayLink,
           toggleLinkToSelectedGraph,
-          toggleNodeToSelectedGraph,
-          postNewRule
+          toggleNodeToSelectedGraph
         }
       ),
       dispatch

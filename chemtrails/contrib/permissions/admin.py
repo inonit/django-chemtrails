@@ -26,8 +26,8 @@ class AccessRuleAdmin(admin.ModelAdmin):
     list_filter = ('is_active', 'ctype_target')
     filter_horizontal = ('permissions',)
     fieldsets = (
-        (None, {'fields': ('ctype_source', 'ctype_target', 'permissions', 'relation_types', 'is_active')}),
-        ('Rule editor', {'fields': ('graph',)})
+         (None, {'fields': ( 'permissions',  'is_active')}),
+        ('Rule editor', {'fields': ('graph',)}),
     )
 
     def get_form(self, request, obj=None, **kwargs):
