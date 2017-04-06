@@ -23,9 +23,6 @@ addons:
     packages:
       - build-essential
       - libcypher-parser-dev
-      - libffi-dev
-      - libssl-dev
-      - python-dev
 
 cache:
   pip: true
@@ -45,7 +42,6 @@ before_install:
 
 install:
   - pip install -Uq pip setuptools coveralls
-  - pip install -U pyopenssl pyasn1
   - pip install "Django${DJANGO_VERSION}"
   - python setup.py clean build install
 
