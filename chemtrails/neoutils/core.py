@@ -197,15 +197,6 @@ class ModelNodeMixinBase:
     def has_relations(cls):
         return len(cls.__all_relationships__) > 0
 
-    # @classproperty
-    # def paths(cls):
-    #     """
-    #     Returns a ``PathManager`` object which can be used to build
-    #     traversal paths originating from this node.
-    #     """
-    #     from chemtrails.neoutils.managers import PathManager
-    #     return PathManager(cls)
-
     @property
     def paths(self):
         """
@@ -541,8 +532,6 @@ class MetaNodeMeta(NodeBase):
         cls.type = StringProperty(default='MetaNode')
         cls.app_label = StringProperty(default=cls.Meta.model._meta.app_label)
         cls.model_name = StringProperty(default=cls.Meta.model._meta.model_name)
-        # cls.default_permissions = ArrayProperty(default=set(itertools.chain(cls.Meta.model._meta.permissions,
-        #                                                                     cls.Meta.model._meta.default_permissions)))
         cls.model_permissions = ArrayProperty(default=cls.get_model_permissions(cls.Meta.model))
 
         forward_relations = cls.get_forward_relation_fields()
