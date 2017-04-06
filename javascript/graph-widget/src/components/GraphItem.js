@@ -4,9 +4,15 @@ import { Button, Card, Image, Feed, Dropdown } from 'semantic-ui-react';
 
 class GraphItem extends Component {
   displayName = 'GraphItem';
-
+  constructor(props) {
+    super(props);
+    this.permissions = [];
+  }
   static propTypes = {};
-
+  onDropDownChange = (e, { value }) => {
+    this.permissions = value;
+    console.log(this.permissions);
+  };
   render() {
     let graph = this.props.graph.toJS().selectedGraph;
 
@@ -47,6 +53,7 @@ class GraphItem extends Component {
                       options={node.model_permissions.map(perm => {
                         return { key: perm, value: perm, text: perm };
                       })}
+                      onChange={this.onDropDownChange}
                     />
                   </div>
                 </Card.Content>
