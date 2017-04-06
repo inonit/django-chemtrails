@@ -34,7 +34,7 @@ class MetaGraphView(ViewSet):
         """
         Returns the meta graph serialized as JSON.
         """
-        result, _ = db.cypher_query('MATCH (n {type: "MetaNode"}) RETURN n')
+        result, _ = db.cypher_query('MATCH (n {type: "MetaNode", is_intermediary: False}) RETURN n')
 
         response = []
         for item in list(flatten(result)):
