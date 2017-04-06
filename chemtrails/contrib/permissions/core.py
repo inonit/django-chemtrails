@@ -56,6 +56,7 @@ class GraphPermissionChecker(object):
         # construct a `MATCH path = (...)` cypher query.
         queries = []
         for access_rule in self.get_accessrule_queryset(obj).filter(
+                is_active=True,
                 ctype_source=get_content_type(self.user or self.group),
                 ctype_target=get_content_type(obj),
                 permissions__codename=perm):
