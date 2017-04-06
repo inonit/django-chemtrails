@@ -4,16 +4,16 @@ from itertools import chain
 
 from neo4j.v1 import Path
 
-from chemtrails.utils import flatten
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission, Group
 from django.utils.encoding import force_text
 
-from neomodel import db
+from neomodel import db, InflateError
 
 from chemtrails.neoutils import get_node_class_for_model
 from chemtrails.contrib.permissions.models import AccessRule
 from chemtrails.contrib.permissions.utils import get_identity, get_content_type
+from chemtrails.utils import flatten
 
 User = get_user_model()
 
@@ -86,7 +86,7 @@ class GraphPermissionChecker(object):
                         end_node = get_node_class_for_model(obj).inflate(item.end)
                         if source_node == start_node and target_node == end_node:
                             return True
-                    except:
+                    except InflateError:
                         continue
 
         return False
