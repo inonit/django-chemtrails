@@ -59,17 +59,17 @@ class GraphPermissionChecker(object):
                 ctype_target=get_content_type(obj),
                 permissions__codename=perm):
 
-            statement = source_node.paths.statement
+            statement = source_node.paths
             for n, relation_type in enumerate(access_rule.relation_types, 1):
                 filters = {}
                 if n == len(access_rule.relation_types):
                     filters.update({'pk': obj.pk})
 
                 # Recalculate the `MATCH path = (...)` statement on each iteration.
-                statement = source_node.paths.add(relation_type, **filters).get_path()
+                statement = statement.add(relation_type, **filters)
 
             if statement:
-                queries.append(statement)
+                queries.append(statement.get_path())
 
         # Execute all constructed path queries and return True on the first match.
         for query in queries:
