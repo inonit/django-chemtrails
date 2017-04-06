@@ -11,6 +11,7 @@ from django.utils.encoding import force_text
 from neomodel import db, InflateError
 
 from chemtrails.neoutils import get_node_class_for_model
+from chemtrails.neoutils.query import validate_cypher
 from chemtrails.contrib.permissions.models import AccessRule
 from chemtrails.contrib.permissions.utils import get_identity, get_content_type
 from chemtrails.utils import flatten
@@ -73,6 +74,7 @@ class GraphPermissionChecker(object):
 
         # Execute all constructed path queries and return True on the first match.
         for query in queries:
+            validate_cypher(query, raise_exception=True)
             result, _ = db.cypher_query(query)
             if result:
                 for item in flatten(result):
