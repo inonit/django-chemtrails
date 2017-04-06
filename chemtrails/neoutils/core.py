@@ -533,6 +533,8 @@ class MetaNodeMeta(NodeBase):
         cls.app_label = StringProperty(default=cls.Meta.model._meta.app_label)
         cls.model_name = StringProperty(default=cls.Meta.model._meta.model_name)
         cls.model_permissions = ArrayProperty(default=cls.get_model_permissions(cls.Meta.model))
+        cls.is_intermediary = BooleanProperty(default=not ContentType.objects.filter(
+            app_label=cls.Meta.model._meta.app_label, model=cls.Meta.model._meta.model_name).exists())
 
         forward_relations = cls.get_forward_relation_fields()
         reverse_relations = cls.get_reverse_relation_fields()
