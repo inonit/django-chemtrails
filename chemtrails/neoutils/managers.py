@@ -85,28 +85,38 @@ class PathManager:
         if not self._statements:
             return ''
 
+        def format_node(ident, label, **filters):
+            if not filters:
+                return '{0}: {1}'.format(ident, label)
+            else:
+                label = '{0} {{{1}}}'.format(
+                    label, ', '.join(['{}: {}'.format(
+                        key, '"%s"' % value if isinstance(value, str) else value)
+                        for key, value in filters.items()])
+                )
+                return '{0}: {1}'.format(ident, label)
+
         # Matches ie. (source1: UserNode) as long as it's followed
         # by a "-[" which indicates the beginning of a relationship.
         regex = r'^(\(source\d+:.\w+\)(?=-\[))'
+
         statements = []
         for n, config in enumerate(self._statements):
             # Replace placeholders with actual values.
             defaults = config['params'].copy()
             defaults.update({
-                'source': 'source{ident}: {label}'.format(
+                'source': 'source{0}'.format(format_node(
                     ident=self.next_class.creation_counter,
-                    label='{0} {{pk: {1}}}'.format(
-                        config['source_class'].__label__, config['source_class'].pk
-                    ) if not inspect.isclass(config['source_class']) else config['source_class'].__label__
-                ),
-                'target': 'target{ident}: {label}'.format(
+                    label=config['source_class'].__label__,
+                    # If we have a node instance, always match its primary key!
+                    **{'pk': config['source_class'].pk} if not inspect.isclass(config['source_class']) else {}
+                )),
+                'target': 'target{0}'.format(format_node(
                     ident=config['target_class'].creation_counter,
-                    label='{0} {{{1}}}'.format(config['target_class'].__label__,
-                                               ', '.join(['{}: {}'.format(
-                                                   key, '"%s"' % value if isinstance(value, str) else value)
-                                                   for key, value in config['filters'].items()]))
-                    if config['filters'] else config['target_class'].__label__
-                )
+                    label=config['target_class'].__label__,
+                    # Add any user specified filters to target node.
+                    **config['filters']
+                ))
             })
             relation_str = config['atom'].format(**defaults)
             if n == 0:
