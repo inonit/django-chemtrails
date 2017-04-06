@@ -2,9 +2,14 @@
 
 from itertools import chain
 
+from neo4j.v1 import Path
+
+from chemtrails.utils import flatten
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission, Group
 from django.utils.encoding import force_text
+
+from neomodel import db
 
 from chemtrails.neoutils import get_node_class_for_model
 from chemtrails.contrib.permissions.models import AccessRule
@@ -46,20 +51,45 @@ class GraphPermissionChecker(object):
         if not source_node or not target_node:
             return False
 
+        # For each rule assigned to the content type of the given object,
+        # construct a `MATCH path = (...)` cypher query.
+        queries = []
         for access_rule in self.get_accessrule_queryset(obj).filter(
                 ctype_source=get_content_type(self.user or self.group),
                 ctype_target=get_content_type(obj),
                 permissions__codename=perm):
 
-            path = None
-            for relation_type in access_rule.relation_types:
-                path = source_node.paths.add(relation_type)
+            statement = source_node.paths.statement
+            for n, relation_type in enumerate(access_rule.relation_types, 1):
+                filters = {}
+                if n == len(access_rule.relation_types):
+                    filters.update({'pk': obj.pk})
 
-            if path:
-                match_string = path.get_match_string()
-                p = 'MATCH p = %(path)s RETURN p' % {'path': match_string}
+                # Recalculate the `MATCH path = (...)` statement on each iteration.
+                statement = source_node.paths.add(relation_type, **filters).get_path()
 
-        return True
+            if statement:
+                queries.append(statement)
+
+        # Execute all constructed path queries and return True on the first match.
+        for query in queries:
+            result, _ = db.cypher_query(query)
+            if result:
+                for item in flatten(result):
+                    if not isinstance(item, Path):
+                        continue
+
+                    # Inflate both the source node and target node and make sure
+                    # they match.
+                    try:
+                        start_node = get_node_class_for_model(self.user or self.group).inflate(item.start)
+                        end_node = get_node_class_for_model(obj).inflate(item.end)
+                        if source_node == start_node and target_node == end_node:
+                            return True
+                    except:
+                        continue
+
+        return False
 
     def get_local_cache_key(self, obj):
         """

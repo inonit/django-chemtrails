@@ -79,11 +79,12 @@ class PathManager:
     @property
     def statement(self):
         """
-        :returns: The final calculated relationship statement.
-        :rtype: str
+        :returns: The final calculated relationship statement or None if no
+                  relation types has been added.
+        :rtype: None or str
         """
         if not self._statements:
-            return ''
+            return None
 
         def format_node(ident, label, **filters):
             if not filters:

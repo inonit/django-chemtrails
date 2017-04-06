@@ -23,14 +23,13 @@ class PathManagerTestCase(TestCase):
     def test_node_has_path_manager(self):
         self.assertIsInstance(self.node.paths, PathManager)
 
-    def test_path_manager_add_relationship(self):
+    def test_path_manager_build_path_query(self):
         user = get_user_model().objects.latest('pk')
         query = self.node.paths.add('AUTHORS').add('USER', **{
             'pk': user.pk,
             'username': user.username,
             'is_active': user.is_active
         }).get_path()
-        print(query)
         result, meta = db.cypher_query(query)
         self.assertTrue(len(result))
         self.assertEqual(meta, ('path',))
