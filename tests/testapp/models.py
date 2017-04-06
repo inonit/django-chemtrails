@@ -48,6 +48,11 @@ class Book(models.Model):
     publisher = models.ForeignKey(Publisher)
     pubdate = models.DateField()
 
+    class Meta:
+        permissions = (
+            ('view_book', 'Can view book'),
+        )
+
     def __str__(self):
         return self.name
 
