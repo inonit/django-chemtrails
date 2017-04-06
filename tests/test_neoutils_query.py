@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-
+from django.core.exceptions import ValidationError
 from django.test import TestCase
 
 from chemtrails.neoutils import query
@@ -34,9 +34,15 @@ class QueryFunctionsTestCase(TestCase):
         result = query.get_node_permissions()
         self.assertIsInstance(result, list)
 
-    def test_shortest_path(self):
-        from neomodel import db
-        result, _ = db.cypher_query('MATCH (a:UserNode),(b:UserNode), p = allShortestPaths((a)-[*]-(b)) WHERE id(a) = 35 AND id(b) IN [47, 41, 37] RETURN p')
+    def test_validate_cypher_statement(self):
+        is_valid, _ = query.validate_cypher('MATCH (n) RETURN n')
+        self.assertTrue(is_valid)
 
-        for r in result:
-            pass
+        is_valid, _ = query.validate_cypher('MATCH RETURN n')
+        self.assertFalse(is_valid)
+
+        try:
+            query.validate_cypher('Invalid cypher statement', raise_exception=True)
+            self.fail('Did not raise ValidationError when validating invalid statement.')
+        except ValidationError as e:
+            self.assertEqual(str(e), "['Failed to validate Cypher statement']")

@@ -35,6 +35,7 @@ setup(
     install_requires=[
         'Django>=1.8.0',
         'django-cors-headers',
+        'libcypher-parser-python>=0.0.2',
         'neomodel>=3.1.0,<3.2.0',
         'psycopg2>=2.6.2',
         'requests[security]',
