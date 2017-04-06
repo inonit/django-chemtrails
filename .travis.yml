@@ -10,6 +10,7 @@ python:
 env:
   global:
     - NEO4J_VERSION="latest"
+    - NEO4J_BOLT_URL="bolt://neo4j:neo4j@0.0.0.0:7687"
     - PIP_DOWNLOAD_CACHE="pip_download_cache"
   matrix:
     - DJANGO_VERSION=">=1.9,<1.10"
