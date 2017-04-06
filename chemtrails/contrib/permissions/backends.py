@@ -7,9 +7,9 @@ from chemtrails.contrib.permissions.core import GraphPermissionChecker
 
 
 class ChemtrailsPermissionBackend(ModelBackend):
-    # supports_object_permissions = True
-    # supports_anonymous_user = True
-    # supports_inactive_user = True
+    """
+    Graph based permission backend for Django.
+    """
 
     def authenticate(self, username=None, password=None, **kwargs):
         return False
@@ -19,7 +19,11 @@ class ChemtrailsPermissionBackend(ModelBackend):
             app_label, _ = perm.split('.', 1)
             ctype = ContentType.objects.get_for_model(obj)
             if app_label != ctype.app_label:
-                raise Exception('Mismatch - TODO: Write a proper message here!')
+                raise ValueError('Passed permission has app label "%s" while '
+                                 'given object has app label "%s" and object '
+                                 'content type app label "%s". Make sure permission '
+                                 'matches the object.' %
+                                 (app_label, obj._meta.app_label, ctype.app_label))
 
         checker = GraphPermissionChecker(user_obj)
         return checker.has_perm(perm, obj)
