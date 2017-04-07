@@ -12,19 +12,19 @@ from tests.utils import flush_nodes
 from tests.testapp.autofixtures import Author, AuthorFixture, Store, StoreFixture
 
 
-class ChemtrailsPermissionBackendTestCase(TestCase):
+class ChemoPermissionsBackendTestCase(TestCase):
 
-    backend = 'chemtrails.contrib.permissions.backends.ChemtrailsPermissionBackend'
+    backend = 'chemtrails.contrib.permissions.backends.ChemoPermissionsBackend'
 
     def setUp(self):
-        super(ChemtrailsPermissionBackendTestCase, self).setUp()
+        super(ChemoPermissionsBackendTestCase, self).setUp()
         self.patched_settings = modify_settings(
             AUTHENTICATION_BACKENDS={'append': self.backend}
         )
         self.patched_settings.enable()
 
     def tearDown(self):
-        super(ChemtrailsPermissionBackendTestCase, self).tearDown()
+        super(ChemoPermissionsBackendTestCase, self).tearDown()
         self.patched_settings.disable()
 
     @flush_nodes()
