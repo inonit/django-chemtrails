@@ -94,14 +94,16 @@ class GraphPermissionChecker(object):
 
         return False
 
-    def get_local_cache_key(self, obj):
+    @staticmethod
+    def get_local_cache_key(obj):
         """
         Returns cache key for ``_obj_perms_cache`` dict.
         """
         ctype = get_content_type(obj)
         return ctype.id, force_text(obj.pk)
 
-    def get_accessrule_queryset(self, obj):
+    @staticmethod
+    def get_accessrule_queryset(obj):
         ctype = get_content_type(obj)
         return AccessRule.objects.filter(is_active=True, ctype_target=ctype)
 
