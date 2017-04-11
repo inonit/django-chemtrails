@@ -12,6 +12,9 @@ User = get_user_model()
 
 
 class GetIdentityTestCase(TestCase):
+    """
+    Testing ``chemtrails.contrib.permissions.get_identity()``.
+    """
 
     def test_get_identity_anonymous_user(self):
         user = AnonymousUser()
@@ -31,6 +34,9 @@ class GetIdentityTestCase(TestCase):
 
 
 class GetContentTypeTestCase(TestCase):
+    """
+    Testing ``chemtrails.contrib.permissions.get_content_type()``.
+    """
 
     def test_get_content_type_from_class(self):
         self.assertEqual(utils.get_content_type(User),
@@ -43,31 +49,49 @@ class GetContentTypeTestCase(TestCase):
 
 
 class CheckPermissionsAppLabelTestCase(TestCase):
+    """
+    Testing ``chemtrails.contrib.permissions.check_permissions_app_label()``.
+    """
 
     def test_check_permissions_app_label_single(self):
         perm = 'testapp.add_book'
         book = BookFixture(Book).create_one()
-        self.assertEqual(utils.check_permissions_app_label(perm, book),
+        self.assertEqual(utils.check_permissions_app_label(perm),
                          (utils.get_content_type(book), ['add_book']))
-        self.assertEqual(utils.check_permissions_app_label(perm, Book),
+        self.assertEqual(utils.check_permissions_app_label(perm),
                          (utils.get_content_type(Book), ['add_book']))
 
-    def test_check_permissions_app_label_single_fails(self):
-        perm = 'testapp.add_store'
-        book = BookFixture(Book).create_one()
-        self.assertRaisesMessage(ValueError, '', utils.check_permissions_app_label, permissions=perm, klass=book)
-        self.assertRaisesMessage(ValueError, '', utils.check_permissions_app_label, permissions=perm, klass=Book)
+    def test_check_permissions_app_label_invalid_fails(self):
+        perm = 'testapp.invalid_permission'
+        self.assertRaisesMessage(ContentType.DoesNotExist, '', utils.check_permissions_app_label, permissions=perm)
 
     def test_check_permissions_app_label_sequence(self):
         perms = ['testapp.add_book', 'testapp.change_book']
         book = BookFixture(Book).create_one()
-        self.assertEqual(utils.check_permissions_app_label(perms, book),
-                         (utils.get_content_type(book), ['change_book', 'add_book']))
-        self.assertEqual(utils.check_permissions_app_label(perms, Book),
-                         (utils.get_content_type(Book), ['change_book', 'add_book']))
+
+        ctype, codenames = utils.check_permissions_app_label(perms)
+        self.assertEqual(ctype, utils.get_content_type(book))
+        self.assertEqual(sorted(codenames), ['add_book', 'change_book'])
 
     def test_check_permissions_app_label_sequence_fails(self):
         perms = ['testapp.add_book', 'testapp.add_store']
-        book = BookFixture(Book).create_one()
-        self.assertRaisesMessage(ValueError, '', utils.check_permissions_app_label, permissions=perms, klass=book)
-        self.assertRaisesMessage(ValueError, '', utils.check_permissions_app_label, permissions=perms, klass=Book)
+        self.assertRaisesMessage(
+            ValueError, ('Calculated content type from permission "testapp.add_store" '
+                         'store does not match <ContentType: book>.'),
+            utils.check_permissions_app_label, permissions=perms)
+
+
+class GetObjectsForUserTestCase(TestCase):
+    """
+    Testing ``chemtrails.contrib.permissions.get_objects_for_user()``.
+    """
+
+    def setUp(self):
+        pass
+
+
+class GetObjectsForGroupTestCase(TestCase):
+    """
+    Testing ``chemtrails.contrib.permissions.get_objects_for_group()``.
+    """
+    pass
