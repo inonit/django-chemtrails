@@ -29,8 +29,20 @@ class NodeUtilsTestCase(TestCase):
         klass = get_meta_node_class_for_model(Book)
         self.assertTrue(issubclass(klass, StructuredNode))
 
+    @flush_nodes()
+    def test_get_meta_node_class_for_concrete_model(self):
+        book = BookFixture(Book).create_one()
+        klass = get_meta_node_class_for_model(book, for_concrete_model=True)
+        self.assertTrue(issubclass(klass, StructuredNode))
+
     def test_get_node_class_for_model(self):
         klass = get_node_class_for_model(Book)
+        self.assertTrue(issubclass(klass, StructuredNode))
+
+    @flush_nodes()
+    def test_get_node_class_for_model(self):
+        book = BookFixture(Book).create_one()
+        klass = get_node_class_for_model(book, for_concrete_model=True)
         self.assertTrue(issubclass(klass, StructuredNode))
 
     @flush_nodes()

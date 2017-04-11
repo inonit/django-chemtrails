@@ -19,13 +19,16 @@ __all__ = [
 model_cache = {}
 
 
-def get_meta_node_class_for_model(model):
+def get_meta_node_class_for_model(model, for_concrete_model=True):
     """
     Meta nodes are used to generate a map of the relationships
     in the database. There's only a single MetaNode per model.
     :param model: Django model class.
     :returns: A ``StructuredNode`` class.
     """
+    if for_concrete_model:
+        model = model._meta.concrete_model
+
     cache_key = '{object_name}MetaNode'.format(object_name=model._meta.object_name)
     if cache_key in model_cache:
         return model_cache[cache_key]
@@ -51,12 +54,15 @@ def get_meta_node_for_model(model):
     return klass()
 
 
-def get_node_class_for_model(model):
+def get_node_class_for_model(model, for_concrete_model=True):
     """
     Model nodes represent a model instance in the database.
     :param model: Django model class.
     :returns: A ``ModelNode`` class.
     """
+    if for_concrete_model:
+        model = model._meta.concrete_model
+
     cache_key = '{object_name}Node'.format(object_name=model._meta.object_name)
     if cache_key in model_cache:
         return model_cache[cache_key]
@@ -78,7 +84,7 @@ def get_node_for_object(instance):
     :param instance: Django model instance.
     :returns: A ``ModelNode`` instance.
     """
-    klass = get_node_class_for_model(instance._meta.model)
+    klass = get_node_class_for_model(instance, True)
     return klass(instance=instance)
 
 
