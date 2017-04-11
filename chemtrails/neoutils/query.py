@@ -15,6 +15,7 @@ def get_relationship_types():
     :rtype: list
     """
     query = 'MATCH (n)-[r]-() RETURN DISTINCT type(r) ORDER BY (type(r))'
+    validate_cypher(query, raise_exception=True)
     result, _ = db.cypher_query(query)
     return list(flatten(result))
 
@@ -25,6 +26,7 @@ def get_node_permissions():
     :rtype: list
     """
     query = 'MATCH (n)-[r]-() WHERE n.type = \'MetaNode\' RETURN DISTINCT n.default_permissions'
+    validate_cypher(query, raise_exception=True)
     result, _ = db.cypher_query(query)
     return list(flatten(result))
 
@@ -40,6 +42,7 @@ def get_node_relationship_types(params=None):
                       'WHERE' if params else '',
                       ' AND '.join(['n.{} = {{{}}}'.format(key, key) for key in params.keys()]) if params else '',
                       'RETURN DISTINCT labels(n), type(r)'))
+    validate_cypher(query, raise_exception=True)
     result, _ = db.cypher_query(query, params)
     for label, relationship_type in result:
         label = label[0]
