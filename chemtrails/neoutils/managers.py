@@ -107,13 +107,13 @@ class PathManager:
             defaults = config['params'].copy()
             defaults.update({
                 'source': 'source{0}'.format(format_node(
-                    ident=self.next_class.creation_counter,
+                    ident=n,
                     label=config['source_class'].__label__,
                     # If we have a node instance, always match its primary key!
                     **{'pk': config['source_class'].pk} if not inspect.isclass(config['source_class']) else {}
                 )),
                 'target': 'target{0}'.format(format_node(
-                    ident=config['target_class'].creation_counter,
+                    ident=n,
                     label=config['target_class'].__label__,
                     # Add any user specified filters to target node.
                     **config['filters']
