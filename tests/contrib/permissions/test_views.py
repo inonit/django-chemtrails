@@ -38,9 +38,9 @@ class GraphWidgetAPIViews(APITestCase):
             'ctype_source': 'auth.user',
             'ctype_target': 'testapp.book',
             'permissions': [
-                'testapp.book.add_book',
-                'testapp.book.change_book',
-                'testapp.book.delete_book'
+                'testapp.add_book',
+                'testapp.change_book',
+                'testapp.delete_book'
             ],
             'relation_types': ['BOOK']
         }, format='json')

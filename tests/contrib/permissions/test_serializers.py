@@ -17,8 +17,8 @@ class AccessRuleSerializerTestCase(TestCase):
             'ctype_source': 'auth.user',
             'ctype_target': 'testapp.book',
             'permissions': [
-                'testapp.book.add_book',
-                'testapp.book.change_book'
+                'testapp.add_book',
+                'testapp.change_book'
             ]
         })
         self.assertTrue(serializer.is_valid())
@@ -96,9 +96,8 @@ class PermissionIdentityFieldTestCase(TestCase):
         self.Serializer = TestSerializer
         self.ctype = ContentType.objects.get(app_label='auth', model='user')
         self.permission = Permission.objects.get(content_type=self.ctype, codename='add_user')
-        self.perm_string = '{app_label}.{model}.{codename}'.format(app_label=self.ctype.app_label,
-                                                                   model=self.ctype.model,
-                                                                   codename=self.permission.codename)
+        self.perm_string = '{app_label}.{codename}'.format(app_label=self.ctype.app_label,
+                                                           codename=self.permission.codename)
 
     def test_serialize_valid_permission_input(self):
         serializer = self.Serializer(data={'perm': self.perm_string})
@@ -118,7 +117,7 @@ class PermissionIdentityFieldTestCase(TestCase):
                 str(e), "{'perm': ['Incorrect type. Expected permission string identifier, received int.']}")
 
     def test_serialize_invalid_length_permission_string(self):
-        serializer = self.Serializer(data={'perm': 'auth.add_user'})
+        serializer = self.Serializer(data={'perm': 'add_user'})
         self.assertFalse(serializer.is_valid())
         self.assertTrue('perm' in serializer.errors)
 
@@ -128,10 +127,10 @@ class PermissionIdentityFieldTestCase(TestCase):
                       'string using `raise_exception=True`')
         except serializers.ValidationError as e:
             self.assertEqual(str(e), "{'perm': ['Incorrect length. Expected permission string identifier, "
-                                     "separated by punctuation. Received \"auth.add_user\".']}")
+                                     "separated by punctuation. Received \"add_user\".']}")
 
     def test_serializer_non_existent_permission(self):
-        serializer = self.Serializer(data={'perm': 'auth.user.can_levitate'})
+        serializer = self.Serializer(data={'perm': 'auth.can_levitate'})
         self.assertFalse(serializer.is_valid())
         self.assertTrue('perm' in serializer.errors)
 
@@ -140,5 +139,5 @@ class PermissionIdentityFieldTestCase(TestCase):
             self.fail('Did not raise exception when serializing non-existent permission '
                       'string using using `raise_exception=True`')
         except serializers.ValidationError as e:
-            self.assertEqual(str(e), "{'perm': ['Invalid permission \"auth.user.can_levitate\" "
+            self.assertEqual(str(e), "{'perm': ['Invalid permission \"auth.can_levitate\" "
                                      "- object does not exist.']}")

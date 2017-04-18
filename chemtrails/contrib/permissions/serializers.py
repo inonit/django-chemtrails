@@ -156,16 +156,18 @@ class PermissionIdentityField(serializers.RelatedField):
             self.fail('incorrect_type', data_type=type(data).__name__)
 
         try:
-            app_label, model, codename = data.split('.', 2)
-            return Permission.objects.get_by_natural_key(app_label=app_label, model=model, codename=codename)
-        except Permission.DoesNotExist:
+            app_label, codename = data.split('.', 1)
+            return Permission.objects.select_related('content_type').get(
+                codename=codename, content_type=ContentType.objects.get(app_label=app_label,
+                                                                        permission__codename=codename))
+        except (Permission.DoesNotExist, ContentType.DoesNotExist):
             self.fail('does_not_exist', data=data)
         except ValueError:
             self.fail('incorrect_length', data=data)
 
     def to_representation(self, value):
-        codename, app_label, model = value.natural_key()
-        return '{app_label}.{model}.{codename}'.format(app_label=app_label, model=model, codename=codename)
+        codename, app_label, _ = value.natural_key()
+        return '{app_label}.{codename}'.format(app_label=app_label, codename=codename)
 
 
 class AccessRuleSerializer(serializers.ModelSerializer):
