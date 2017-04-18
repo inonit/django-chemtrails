@@ -33,7 +33,7 @@ class UserGenerator(generators.Generator):
                 num1=generators.SmallIntegerGenerator().generate(),
                 num2=generators.SmallIntegerGenerator().generate()
             ).lower(),
-            'password': generators.StringGenerator(min_length=8, max_length=16).generate()
+            'password': 'test123.'
         }
         return self.USER_MODEL.objects.create_user(**defaults)
 
