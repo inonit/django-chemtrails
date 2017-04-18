@@ -11,6 +11,7 @@ Chemtrails - Graphing Django
    :caption: Contents:
 
    01_configuration
+   02_development
 
 About
 =====
