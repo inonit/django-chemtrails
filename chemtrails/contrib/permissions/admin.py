@@ -21,8 +21,8 @@ class AccessRuleAdmin(admin.ModelAdmin):
     list_filter = ('is_active', 'ctype_target')
     filter_horizontal = ('permissions',)
     fieldsets = (
-         (None, {'fields': ( 'permissions',  'is_active')}),
-        ('Rule editor', {'fields': ('graph',)}),
+         (None, {'fields': ('ctype_target', 'ctype_source', 'permissions', 'relation_types', 'is_active')}),
+         ('Rule editor', {'fields': ('graph',)}),
     )
 
     def get_form(self, request, obj=None, **kwargs):
@@ -37,7 +37,7 @@ class AccessRuleAdmin(admin.ModelAdmin):
 
         info = self.model._meta.app_label, self.model._meta.model_name
         urlpatterns = [
-            url(r'^neo4j/nodelist/$', self.get_nodelist_api_view, name='%s_%s_nodelist' % info),
+            url(r'^neo4j/nodelist/$', self.get_nodelist_api_view, name='%s_%s_nodelist' % info),  # Deprecated
             url(r'^neo4j/', include(router.urls))
         ] + super(AccessRuleAdmin, self).get_urls()
         return urlpatterns
