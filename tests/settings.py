@@ -14,6 +14,7 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_L10N = True
 USE_TZ = True
+LOGIN_REDIRECT_URL = '/api/'  # Redirect to the browseable API
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -24,7 +25,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     # Dependencies
-    'corsheaders',  # Required for chemtrails.contrib.permissions API views.
+    'corsheaders',     # Required for chemtrails.contrib.permissions API views.
+    'rest_framework',  # Required for easing interactive development.
 
     # For testing
     'autofixture',

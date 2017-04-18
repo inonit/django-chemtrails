@@ -52,7 +52,7 @@ class ChemoPermissionsFilterTestCase(TestCase):
         access_rule.permissions.add(permission)
 
         request = factory.get(path='/', data='', content_type='application/json')
-        force_authenticate(request, )
+        force_authenticate(request, user)
         response = self.book_view.as_view(actions={'get': 'list'})(request)
 
         # Make sure we can't reach any nodes living in the "other"

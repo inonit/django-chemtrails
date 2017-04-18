@@ -7,6 +7,7 @@ from neo4j.v1 import Path
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser, Group
 from django.contrib.contenttypes.models import ContentType
+from django.db.models import Q
 from django.shortcuts import _get_queryset
 from django.utils import timezone
 
@@ -139,7 +140,8 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True, any_per
         if manager.statement:
             queries.append(manager.get_path())
 
-    pks = set()
+    values = set()
+    q = Q(pk__in=values)
     for query in queries:
         validate_cypher(query, raise_exception=True)
         result, _ = db.cypher_query(query)
@@ -148,12 +150,12 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True, any_per
                 if not isinstance(item, Path):
                     continue
                 try:
-                    pks.add(item.end.properties['pk'])
+                    values.add(item.end.properties['pk'])
+                    q |= Q(pk__in=values)
                 except KeyError:
                     continue
-    if pks:
-        queryset = queryset.filter(pk__in=pks)
-    return queryset
+
+    return queryset.filter(q)
 
 
 def get_objects_for_group(group, perms, klass=None, any_perm=False, accept_global_perms=True):
