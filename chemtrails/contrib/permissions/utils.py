@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
 
+import logging
+
 from neo4j.v1 import Path
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser, Group
 from django.contrib.contenttypes.models import ContentType
 from django.shortcuts import _get_queryset
+from django.utils import timezone
 
 from neomodel import db, InflateError
 
@@ -13,6 +16,8 @@ from chemtrails.neoutils import get_node_class_for_model
 from chemtrails.neoutils.query import validate_cypher
 from chemtrails.contrib.permissions.models import AccessRule
 from chemtrails.utils import flatten
+
+logger = logging.getLogger(__name__)
 
 
 def get_identity(identity):
@@ -123,11 +128,6 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True, any_per
     if not source_node:
         return queryset.none()
 
-    # TESTING!
-    # from neomodel.match import Traversal
-    # traversal = Traversal(source=source_node)
-
-    # Testing!
     # Calculate a PATH query for each rule
     queries = []
     for access_rule in AccessRule.objects.filter(is_active=True, ctype_source=get_content_type(user),
@@ -137,8 +137,7 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True, any_per
             manager = manager.add(relation_type)
 
         if manager.statement:
-            query = 'MATCH {statement} WHERE {}'
-            queries.append(manager.statement)
+            queries.append(manager.get_path())
 
     pks = set()
     for query in queries:
@@ -149,9 +148,8 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True, any_per
                 if not isinstance(item, Path):
                     continue
                 try:
-                    node = get_node_class_for_model(klass).inflate(item.end)
-                    pks.add(node.pk)
-                except InflateError:
+                    pks.add(item.end.properties['pk'])
+                except KeyError:
                     continue
     if pks:
         queryset = queryset.filter(pk__in=pks)

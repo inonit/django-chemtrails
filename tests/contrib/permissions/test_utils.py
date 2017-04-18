@@ -91,6 +91,8 @@ class GetObjectsForUserTestCase(TestCase):
 
     @flush_nodes()
     def test_get_objects_for_user(self):
+        permission = Permission.objects.get(codename='change_user')
+
         graph1 = Store.objects.filter(pk__in=map(lambda n: n.pk,
                                                  StoreFixture(Store).create(count=1, commit=True)))
         get_nodeset_for_queryset(graph1, sync=True, max_depth=1)
@@ -101,12 +103,16 @@ class GetObjectsForUserTestCase(TestCase):
         get_nodeset_for_queryset(graph2, sync=True, max_depth=1)
         graph2_user_pks = list(User.objects.exclude(pk__in=graph1_user_pks).values_list('pk', flat=True))
 
-        # Check if a user in the graph can get a path to all other users in the graph.
-        permission = Permission.objects.get(codename='change_user')
-        user = User.objects.get(pk=graph1_user_pks[0])
-        user.user_permissions.add(permission)
+        user1 = User.objects.get(pk=graph1_user_pks[0])
+        user1.user_permissions.add(permission)
 
-        # Create an access rule from User to User following a path
+        user2 = User.objects.get(pk=graph2_user_pks[0])
+        user2.user_permissions.add(permission)
+
+        # Create an access rule from User to User following a path:
+        # (UserNode)-[:AUTHOR]->(AuthorNode)-[:BOOK]->
+        #   (BookNode)-[:STORE]->(StoreNode)-[:BOOKS]->
+        #   (BookNode)-[:AUTHORS]->(AuthorNode)-[:USER]->(UserNode)
         rule = AccessRule.objects.create(ctype_source=utils.get_content_type(User),
                                          ctype_target=utils.get_content_type(User),
                                          relation_types=[
@@ -116,8 +122,13 @@ class GetObjectsForUserTestCase(TestCase):
                                          ])
         rule.permissions.add(permission)
 
-        permitted_users = utils.get_objects_for_user(user=user, permissions='auth.change_user')
-        brk = ''
+        # Check if a user in a graph can get a path to all other users in the same graph.
+        permitted_objects = utils.get_objects_for_user(user=user1, permissions='auth.change_user')
+        self.assertListEqual(graph1_user_pks, list(permitted_objects.values_list('pk', flat=True)))
+
+        permitted_objects = utils.get_objects_for_user(user=user1, permissions='auth.change_user',
+                                                       klass=User.objects.all())
+        self.assertListEqual(graph1_user_pks, list(permitted_objects.values_list('pk', flat=True)))
 
 
 class GetObjectsForGroupTestCase(TestCase):
