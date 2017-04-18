@@ -1,9 +1,18 @@
 # -*- coding: utf-8 -*-
 
+from neo4j.v1 import Path
+
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser, Group
 from django.contrib.contenttypes.models import ContentType
 from django.shortcuts import _get_queryset
+
+from neomodel import db, InflateError
+
+from chemtrails.neoutils import get_node_class_for_model
+from chemtrails.neoutils.query import validate_cypher
+from chemtrails.contrib.permissions.models import AccessRule
+from chemtrails.utils import flatten
 
 
 def get_identity(identity):
@@ -53,7 +62,6 @@ def check_permissions_app_label(permissions):
             if app_label is not None and _app_label != app_label:
                 raise ValueError('Given permisssions must have the same app label. '
                                  '(%s != %s)' % (app_label, _app_label))
-
             app_label = _app_label
         else:
             codename = perm
@@ -63,7 +71,7 @@ def check_permissions_app_label(permissions):
                                          permission__codename=codename)
         if ctype is not None and ctype != _ctype:
             raise ValueError('Calculated content type from permission "%s" %s does '
-                             'not match %s.' % (perm, _ctype, ctype))
+                             'not match %r.' % (perm, _ctype, ctype))
         else:
             ctype = _ctype
 
@@ -76,12 +84,28 @@ def check_permissions_app_label(permissions):
     return ctype, list(codenames)
 
 
+def get_users_with_perms(obj, attach_perms=False, with_superusers=False, with_group_users=True):
+    """
+    Returns a queryset of all ``User`` objects which there can be calculated a path from
+    the given ``obj``.
+    """
+    raise NotImplementedError
+
+
+def get_groups_with_perms(obj, attach_perms=False):
+    """
+    Returns a queryset of ``Group`` objects which there can be calculated a path from
+    the given ``obj``.
+    """
+    raise NotImplementedError
+
+
 def get_objects_for_user(user, permissions, klass=None, use_groups=True, any_perm=False,
                          with_superuser=True, accept_global_perms=True):
     """
-    Returns queryset of objects for which a given ``user`` has *all* permissions
-    present at ``permissions``.
-    This is inspired by ``django-guardian``.
+    Returns a queryset of objects for which there can be calculated a path between
+    the ``user`` using one or more access rules with *all* permissions present
+    at ``permissions``.
     """
     # Make sure all permissions checks out!
     ctype, codenames = check_permissions_app_label(permissions)
@@ -92,11 +116,50 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True, any_per
         raise ValueError('Could not determine the content type.')
 
     queryset = _get_queryset(klass)
-
     if with_superuser and user.is_superuser:
         return queryset
 
-    return klass
+    source_node = get_node_class_for_model(user).nodes.get_or_none(**{'pk': user.pk})
+    if not source_node:
+        return queryset.none()
+
+    # TESTING!
+    # from neomodel.match import Traversal
+    # traversal = Traversal(source=source_node)
+
+    # Testing!
+    # Calculate a PATH query for each rule
+    queries = []
+    for access_rule in AccessRule.objects.filter(is_active=True, ctype_source=get_content_type(user),
+                                                 ctype_target=ctype, permissions__codename__in=codenames):
+        manager = source_node.paths
+        for relation_type in access_rule.relation_types:
+            manager = manager.add(relation_type)
+
+        if manager.statement:
+            query = 'MATCH {statement} WHERE {}'
+            queries.append(manager.statement)
+
+    pks = set()
+    for query in queries:
+        validate_cypher(query, raise_exception=True)
+        result, _ = db.cypher_query(query)
+        if result:
+            for item in flatten(result):
+                if not isinstance(item, Path):
+                    continue
+                try:
+                    node = get_node_class_for_model(klass).inflate(item.end)
+                    pks.add(node.pk)
+                except InflateError:
+                    continue
+    if pks:
+        queryset = queryset.filter(pk__in=pks)
+    return queryset
 
 
-
+def get_objects_for_group(group, perms, klass=None, any_perm=False, accept_global_perms=True):
+    """
+    Returns a queryset of objects for which there can be calculated a path....
+    """
+    raise NotImplementedError

@@ -166,7 +166,6 @@ class PathManager:
             'params': params,
             'filters': filters,
             'atom': build_relation_string(lhs='{source}', rhs='{target}',
-                                          ident='r%d' % traversal.source_class.creation_counter,
                                           props=relation_properties, **traversal.definition)
         })
         self.next_class = traversal.target_class
@@ -187,5 +186,10 @@ class PathManager:
         :rtype str
         """
         if not self.statement:
-            raise ValueError('No calculated statements.')
+            raise AttributeError('No calculated statements.')
         return 'MATCH path = {statement} RETURN path;'.format(statement=self.statement)
+
+    def get_match(self):
+        if not self.statement:
+            raise AttributeError('No calculated statements.')
+        return 'MATCH {statement} RETURN *;'.format(statement=self.statement)

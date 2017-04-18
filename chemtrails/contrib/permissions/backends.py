@@ -16,7 +16,7 @@ class ChemoPermissionsBackend(ModelBackend):
 
     def has_perm(self, user_obj, perm, obj=None):
         if '.' in perm:
-            check_permissions_app_label(perm, obj)
+            check_permissions_app_label(perm)
 
         checker = GraphPermissionChecker(user_obj)
         return checker.has_perm(perm, obj)

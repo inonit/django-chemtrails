@@ -55,23 +55,19 @@ class GraphPermissionChecker(object):
         # For each rule assigned to the content type of the given object,
         # construct a `MATCH path = (...)` cypher query.
         queries = []
-        for access_rule in self.get_accessrule_queryset(obj).filter(
-                is_active=True,
-                ctype_source=get_content_type(self.user or self.group),
-                ctype_target=get_content_type(obj),
-                permissions__codename=perm):
-
-            statement = source_node.paths
+        for access_rule in self.get_accessrule_queryset(obj).filter(ctype_target=get_content_type(obj),
+                                                                    permissions__codename=perm):
+            manager = source_node.paths
             for n, relation_type in enumerate(access_rule.relation_types, 1):
                 filters = {}
                 if n == len(access_rule.relation_types):
                     filters.update({'pk': obj.pk})
 
                 # Recalculate the `MATCH path = (...)` statement on each iteration.
-                statement = statement.add(relation_type, **filters)
+                manager = manager.add(relation_type, **filters)
 
-            if statement:
-                queries.append(statement.get_path())
+            if manager.statement:
+                queries.append(manager.get_path())
 
         # Execute all constructed path queries and return True on the first match.
         for query in queries:
@@ -91,7 +87,6 @@ class GraphPermissionChecker(object):
                             return True
                     except InflateError:
                         continue
-
         return False
 
     @staticmethod

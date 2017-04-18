@@ -33,3 +33,8 @@ class PathManagerTestCase(TestCase):
         result, meta = db.cypher_query(query)
         self.assertTrue(len(result))
         self.assertEqual(meta, ('path',))
+
+    def test_path_manager_build_match_query(self):
+        query = self.node.paths.add('AUTHORS').add('USER').get_match()
+        result, meta = db.cypher_query(query)
+        self.assertTrue(len(result))
