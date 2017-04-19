@@ -27,6 +27,9 @@ class ChemoPermissionsBackendTestCase(TestCase):
         super(ChemoPermissionsBackendTestCase, self).tearDown()
         self.patched_settings.disable()
 
+    def test_get_all_permissions(self):
+        pass
+
     @flush_nodes()
     def test_user_has_perm_single_relation_type(self):
         author = AuthorFixture(Author).create_one()
