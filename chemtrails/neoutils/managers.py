@@ -147,8 +147,13 @@ class PathManager:
         :returns: self
         """
         traversal = self.get_traversal(relation_type)
-        if not traversal:
-            raise Exception('Could not add relationship!')
+        if traversal is None:
+            if not relation_type:
+                raise Exception('Cannot find relationship with empty relation type.')
+            raise Exception('%(klass)r has no relation type %(relation_type)s' % {
+                'klass': self.next_class,
+                'relation_type': relation_type
+            })
 
         model = traversal.definition['model']
         properties = properties or {}
