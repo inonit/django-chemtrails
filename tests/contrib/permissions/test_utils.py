@@ -253,10 +253,11 @@ class GraphPermissionCheckerTestCase(TestCase):
         user = User.objects.create_user(username='testuser', password='test123.')
         perm = Permission.objects.get(content_type=utils.get_content_type(user), codename='change_user')
         access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(group),
-                                                ctype_target=utils.get_content_type(group),
+                                                ctype_target=utils.get_content_type(user),
                                                 relation_types=[
-                                                    ''
+                                                    'USER_SET'
                                                 ])
+        user.groups.add(group)
         group.permissions.add(perm)
         access_rule.permissions.add(perm)
 
