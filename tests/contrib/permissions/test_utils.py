@@ -170,7 +170,7 @@ class GraphPermissionCheckerTestCase(TestCase):
         user.user_permissions.add(*Permission.objects.filter(codename__in=['add_user', 'change_user']))
 
         checker = utils.GraphPermissionChecker(user)
-        self.assertListEqual(list(checker.get_user_perms(user)), ['add_user', 'change_user'])
+        self.assertListEqual(sorted(list(checker.get_user_perms(user))), ['add_user', 'change_user'])
 
     def test_get_group_filters(self):
         group = Group.objects.create(name='test group')
@@ -200,7 +200,7 @@ class GraphPermissionCheckerTestCase(TestCase):
         user = User.objects.create_user(username='testuser', password='test123.')
 
         checker = utils.GraphPermissionChecker(group)
-        self.assertListEqual(list(checker.get_group_perms(user)), ['add_user', 'change_user'])
+        self.assertListEqual(sorted(list(checker.get_group_perms(user))), ['add_user', 'change_user'])
 
     def test_get_perms_user_is_inactive(self):
         user = User.objects.create_user(username='testuser', password='test123.', is_active=False)
@@ -210,7 +210,7 @@ class GraphPermissionCheckerTestCase(TestCase):
     def test_get_perms_user_is_superuser(self):
         user = User.objects.create_user(username='testuser', password='test123.', is_superuser=True)
         checker = utils.GraphPermissionChecker(user)
-        self.assertListEqual(checker.get_perms(user), ['add_user', 'change_user', 'delete_user'])
+        self.assertListEqual(sorted(checker.get_perms(user)), ['add_user', 'change_user', 'delete_user'])
 
     def test_get_perms_user_in_group(self):
         group = Group.objects.create(name='test group')
@@ -222,14 +222,14 @@ class GraphPermissionCheckerTestCase(TestCase):
 
         # Make sure we get user and group permissions combined
         checker = utils.GraphPermissionChecker(user)
-        self.assertListEqual(checker.get_perms(user), ['add_user', 'change_user'])
+        self.assertListEqual(sorted(checker.get_perms(user)), ['add_user', 'change_user'])
 
     def test_get_perms_group(self):
         group = Group.objects.create(name='test group')
         group.permissions.add(Permission.objects.get(codename='add_group'))
 
         checker = utils.GraphPermissionChecker(group)
-        self.assertListEqual(checker.get_perms(group), ['add_group'])
+        self.assertListEqual(sorted(checker.get_perms(group)), ['add_group'])
 
     @flush_nodes()
     def test_checker_has_perm_authorized_user(self):
@@ -253,10 +253,11 @@ class GraphPermissionCheckerTestCase(TestCase):
         user = User.objects.create_user(username='testuser', password='test123.')
         perm = Permission.objects.get(content_type=utils.get_content_type(user), codename='change_user')
         access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(group),
-                                                ctype_target=utils.get_content_type(group),
+                                                ctype_target=utils.get_content_type(user),
                                                 relation_types=[
-                                                    ''
+                                                    'USER_SET'
                                                 ])
+        user.groups.add(group)
         group.permissions.add(perm)
         access_rule.permissions.add(perm)
 
