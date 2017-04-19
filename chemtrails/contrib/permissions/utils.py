@@ -266,7 +266,7 @@ class GraphPermissionChecker(object):
             )
             group_filters = {field_name: self.user}
         else:
-            group_filters = {'%s__group' % related_name: self.group}
+            group_filters = {'%s' % related_name: self.group}
 
         return group_filters
 

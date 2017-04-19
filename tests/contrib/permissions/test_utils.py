@@ -3,12 +3,13 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser, Group, Permission
 from django.contrib.contenttypes.models import ContentType
+from django.db.models import QuerySet
 from django.test import TestCase
 
 from chemtrails.contrib.permissions import utils
 from chemtrails.contrib.permissions.models import AccessRule
 from chemtrails.neoutils import get_nodeset_for_queryset
-from tests.testapp.autofixtures import Book, BookFixture, Store, StoreFixture
+from tests.testapp.autofixtures import Author, AuthorFixture, Book, BookFixture, Store, StoreFixture
 from tests.utils import flush_nodes
 
 User = get_user_model()
@@ -16,7 +17,7 @@ User = get_user_model()
 
 class GetIdentityTestCase(TestCase):
     """
-    Testing ``chemtrails.contrib.permissions.get_identity()``.
+    Testing ``chemtrails.contrib.permissions.utils.get_identity()``.
     """
 
     def test_get_identity_anonymous_user(self):
@@ -38,7 +39,7 @@ class GetIdentityTestCase(TestCase):
 
 class GetContentTypeTestCase(TestCase):
     """
-    Testing ``chemtrails.contrib.permissions.get_content_type()``.
+    Testing ``chemtrails.contrib.permissions.utils.get_content_type()``.
     """
 
     def test_get_content_type_from_class(self):
@@ -53,7 +54,7 @@ class GetContentTypeTestCase(TestCase):
 
 class CheckPermissionsAppLabelTestCase(TestCase):
     """
-    Testing ``chemtrails.contrib.permissions.check_permissions_app_label()``.
+    Testing ``chemtrails.contrib.permissions.utils.check_permissions_app_label()``.
     """
 
     def test_check_permissions_app_label_single(self):
@@ -86,7 +87,7 @@ class CheckPermissionsAppLabelTestCase(TestCase):
 
 class GetObjectsForUserTestCase(TestCase):
     """
-    Testing ``chemtrails.contrib.permissions.get_objects_for_user()``.
+    Testing ``chemtrails.contrib.permissions.utils.get_objects_for_user()``.
     """
 
     @flush_nodes()
@@ -133,6 +134,131 @@ class GetObjectsForUserTestCase(TestCase):
 
 class GetObjectsForGroupTestCase(TestCase):
     """
-    Testing ``chemtrails.contrib.permissions.get_objects_for_group()``.
+    Testing ``chemtrails.contrib.permissions.utils.get_objects_for_group()``.
     """
     pass
+
+
+class GraphPermissionCheckerTestCase(TestCase):
+    """
+    Testing ``chemtrails.contrib.permissions.utils.GraphPermissionChecker`` class.
+    """
+
+    def test_checker_has_perm_inactive_user(self):
+        user = User.objects.create_user(username='testuser', password='test123.', is_active=False)
+        checker = utils.GraphPermissionChecker(user)
+        self.assertFalse(checker.has_perm(perm=None, obj=None))
+
+    def test_checker_has_perm_is_superuser(self):
+        user = User.objects.create_user(username='testuser', password='test123.', is_superuser=True)
+        checker = utils.GraphPermissionChecker(user)
+        self.assertTrue(checker.has_perm(perm=None, obj=None))
+
+    def test_get_user_filters(self):
+        user = User.objects.create_user(username='testuser', password='test123.')
+        user.user_permissions.add(*Permission.objects.filter(codename__in=['add_user', 'change_user']))
+
+        # Get user filters for user
+        checker = utils.GraphPermissionChecker(user)
+        filters = checker.get_user_filters()
+        permissions = Permission.objects.filter(**filters)
+        self.assertIsInstance(permissions, QuerySet)
+        self.assertEqual(permissions.count(), 2)
+
+    def test_get_user_perms(self):
+        user = User.objects.create_user(username='testuser', password='test123.')
+        user.user_permissions.add(*Permission.objects.filter(codename__in=['add_user', 'change_user']))
+
+        checker = utils.GraphPermissionChecker(user)
+        self.assertListEqual(list(checker.get_user_perms(user)), ['add_user', 'change_user'])
+
+    def test_get_group_filters(self):
+        group = Group.objects.create(name='test group')
+        group.permissions.add(*Permission.objects.filter(codename__in=['add_user', 'change_user']))
+
+        user = User.objects.create_user(username='testuser', password='test123.')
+        user.groups.add(group)
+
+        # Get group filters for group
+        checker = utils.GraphPermissionChecker(group)
+        filters = checker.get_group_filters()
+        permissions = Permission.objects.filter(**filters)
+        self.assertIsInstance(permissions, QuerySet)
+        self.assertEqual(permissions.count(), 2)
+
+        # Get group filters for use
+        checker = utils.GraphPermissionChecker(user)
+        filters = checker.get_group_filters()
+        permissions = Permission.objects.filter(**filters)
+        self.assertIsInstance(permissions, QuerySet)
+        self.assertEqual(permissions.count(), 2)
+
+    def test_get_group_perms(self):
+        group = Group.objects.create(name='test group')
+        group.permissions.add(*Permission.objects.filter(codename__in=['add_user', 'change_user']))
+
+        user = User.objects.create_user(username='testuser', password='test123.')
+
+        checker = utils.GraphPermissionChecker(group)
+        self.assertListEqual(list(checker.get_group_perms(user)), ['add_user', 'change_user'])
+
+    def test_get_perms_user_is_inactive(self):
+        user = User.objects.create_user(username='testuser', password='test123.', is_active=False)
+        checker = utils.GraphPermissionChecker(user)
+        self.assertListEqual(checker.get_perms(user), [])
+
+    def test_get_perms_user_is_superuser(self):
+        user = User.objects.create_user(username='testuser', password='test123.', is_superuser=True)
+        checker = utils.GraphPermissionChecker(user)
+        self.assertListEqual(checker.get_perms(user), ['add_user', 'change_user', 'delete_user'])
+
+    def test_get_perms_user_in_group(self):
+        group = Group.objects.create(name='test group')
+        group.permissions.add(Permission.objects.get(codename='add_user'))
+
+        user = User.objects.create_user(username='testuser', password='test123.')
+        user.user_permissions.add(Permission.objects.get(codename='change_user'))
+        user.groups.add(group)
+
+        # Make sure we get user and group permissions combined
+        checker = utils.GraphPermissionChecker(user)
+        self.assertListEqual(checker.get_perms(user), ['add_user', 'change_user'])
+
+    def test_get_perms_group(self):
+        group = Group.objects.create(name='test group')
+        group.permissions.add(Permission.objects.get(codename='add_group'))
+
+        checker = utils.GraphPermissionChecker(group)
+        self.assertListEqual(checker.get_perms(group), ['add_group'])
+
+    @flush_nodes()
+    def test_checker_has_perm_authorized_user(self):
+        author = AuthorFixture(Author).create_one()
+        user = author.user
+        perm = Permission.objects.get(content_type=utils.get_content_type(author), codename='change_author')
+        access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(user),
+                                                ctype_target=utils.get_content_type(author),
+                                                relation_types=[
+                                                    'AUTHOR'
+                                                ])
+        user.user_permissions.add(perm)
+        access_rule.permissions.add(perm)
+
+        checker = utils.GraphPermissionChecker(user)
+        self.assertTrue(checker.has_perm(perm.codename, author))
+
+    @flush_nodes()
+    def test_checker_has_perm_authorized_group(self):
+        group = Group.objects.create(name='test group')
+        user = User.objects.create_user(username='testuser', password='test123.')
+        perm = Permission.objects.get(content_type=utils.get_content_type(user), codename='change_user')
+        access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(group),
+                                                ctype_target=utils.get_content_type(group),
+                                                relation_types=[
+                                                    ''
+                                                ])
+        group.permissions.add(perm)
+        access_rule.permissions.add(perm)
+
+        checker = utils.GraphPermissionChecker(group)
+        self.assertTrue(checker.has_perm(perm.codename, user))
