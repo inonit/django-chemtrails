@@ -1,7 +1,7 @@
 import React, { Component, PropTypes } from 'react';
 import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
-import { Button, Card, Image, Feed, Dropdown } from 'semantic-ui-react';
+import { Button, Card, Feed, Dropdown } from 'semantic-ui-react';
 import { postNewRule } from '../reducers/neo4j';
 
 class GraphItem extends Component {
@@ -11,8 +11,6 @@ class GraphItem extends Component {
     super(props);
     this.permissions = [];
   }
-
-  static propTypes = {};
 
   onDropDownChange = (e, { value }) => {
     this.permissions = value;
@@ -33,7 +31,8 @@ class GraphItem extends Component {
 
   render() {
     let graph = this.props.graph.toJS().selectedGraph;
-
+    let dispGraph = this.props.graph.toJS().displayGraph;
+    //console.log(graph.nodes);
     return (
       <div>
         <Button floated="right" onClick={this.onSaveClick}>Save Rule</Button>
@@ -55,7 +54,14 @@ class GraphItem extends Component {
                     <Feed.Event>
                       <Feed.Content>
                         {graph.links.map(link => {
-                          if (link.source.item.id === node.id) {
+                          if (
+                            link.source ===
+                            dispGraph.nodes.indexOf(
+                              dispGraph.nodes.find(x => {
+                                return x.label === node.label;
+                              })
+                            )
+                          ) {
                             return <p key={link.type}>{link.type}</p>;
                           }
                         })}

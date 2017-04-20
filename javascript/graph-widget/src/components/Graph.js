@@ -2,23 +2,34 @@ import React, { Component, PropTypes } from 'react';
 import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
 import * as d3 from 'd3';
+import Faux from 'react-faux-dom';
 import {
   selectDisplayNode,
   selectDisplayLink,
   toggleLinkToSelectedGraph,
-  toggleNodeToSelectedGraph
+  toggleNodeToSelectedGraph,
+  getNewRule
 } from '../reducers/neo4j';
 
 class Graph extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      nodes: props.nodes,
-      links: props.links
+      nodes: props.graph.toJS().nodes,
+      links: props.graph.toJS().links
     };
+    //  console.log(props);
+    //  console.log(this.state);
   }
-
+  componentWillReceiveProps(nextprops) {
+    //  console.log('hei og hade');
+  }
   componentDidMount() {
+    this.props.actions.getNewRule(9);
+    if (this.props.links === undefined) {
+      return;
+    }
+
     var svg = d3.select('svg').append('svg');
     this.force = d3
       .forceSimulation()
@@ -68,7 +79,8 @@ class Graph extends Component {
           var dx = d.target.x - d.source.x,
             dy = d.target.y - d.source.y,
             dr = Math.sqrt(dx * dx + dy * dy);
-          return 'M' +
+          return (
+            'M' +
             d.source.x +
             ',' +
             d.source.y +
@@ -79,7 +91,8 @@ class Graph extends Component {
             ' 0 0,1 ' +
             d.target.x +
             ',' +
-            d.target.y;
+            d.target.y
+          );
         })
         .attr('stroke', d => {
           return d.marked ? 'black' : 'red';
@@ -89,7 +102,8 @@ class Graph extends Component {
           var dx = d.target.x - d.source.x,
             dy = d.target.y - d.source.y,
             dr = Math.sqrt(dx * dx + dy * dy);
-          return 'M' +
+          return (
+            'M' +
             d.source.x +
             ',' +
             d.source.y +
@@ -100,7 +114,8 @@ class Graph extends Component {
             ' 0 0,1 ' +
             d.target.x +
             ',' +
-            d.target.y;
+            d.target.y
+          );
         })
         .attr('stroke', d => {
           return !d.hoover ? 'transparent' : 'yellow';
@@ -129,7 +144,7 @@ class Graph extends Component {
     var path = svg
       .append('g')
       .selectAll('path')
-      .data(this.state.links)
+      .data(this.props.links)
       .enter()
       .append('path')
       .attr('class', function(d) {
@@ -144,7 +159,7 @@ class Graph extends Component {
       })
       .attr('marker-end', 'url(#end)')
       .on('click', d => {
-        console.log(d);
+        //  console.log(d);
         d.marked = !d.marked ? 1 : 0;
         this.props.actions.toggleLinkToSelectedGraph(d);
         if (!d3.event.active) this.force.alphaTarget(0.3).restart();
@@ -152,7 +167,7 @@ class Graph extends Component {
     var pathshadow = svg
       .append('g')
       .selectAll('path')
-      .data(this.state.links)
+      .data(this.props.links)
       .enter()
       .append('path')
       .attr('class', function(d) {
@@ -165,7 +180,7 @@ class Graph extends Component {
       .attr('stroke', 'blue')
       .attr('stroke-width', '5')
       .on('click', d => {
-        console.log(d);
+        //console.log(d);
         d.marked = !d.marked ? 1 : 0;
         this.props.actions.toggleLinkToSelectedGraph(d);
         this.props.actions.selectDisplayLink(d);
@@ -186,7 +201,7 @@ class Graph extends Component {
       .append('g')
       .attr('class', 'nodes')
       .selectAll('circle')
-      .data(this.state.nodes)
+      .data(this.props.nodes)
       .enter()
       .append('circle')
       .attr('fill', d => {
@@ -200,7 +215,7 @@ class Graph extends Component {
         path
           .select(f => {
             if (f.source === d) {
-              console.log(f);
+              //  console.log(f);
               f.marked = !f.marked ? 1 : 0;
               this.props.actions.selectDisplayLink(f);
               this.props.actions.toggleLinkToSelectedGraph(f);
@@ -238,7 +253,7 @@ class Graph extends Component {
       .append('g')
       .attr('class', 'nodeLabels')
       .selectAll('text')
-      .data(this.state.nodes)
+      .data(this.props.nodes)
       .enter()
       .append('text')
       .text(d => {
@@ -251,7 +266,7 @@ class Graph extends Component {
     var linktext = svg
       .append('svg:g')
       .selectAll('g.linklabelholder')
-      .data(this.state.links)
+      .data(this.props.links)
       .enter()
       .append('g')
       .attr('class', 'linklabelholder')
@@ -274,16 +289,27 @@ class Graph extends Component {
       .attr('refX', 60)
       .attr('refY', -1.5);
 
-    this.force.nodes(this.state.nodes);
-    this.force.force('link').links(this.state.links);
+    this.force.nodes(this.props.nodes);
+    this.force.force('link').links(this.props.links);
   }
-
+  componentWillReceiveProps(nextProps) {
+    //console.log(nextProps);
+  }
   componentWillUnmount() {
+    if (this.force === undefined) {
+      return;
+    }
     this.force.stop();
   }
   componentWillReceiveProps(nextProps) {}
   render() {
-    return <svg width={this.props.width} height={this.props.height} />;
+    return (
+      <div>
+        <h2>Here is some fancy data:</h2>
+        <div className="renderedD3" />
+        <svg width={this.props.width} height={this.props.height} />;
+      </div>
+    );
   }
 }
 
@@ -295,7 +321,10 @@ Graph.defaultProps = {
 };
 export default connect(
   state => ({
-    neo4j: state.neo4j
+    neo4j: state.neo4j,
+    graph: state.neo4j.get('displayGraph'),
+    nodes: state.neo4j.get('displayGraph').toJS().nodes,
+    links: state.neo4j.get('displayGraph').toJS().links
   }),
   dispatch => ({
     actions: bindActionCreators(
@@ -305,7 +334,8 @@ export default connect(
           selectDisplayNode,
           selectDisplayLink,
           toggleLinkToSelectedGraph,
-          toggleNodeToSelectedGraph
+          toggleNodeToSelectedGraph,
+          getNewRule
         }
       ),
       dispatch
