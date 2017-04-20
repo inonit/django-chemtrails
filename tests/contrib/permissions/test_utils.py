@@ -7,6 +7,7 @@ from django.db.models import QuerySet
 from django.test import TestCase
 
 from chemtrails.contrib.permissions import utils
+from chemtrails.contrib.permissions.exceptions import MixedContentTypeError
 from chemtrails.contrib.permissions.models import AccessRule
 from chemtrails.neoutils import get_nodeset_for_queryset
 from tests.testapp.autofixtures import Author, AuthorFixture, Book, BookFixture, Store, StoreFixture
@@ -67,7 +68,9 @@ class CheckPermissionsAppLabelTestCase(TestCase):
 
     def test_check_permissions_app_label_invalid_fails(self):
         perm = 'testapp.invalid_permission'
-        self.assertRaisesMessage(ContentType.DoesNotExist, '', utils.check_permissions_app_label, permissions=perm)
+        self.assertRaisesMessage(
+            ContentType.DoesNotExist, 'ContentType matching query does not exist.',
+            utils.check_permissions_app_label, permissions=perm)
 
     def test_check_permissions_app_label_sequence(self):
         perms = ['testapp.add_book', 'testapp.change_book']
@@ -78,10 +81,16 @@ class CheckPermissionsAppLabelTestCase(TestCase):
         self.assertEqual(sorted(codenames), ['add_book', 'change_book'])
 
     def test_check_permissions_app_label_sequence_fails(self):
+        perms = ['testapp.add_book', 'auth.add_user']
+        self.assertRaisesMessage(
+            MixedContentTypeError, ('Given permissions must have the same app label '
+                                    '(testapp != auth).'),
+            utils.check_permissions_app_label, permissions=perms)
+
         perms = ['testapp.add_book', 'testapp.add_store']
         self.assertRaisesMessage(
-            ValueError, ('Calculated content type from permission "testapp.add_store" '
-                         'store does not match <ContentType: book>.'),
+            MixedContentTypeError, ('Calculated content type from permission "testapp.add_store" '
+                                    'store does not match <ContentType: book>.'),
             utils.check_permissions_app_label, permissions=perms)
 
 

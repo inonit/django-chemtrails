@@ -47,12 +47,17 @@ def get_content_type(obj):
 def check_permissions_app_label(permissions):
     """
     Make sure ``permissions`` matches the ``klass`` app label.
-    :param permissions: Single permission string or a sequence of permission strings.
-                        Must be in the format "app_label.codename".
-    :type permissions: str or iterable.
     
-    :raises: - ValueError if any of the compared permissions does not match.
-             - ContentType.DoesNotExist if failed to look up content type for permission.
+    :param permissions: Single permission string or a sequence of permission strings.
+      Must be in the format "app_label.codename".
+    :type permissions: str or sequence.
+    
+    :raises MixedContentTypeError: If given a sequence of ``permissions`` with different
+      app labels.
+    :raises MixedContentTypeError: If computed content type for ``permissions``
+      and/or ``klass`` clashes.
+    :raises ContentType.DoesNotExist: If failed to look up content type for permission.
+    
     :returns: Two tuple with ContentType for permissions and a set of permission codenames.
     :rtype: tuple(ContentType, set(str,))
     """
@@ -67,8 +72,8 @@ def check_permissions_app_label(permissions):
         if '.' in perm:
             _app_label, codename = perm.split('.', 1)
             if app_label is not None and _app_label != app_label:
-                raise MixedContentTypeError('Given permissions must have the same app label. '
-                                            '(%s != %s)' % (app_label, _app_label))
+                raise MixedContentTypeError('Given permissions must have the same app label '
+                                            '(%s != %s).' % (app_label, _app_label))
             app_label = _app_label
         else:
             codename = perm
