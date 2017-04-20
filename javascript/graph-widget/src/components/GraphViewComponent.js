@@ -5,19 +5,15 @@
 import React, { Component, PropTypes } from 'react';
 import { bindActionCreators } from 'redux';
 import { connect } from 'react-redux';
-import * as d3 from 'd3';
-import { Menu, Segment } from 'semantic-ui-react';
+import { Menu } from 'semantic-ui-react';
 import { setActiveGraphItem } from '../reducers/uiState/menu';
 
 import Graph from './Graph';
+import GraphComponent from './GraphComponent';
 import GraphPath from './GraphPath';
 
 class GraphView extends Component {
   displayName = 'GraphView';
-
-  static propTypes = {
-    //tag: PropTypes.string.isRequired
-  };
 
   constructor(props, context) {
     super(props, context);
@@ -33,29 +29,21 @@ class GraphView extends Component {
     const STATE = this.props.uiState.accessRuleControls;
     const NEO = this.props.neo4j;
     const PATH = STATE.get('path');
-
+    //console.log(NEO.toJS().selectedGraph.nodes.length + PATH.length + 1);
     switch (name) {
       case 'graph':
         return (
           <Graph
-            key={NEO.toJS().displayGraph.nodes.length + PATH.length}
-            nodes={NEO.toJS().displayGraph.nodes}
-            links={NEO.toJS().displayGraph.links}
+            key={
+              NEO.toJS().selectedGraph.nodes.length +
+                NEO.toJS().displayGraph.nodes.length +
+                PATH.length +
+                1
+            }
           />
         );
       default:
-        return (
-          <div>
-            {PATH.map((value, index) => {
-              return mapPath(value, index);
-            })}
-            <GraphPath
-              data="hest"
-              nodes={NEO.toJS().displayGraph.nodes}
-              links={NEO.toJS().displayGraph.links}
-            />
-          </div>
-        );
+        return <GraphComponent />;
     }
   }
   render() {
@@ -80,27 +68,6 @@ class GraphView extends Component {
       </div>
     );
   }
-  // render() {
-  //   const STATE = this.props.uiState.accessRuleControls;
-  //   const NEO = this.props.neo4j;
-  //   const PATH = STATE.get('path');
-  //
-  //   return (
-  //     <div>
-  //       <h1>Here be graph!</h1>
-  //       {PATH.map((value, index) => {
-  //         return mapPath(value, index);
-  //       })}
-  //       {NEO !== []
-  //         ? <Graph
-  //             key={NEO.toJS().displayGraph.nodes.length + PATH.length}
-  //             nodes={NEO.toJS().displayGraph.nodes}
-  //             links={NEO.toJS().displayGraph.links}
-  //           />
-  //         : ''}
-  //     </div>
-  //   );
-  // }
 }
 function mapPath(value, index) {
   return (

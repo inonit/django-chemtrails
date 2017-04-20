@@ -1,10 +1,15 @@
 /**
  * Application Sagas.
  */
-import { take, put, select, call, fork } from 'redux-saga/effects';
+import { take, put, call, fork } from 'redux-saga/effects';
 import * as neo4j from './reducers/neo4j';
 import * as accessRuleControls from './reducers/uiState/accessRuleControls';
-import { fetchInitialMetaGraph, fetchNodeList, postGraphRule } from './webapi';
+import {
+  fetchInitialMetaGraph,
+  fetchNodeList,
+  postGraphRule,
+  fetchGraphRule
+} from './webapi';
 
 /**
  * Fetches the initial graph data for the visualization
@@ -35,25 +40,38 @@ export function* watchGetAccessRuleControlNodes() {
 }
 
 /**
- * Fetches a list of nodes from the backend.
+ * Post access rule
  */
 export function* sagaPostGraphRule(data) {
-  console.log(data);
   const payload = yield call(postGraphRule, data);
   yield put({ type: neo4j.POSTED_GRAPH_RULE, payload });
 }
 export function* watchSagaPostGraphRule(data) {
   while (true) {
     const { payload } = yield take(neo4j.POST_GRAPH_RULE);
-    console.log(payload);
+
     yield fork(sagaPostGraphRule, payload);
   }
 }
+/**
+ * Get access rule
+ */
+export function* sagaGetGraphRule(data) {
+  const payload = yield call(fetchGraphRule, data);
+  yield put({ type: neo4j.FETCHED_GRAPH_RULE, payload });
+}
+export function* watchSagaGetGraphRule(data) {
+  while (true) {
+    const { payload } = yield take(neo4j.FETCH_GRAPH_RULE);
 
+    yield fork(sagaGetGraphRule, payload);
+  }
+}
 export default function* rootSaga() {
   yield [
     fork(watchGetInitialGraph),
     fork(watchGetAccessRuleControlNodes),
-    fork(watchSagaPostGraphRule)
+    fork(watchSagaPostGraphRule),
+    fork(watchSagaGetGraphRule)
   ];
 }
