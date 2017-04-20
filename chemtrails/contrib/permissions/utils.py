@@ -74,19 +74,14 @@ def check_permissions_app_label(permissions):
             codename = perm
 
         codenames.add(codename)
-        _ctype = ContentType.objects.get(app_label=app_label,
-                                         permission__codename=codename)
-        if ctype is not None and ctype != _ctype:
-            raise ValueError('Calculated content type from permission "%s" %s does '
-                             'not match %r.' % (perm, _ctype, ctype))
-        else:
-            ctype = _ctype
-
-        if app_label != ctype.app_label:
-            raise ValueError('Passed permission has app label "%s" while '
-                             'given object has app label "%s". Make sure permission '
-                             'matches the object.' %
-                             (app_label, ctype.app_label))
+        if app_label is not None:
+            _ctype = ContentType.objects.get(app_label=app_label,
+                                             permission__codename=codename)
+            if ctype is not None and ctype != _ctype:
+                raise MixedContentTypeError('Calculated content type from permission "%s" %s does '
+                                            'not match %r.' % (perm, _ctype, ctype))
+            else:
+                ctype = _ctype
 
     return ctype, codenames
 
@@ -121,6 +116,22 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True, any_per
       strings rather than only codenames (ie. ``auth.change_user``). If more than
       one permission is present in the sequence, their content type **must** be 
       the same or ``MixedContentTypeError`` would be raised.
+    :param klass: May be a ``Model``, ``Manager`` or ``QuerySet`` object. If not
+      given, this will be calculated based on passed ``permissions`` strings.
+    :param use_groups: If ``True``, include users groups permissions.
+      Defaults to ``True``.
+    :param any_perm: If ``True``, any permission in sequence is accepted. 
+      Defaults to ``False``.
+    :param with_superuser: If ``True`` and ``user.is_superuser`` is set, returns
+      the entire queryset. Otherwise will only return the objects the user has 
+      explicit permissions to. Must be ``True`` for the ``accept_global_perms`` 
+      parameter to have any effect. Defaults to ``True``.
+    :param accept_global_perms: TODO: Remove - This is implied by the backend.
+     
+    :raises MixedContentTypeError: If computed content type for ``permissions``
+      and/or ``klass`` clashes.
+    
+    :returns: QuerySet containing objects ``user`` has ``permissions`` to.
     """
     # Make sure all permissions checks out!
     ctype, codenames = check_permissions_app_label(permissions)
