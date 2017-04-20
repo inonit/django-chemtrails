@@ -11,7 +11,9 @@ from django.utils.encoding import force_text
 
 from neo4j.v1 import Path
 from neomodel import db
+from rest_framework.compat import is_anonymous
 
+from chemtrails.contrib.permissions.exceptions import MixedContentTypeError
 from chemtrails.neoutils import get_node_class_for_model, InflateError
 from chemtrails.neoutils.query import validate_cypher
 from chemtrails.contrib.permissions.models import AccessRule
@@ -51,8 +53,8 @@ def check_permissions_app_label(permissions):
     
     :raises: - ValueError if any of the compared permissions does not match.
              - ContentType.DoesNotExist if failed to look up content type for permission.
-    :returns: Two tuple with ContentType for permissions and a list of permission codenames.
-    :rtype: tuple(ContentType, list[str,])
+    :returns: Two tuple with ContentType for permissions and a set of permission codenames.
+    :rtype: tuple(ContentType, set(str,))
     """
     if isinstance(permissions, str):
         permissions = [permissions]
@@ -65,8 +67,8 @@ def check_permissions_app_label(permissions):
         if '.' in perm:
             _app_label, codename = perm.split('.', 1)
             if app_label is not None and _app_label != app_label:
-                raise ValueError('Given permisssions must have the same app label. '
-                                 '(%s != %s)' % (app_label, _app_label))
+                raise MixedContentTypeError('Given permissions must have the same app label. '
+                                            '(%s != %s)' % (app_label, _app_label))
             app_label = _app_label
         else:
             codename = perm
@@ -86,7 +88,7 @@ def check_permissions_app_label(permissions):
                              'matches the object.' %
                              (app_label, ctype.app_label))
 
-    return ctype, list(codenames)
+    return ctype, codenames
 
 
 def get_users_with_perms(obj, attach_perms=False, with_superusers=False, with_group_users=True):
@@ -111,6 +113,14 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True, any_per
     Returns a queryset of objects for which there can be calculated a path between
     the ``user`` using one or more access rules with *all* permissions present
     at ``permissions``.
+    
+    :param user: ``User`` instance for which objects should be returned.
+    :param permissions: Single permission string, or sequence of permission
+      strings that should be checked.
+      If ``klass`` parameter is not given, those should be full permission
+      strings rather than only codenames (ie. ``auth.change_user``). If more than
+      one permission is present in the sequence, their content type **must** be 
+      the same or ``MixedContentTypeError`` would be raised.
     """
     # Make sure all permissions checks out!
     ctype, codenames = check_permissions_app_label(permissions)
@@ -121,9 +131,31 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True, any_per
         raise ValueError('Could not determine the content type.')
 
     queryset = _get_queryset(klass)
+
+    # Superusers have access to all objects.
     if with_superuser and user.is_superuser:
         return queryset
 
+    # We don't support anonymous users.
+    if is_anonymous(user):
+        return queryset.none()
+
+    global_perms = set()
+    has_global_perms = False
+    if accept_global_perms and with_superuser:
+        for code in codenames:
+            if user.has_perm('%s.%s' % (ctype.app_label, code)):
+                global_perms.add(code)
+
+        for code in global_perms:
+            codenames.remove(code)
+
+        if len(global_perms) > 0 and (len(codenames) == 0 or any_perm):
+            return queryset
+        elif len(global_perms) > 0 and (len(codenames) > 0):
+            has_global_perms = True
+
+    # If there is no node in the graph for the user object, return none.
     source_node = get_node_class_for_model(user).nodes.get_or_none(**{'pk': user.pk})
     if not source_node:
         return queryset.none()

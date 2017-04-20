@@ -3,7 +3,8 @@
 from django.contrib.auth.backends import ModelBackend
 from django.db import models
 
-from chemtrails.compat import is_authenticated
+from rest_framework.compat import is_authenticated
+
 from chemtrails.contrib.permissions.utils import GraphPermissionChecker, check_permissions_app_label
 
 

@@ -61,9 +61,9 @@ class CheckPermissionsAppLabelTestCase(TestCase):
         perm = 'testapp.add_book'
         book = BookFixture(Book).create_one()
         self.assertEqual(utils.check_permissions_app_label(perm),
-                         (utils.get_content_type(book), ['add_book']))
+                         (utils.get_content_type(book), {'add_book'}))
         self.assertEqual(utils.check_permissions_app_label(perm),
-                         (utils.get_content_type(Book), ['add_book']))
+                         (utils.get_content_type(Book), {'add_book'}))
 
     def test_check_permissions_app_label_invalid_fails(self):
         perm = 'testapp.invalid_permission'
@@ -130,6 +130,22 @@ class GetObjectsForUserTestCase(TestCase):
         permitted_objects = utils.get_objects_for_user(user=user1, permissions='auth.change_user',
                                                        klass=User.objects.all())
         self.assertListEqual(graph1_user_pks, list(permitted_objects.values_list('pk', flat=True)))
+
+    @flush_nodes()
+    def test_get_objects_for_user_is_superuser(self):
+        user = User.objects.create_user(username='testuser', password='test123.', is_superuser=True)
+        BookFixture(Book, follow_fk=True, generate_m2m=False).create(count=5)
+        self.assertListEqual(list(Book.objects.values_list('pk', flat=True)),
+                             list(utils.get_objects_for_user(user=user, permissions='testapp.add_book')
+                                  .values_list('pk', flat=True)))
+
+    @flush_nodes()
+    def test_get_objects_for_user_is_anonymous(self):
+        user = AnonymousUser()
+        BookFixture(Book, follow_fk=True, generate_m2m=False).create_one()
+        self.assertListEqual(list(),
+                             list(utils.get_objects_for_user(user=user, permissions='testapp.add_book')
+                                  .values_list('pk', flat=True)))
 
 
 class GetObjectsForGroupTestCase(TestCase):
