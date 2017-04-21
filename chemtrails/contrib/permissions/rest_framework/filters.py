@@ -26,5 +26,5 @@ class ChemoPermissionsFilter(BaseFilterBackend):
             'app_label': queryset.model._meta.app_label,
             'model_name': queryset.model._meta.model_name
         }
-        extra = {'accept_global_perms': False}
+        extra = {}
         return get_objects_for_user(request.user, permissions=permission, klass=queryset, **extra)
