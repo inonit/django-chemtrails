@@ -7,7 +7,7 @@
 
 Graphing Django
 
-[Documentation available](http://django-chemtrails.rtfd.io/>) on Read the Docs!
+[Documentation available](http://django-chemtrails.rtfd.io/) on Read the Docs!
 
 **BIG FAT WARNING**
 
