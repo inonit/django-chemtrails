@@ -72,6 +72,10 @@ class CheckPermissionsAppLabelTestCase(TestCase):
             ContentType.DoesNotExist, 'ContentType matching query does not exist.',
             utils.check_permissions_app_label, permissions=perm)
 
+    def test_check_permissions_app_label_invalid_app_label_fails(self):
+        perm = ('testapp.add_book', 'auth.change_user')
+        self.assertRaisesMessage(ValueError, '', utils.check_permissions_app_label, permissions=perm)
+
     def test_check_permissions_app_label_sequence(self):
         perms = ['testapp.add_book', 'testapp.change_book']
         book = BookFixture(Book).create_one()
