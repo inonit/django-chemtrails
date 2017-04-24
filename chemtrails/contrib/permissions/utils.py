@@ -5,7 +5,7 @@ from itertools import chain
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser, Group, Permission
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.shortcuts import _get_queryset
 from django.utils.encoding import force_text
 
@@ -42,6 +42,24 @@ def get_content_type(obj):
     Returns the content type for ``obj``.
     """
     return ContentType.objects.get_for_model(obj)
+
+
+def get_perms(user_or_group, model):
+    """
+    Return permissions for given user/group and model pair, as
+    a list of strings.
+    """
+    checker = GraphPermissionChecker(user_or_group)
+    return checker.get_perms(model)
+
+
+def get_user_perms(user, model):
+    """
+    Return permissions for given user and model pair, as a 
+    list of strings.
+    """
+    checker = GraphPermissionChecker(user)
+    return checker.get_user_perms(model)
 
 
 def check_permissions_app_label(permissions):
@@ -107,8 +125,7 @@ def get_groups_with_perms(obj, attach_perms=False):
     raise NotImplementedError
 
 
-def get_objects_for_user(user, permissions, klass=None, use_groups=True, any_perm=False,
-                         with_superuser=True, accept_global_perms=True):
+def get_objects_for_user(user, permissions, klass=None, use_groups=True, any_perm=False, with_superuser=True):
     """
     Returns a queryset of objects for which there can be calculated a path between
     the ``user`` using one or more access rules with *all* permissions present
@@ -129,24 +146,28 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True, any_per
       Defaults to ``False``.
     :param with_superuser: If ``True`` and ``user.is_superuser`` is set, returns
       the entire queryset. Otherwise will only return the objects the user has 
-      explicit permissions to. Must be ``True`` for the ``accept_global_perms`` 
-      parameter to have any effect. Defaults to ``True``.
-    :param accept_global_perms: TODO: Remove - This is implied by the backend.
+      explicit permissions to. Defaults to ``True``.
      
     :raises MixedContentTypeError: If computed content type for ``permissions``
       and/or ``klass`` clashes.
+    :raises ValueError: If unable to compute content type for ``permissions``.
     
     :returns: QuerySet containing objects ``user`` has ``permissions`` to.
     """
     # Make sure all permissions checks out!
     ctype, codenames = check_permissions_app_label(permissions)
 
-    if ctype and klass is None:
-        klass = ctype.model_class()
+    if ctype is None and klass is not None:
+        queryset = _get_queryset(klass)
+        ctype = get_content_type(queryset.model)
+    elif ctype is not None and klass is None:
+        queryset = _get_queryset(ctype.model_class())
     elif klass is None:
         raise ValueError('Could not determine the content type.')
-
-    queryset = _get_queryset(klass)
+    else:
+        queryset = _get_queryset(klass)
+        if ctype.model_class() != queryset.model:
+            raise MixedContentTypeError('ContentType for given permissions and klass differs.')
 
     # Superusers have access to all objects.
     if with_superuser and user.is_superuser:
@@ -156,30 +177,40 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True, any_per
     if is_anonymous(user):
         return queryset.none()
 
-    global_perms = set()
-    has_global_perms = False
-    if accept_global_perms and with_superuser:
-        for code in codenames:
-            if user.has_perm('%s.%s' % (ctype.app_label, code)):
-                global_perms.add(code)
-
-        for code in global_perms:
-            codenames.remove(code)
-
-        if len(global_perms) > 0 and (len(codenames) == 0 or any_perm):
-            return queryset
-        elif len(global_perms) > 0 and (len(codenames) > 0):
-            has_global_perms = True
-
-    # If there is no node in the graph for the user object, return none.
+    # If there is no node in the graph for the user object, return empty queryset.
     source_node = get_node_class_for_model(user).nodes.get_or_none(**{'pk': user.pk})
     if not source_node:
         return queryset.none()
 
+    # Next, get all permissions the user has, either directly set through user permissions
+    # or if ``use_groups`` are set, derived from a group membership.
+    global_perms = set(get_perms(user, queryset.model) if use_groups
+                       else get_user_perms(user, queryset.model))
+
+    defaults = {
+        'is_active': True,
+        'ctype_source': get_content_type(user),
+        'ctype_target': ctype
+    }
+    rules_queryset = AccessRule.objects.prefetch_related('permissions').filter(**defaults)
+
+    # Check if we requires the user to have *all* permissions or if it is
+    # sufficient with any provided.
+    if not any_perm:
+        # To reduce search space, first retrieve all access rules with n permissions.
+        rules_queryset = rules_queryset.annotate(count=Count('permissions')).filter(count=len(global_perms))
+        for codename in global_perms:
+            rules_queryset = rules_queryset.filter(permissions__codename=codename)
+    else:
+        rules_queryset = rules_queryset.filter(permissions__codename__in=global_perms)
+
+    # If no matching rules exists, return empty queryset.
+    if not rules_queryset.exists():
+        return queryset.none()
+
     # Calculate a PATH query for each rule
     queries = []
-    for access_rule in AccessRule.objects.filter(is_active=True, ctype_source=get_content_type(user),
-                                                 ctype_target=ctype, permissions__codename__in=codenames):
+    for access_rule in rules_queryset:
         manager = source_node.paths
         for relation_type in access_rule.relation_types:
             manager = manager.add(relation_type)
@@ -187,12 +218,14 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True, any_per
         if manager.statement:
             queries.append(manager.get_path())
 
-    values = set()
-    q = Q(pk__in=values)
+    empty = True
+    q_values = Q()
     for query in queries:
         validate_cypher(query, raise_exception=True)
         result, _ = db.cypher_query(query)
         if result:
+            empty = False
+            values = set()
             for item in flatten(result):
                 if not isinstance(item, Path):
                     continue
@@ -200,9 +233,14 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True, any_per
                     values.add(item.end.properties['pk'])
                 except KeyError:
                     continue
-            q |= Q(pk__in=values)
+            q_values |= Q(pk__in=values)
 
-    return queryset.filter(q)
+    # If the "empty" flag is True, it means we couldn't get a path from the
+    # user node to given object in queryset by any evaluated rule.
+    # Return an empty queryset.
+    if empty is True:
+        return queryset.none()
+    return queryset.filter(q_values)
 
 
 def get_objects_for_group(group, perms, klass=None, any_perm=False, accept_global_perms=True):
@@ -300,8 +338,8 @@ class GraphPermissionChecker(object):
         user_filters = {'%s' % related_name: self.user}
         return user_filters
 
-    def get_user_perms(self, obj):
-        ctype = get_content_type(obj)
+    def get_user_perms(self, model):
+        ctype = get_content_type(model)
         filters = self.get_user_filters()
         return Permission.objects.filter(content_type=ctype, **filters).values_list('codename', flat=True)
 
@@ -318,8 +356,8 @@ class GraphPermissionChecker(object):
 
         return group_filters
 
-    def get_group_perms(self, obj):
-        ctype = get_content_type(obj)
+    def get_group_perms(self, model):
+        ctype = get_content_type(model)
         filters = self.get_group_filters()
         return Permission.objects.filter(content_type=ctype, **filters).values_list('codename', flat=True)
 

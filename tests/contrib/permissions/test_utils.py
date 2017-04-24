@@ -11,7 +11,7 @@ from chemtrails.contrib.permissions.exceptions import MixedContentTypeError
 from chemtrails.contrib.permissions.models import AccessRule
 from chemtrails.neoutils import get_nodeset_for_queryset
 from tests.testapp.autofixtures import Author, AuthorFixture, Book, BookFixture, Store, StoreFixture
-from tests.utils import flush_nodes
+from tests.utils import flush_nodes, clear_neo4j_model_nodes
 
 User = get_user_model()
 
@@ -99,62 +99,236 @@ class GetObjectsForUserTestCase(TestCase):
     Testing ``chemtrails.contrib.permissions.utils.get_objects_for_user()``.
     """
 
-    @flush_nodes()
-    def test_get_objects_for_user(self):
-        permission = Permission.objects.get(codename='change_user')
+    def setUp(self):
+        clear_neo4j_model_nodes()
 
-        graph1 = Store.objects.filter(pk__in=map(lambda n: n.pk,
-                                                 StoreFixture(Store).create(count=1, commit=True)))
-        get_nodeset_for_queryset(graph1, sync=True, max_depth=1)
-        graph1_user_pks = list(User.objects.values_list('pk', flat=True))
+        BookFixture(Book, generate_m2m={'authors': (2, 2)}).create_one()
+        self.user1, self.user2 = User.objects.earliest('pk'), User.objects.latest('pk')
+        self.group = Group.objects.create(name='group')
 
-        graph2 = Store.objects.filter(pk__in=map(lambda n: n.pk,
-                                                 StoreFixture(Store).create(count=1, commit=True)))
-        get_nodeset_for_queryset(graph2, sync=True, max_depth=1)
-        graph2_user_pks = list(User.objects.exclude(pk__in=graph1_user_pks).values_list('pk', flat=True))
+    def tearDown(self):
+        clear_neo4j_model_nodes()
 
-        user1 = User.objects.get(pk=graph1_user_pks[0])
-        user1.user_permissions.add(permission)
+    def test_superuser(self):
+        self.user1.is_superuser = True
+        queryset = Book.objects.all()
+        objects = utils.get_objects_for_user(self.user1, ['testapp.change_book'], queryset)
+        self.assertEqual(set(queryset), set(objects))
 
-        user2 = User.objects.get(pk=graph2_user_pks[0])
-        user2.user_permissions.add(permission)
+    def test_with_superuser_true(self):
+        self.user1.is_superuser = True
+        queryset = Book.objects.all()
+        objects = utils.get_objects_for_user(self.user1,
+                                             ['testapp.change_book'], queryset, with_superuser=True)
+        self.assertEqual(set(queryset), set(objects))
 
-        # Create an access rule from User to User following a path:
-        # (UserNode)-[:AUTHOR]->(AuthorNode)-[:BOOK]->
-        #   (BookNode)-[:STORE]->(StoreNode)-[:BOOKS]->
-        #   (BookNode)-[:AUTHORS]->(AuthorNode)-[:USER]->(UserNode)
-        rule = AccessRule.objects.create(ctype_source=utils.get_content_type(User),
-                                         ctype_target=utils.get_content_type(User),
-                                         relation_types=[
-                                             'AUTHOR', 'BOOK',
-                                             'STORE', 'BOOKS',
-                                             'AUTHORS', 'USER'
-                                         ])
-        rule.permissions.add(permission)
+    def test_with_superuser_false(self):
+        self.user1.is_superuser = True
+        queryset = Book.objects.all()
+        book = BookFixture(Book, follow_fk=True, generate_m2m={'authors': (1, 1)}).create_one()
+        objects = utils.get_objects_for_user(self.user1,
+                                             ['testapp.change_book'], queryset, with_superuser=False)
+        self.assertEqual({book}, set(objects))
 
-        # Check if a user in a graph can get a path to all other users in the same graph.
-        permitted_objects = utils.get_objects_for_user(user=user1, permissions='auth.change_user')
-        self.assertListEqual(graph1_user_pks, list(permitted_objects.values_list('pk', flat=True)))
-
-        permitted_objects = utils.get_objects_for_user(user=user1, permissions='auth.change_user',
-                                                       klass=User.objects.all())
-        self.assertListEqual(graph1_user_pks, list(permitted_objects.values_list('pk', flat=True)))
-
-    @flush_nodes()
-    def test_get_objects_for_user_is_superuser(self):
-        user = User.objects.create_user(username='testuser', password='test123.', is_superuser=True)
-        BookFixture(Book, follow_fk=True, generate_m2m=False).create(count=5)
-        self.assertListEqual(list(Book.objects.values_list('pk', flat=True)),
-                             list(utils.get_objects_for_user(user=user, permissions='testapp.add_book')
-                                  .values_list('pk', flat=True)))
-
-    @flush_nodes()
-    def test_get_objects_for_user_is_anonymous(self):
+    def test_anonymous(self):
         user = AnonymousUser()
-        BookFixture(Book, follow_fk=True, generate_m2m=False).create_one()
-        self.assertListEqual(list(),
-                             list(utils.get_objects_for_user(user=user, permissions='testapp.add_book')
-                                  .values_list('pk', flat=True)))
+        queryset = Book.objects.all()
+        objects = utils.get_objects_for_user(user,
+                                             ['testapp.change_book'], queryset)
+        self.assertEqual(set(Book.objects.none()), set(objects))
+
+    def test_mixed_permissions(self):
+        codenames = [
+            'testapp.change_book',
+            'testapp.change_store'
+        ]
+        self.assertRaises(MixedContentTypeError, utils.get_objects_for_user, self.user1, codenames)
+
+    def test_mixed_app_label_permissions(self):
+        codenames = [
+            'testapp.change_book',
+            'auth.change_user'
+        ]
+        self.assertRaises(MixedContentTypeError, utils.get_objects_for_user, self.user1, codenames)
+
+    def test_mixed_ctypes_no_klass(self):
+        codenames = [
+            'testapp.change_book',
+            'auth.change_user'
+        ]
+        self.assertRaises(MixedContentTypeError, utils.get_objects_for_user, self.user1, codenames)
+
+    def test_mixed_ctypes_with_klass(self):
+        codenames = [
+            'testapp.change_book',
+            'auth.change_user'
+        ]
+        self.assertRaises(MixedContentTypeError, utils.get_objects_for_user, self.user1, codenames, Book)
+
+    def test_no_app_label_or_klass(self):
+        self.assertRaises(ValueError, utils.get_objects_for_user, self.user1, ['change_book'])
+
+    def test_empty_permissions_sequence(self):
+        objects = utils.get_objects_for_user(self.user1, [], Book.objects.all())
+        self.assertEqual(set(objects), set())
+
+    def test_permissions_single(self):
+        access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(self.user1),
+                                                ctype_target=utils.get_content_type(self.group),
+                                                relation_types=[
+                                                    'GROUPS'
+                                                ])
+        perm = Permission.objects.get(content_type__app_label='auth', codename='change_group')
+        access_rule.permissions.add(perm)
+        self.user1.user_permissions.add(perm)
+
+        self.assertEqual(
+            set(utils.get_objects_for_user(self.user1, 'auth.change_group')),
+            set(utils.get_objects_for_user(self.user1, ['auth.change_group']))
+        )
+
+    def test_klass_as_model(self):
+        access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(self.user1),
+                                                ctype_target=utils.get_content_type(self.group),
+                                                relation_types=[
+                                                    'GROUPS'
+                                                ])
+        perm = Permission.objects.get(content_type__app_label='auth', codename='change_group')
+        access_rule.permissions.add(perm)
+        self.user1.user_permissions.add(perm)
+
+        objects = utils.get_objects_for_user(self.user1,
+                                             ['auth.change_group'], Group)
+        self.assertEqual([obj.name for obj in objects], [self.group.name])
+
+    def test_klass_as_manager(self):
+        access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(self.user1),
+                                                ctype_target=utils.get_content_type(self.group),
+                                                relation_types=[
+                                                    'GROUPS'
+                                                ])
+        perm = Permission.objects.get(content_type__app_label='auth', codename='change_group')
+        access_rule.permissions.add(perm)
+        self.user1.user_permissions.add(perm)
+
+        objects = utils.get_objects_for_user(self.user1,
+                                             ['auth.change_group'], Group.objects)
+        self.assertEqual([obj.name for obj in objects], [self.group.name])
+
+    def test_klass_as_queryset(self):
+        access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(self.user1),
+                                                ctype_target=utils.get_content_type(self.group),
+                                                relation_types=[
+                                                    'GROUPS'
+                                                ])
+        perm = Permission.objects.get(content_type__app_label='auth', codename='change_group')
+        access_rule.permissions.add(perm)
+        self.user1.user_permissions.add(perm)
+
+        objects = utils.get_objects_for_user(self.user1,
+                                             ['auth.change_group'], Group.objects.all())
+        self.assertEqual([obj.name for obj in objects], [self.group.name])
+
+    def test_ensure_returns_queryset(self):
+        objects = utils.get_objects_for_user(self.user1, ['auth.change_group'])
+        self.assertTrue(isinstance(objects, QuerySet))
+        self.assertEqual(objects.model, Group)
+
+    def test_single_perm_to_check(self):
+        groups = Group.objects.bulk_create([Group(name=name) for name in ['group1', 'group2', 'group3']])
+        access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(self.user1),
+                                                ctype_target=utils.get_content_type(self.group),
+                                                relation_types=[
+                                                    'GROUPS'
+                                                ])
+        perm = Permission.objects.get(content_type__app_label='auth', codename='change_group')
+        access_rule.permissions.add(perm)
+        self.user1.user_permissions.add(perm)
+
+        self.user1.groups.add(*groups)
+
+        objects = utils.get_objects_for_user(self.user1, 'auth.change_group')
+        self.assertEqual(len(groups), len(objects))
+        self.assertEqual(set(groups), set(objects))
+
+    def test_multiple_permissions_to_check(self):
+        pass
+
+    def test_multiple_permissions_to_check_no_groups(self):
+        pass
+
+    def test_any_permissions(self):
+        pass
+
+    def test_group_permissions(self):
+        pass
+
+    # @flush_nodes()
+    # def test_get_objects_for_user_single_permission(self):
+    #     BookFixture(Book, generate_m2m={'authors': (2, 2)}).create_one()
+    #     user1, user2 = User.objects.earliest('pk'), User.objects.latest('pk')
+    #
+    #     brk = ''
+    #
+    # def test_get_objects_for_user_multiple_permissions(self):
+    #     pass
+    #
+    # @flush_nodes()
+    # def test_get_objects_for_user(self):
+    #     permission = Permission.objects.get(codename='change_user')
+    #
+    #     graph1 = Store.objects.filter(pk__in=map(lambda n: n.pk,
+    #                                              StoreFixture(Store).create(count=1, commit=True)))
+    #     get_nodeset_for_queryset(graph1, sync=True, max_depth=1)
+    #     graph1_user_pks = list(User.objects.values_list('pk', flat=True))
+    #
+    #     graph2 = Store.objects.filter(pk__in=map(lambda n: n.pk,
+    #                                              StoreFixture(Store).create(count=1, commit=True)))
+    #     get_nodeset_for_queryset(graph2, sync=True, max_depth=1)
+    #     graph2_user_pks = list(User.objects.exclude(pk__in=graph1_user_pks).values_list('pk', flat=True))
+    #
+    #     user1 = User.objects.get(pk=graph1_user_pks[0])
+    #     user1.user_permissions.add(permission)
+    #
+    #     user2 = User.objects.get(pk=graph2_user_pks[0])
+    #     user2.user_permissions.add(permission)
+    #
+    #     # Create an access rule from User to User following a path:
+    #     # (UserNode)-[:AUTHOR]->(AuthorNode)-[:BOOK]->
+    #     #   (BookNode)-[:STORE]->(StoreNode)-[:BOOKS]->
+    #     #   (BookNode)-[:AUTHORS]->(AuthorNode)-[:USER]->(UserNode)
+    #     rule = AccessRule.objects.create(ctype_source=utils.get_content_type(User),
+    #                                      ctype_target=utils.get_content_type(User),
+    #                                      relation_types=[
+    #                                          'AUTHOR', 'BOOK',
+    #                                          'STORE', 'BOOKS',
+    #                                          'AUTHORS', 'USER'
+    #                                      ])
+    #     rule.permissions.add(permission)
+    #
+    #     # Check if a user in a graph can get a path to all other users in the same graph.
+    #     permitted_objects = utils.get_objects_for_user(user=user1, permissions='auth.change_user')
+    #     self.assertListEqual(graph1_user_pks, list(permitted_objects.values_list('pk', flat=True)))
+    #
+    #     permitted_objects = utils.get_objects_for_user(user=user1, permissions='auth.change_user',
+    #                                                    klass=User.objects.all())
+    #     self.assertListEqual(graph1_user_pks, list(permitted_objects.values_list('pk', flat=True)))
+    #
+    # @flush_nodes()
+    # def test_get_objects_for_user_is_superuser(self):
+    #     user = User.objects.create_user(username='testuser', password='test123.', is_superuser=True)
+    #     BookFixture(Book, follow_fk=True, generate_m2m=False).create(count=5)
+    #     self.assertListEqual(list(Book.objects.values_list('pk', flat=True)),
+    #                          list(utils.get_objects_for_user(user=user, permissions='testapp.add_book')
+    #                               .values_list('pk', flat=True)))
+    #
+    # @flush_nodes()
+    # def test_get_objects_for_user_is_anonymous(self):
+    #     user = AnonymousUser()
+    #     BookFixture(Book, follow_fk=True, generate_m2m=False).create_one()
+    #     self.assertListEqual(list(),
+    #                          list(utils.get_objects_for_user(user=user, permissions='testapp.add_book')
+    #                               .values_list('pk', flat=True)))
 
 
 class GetObjectsForGroupTestCase(TestCase):
