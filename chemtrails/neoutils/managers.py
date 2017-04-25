@@ -105,18 +105,25 @@ class PathManager:
         for n, config in enumerate(self._statements):
             # Replace placeholders with actual values.
             defaults = config['params'].copy()
+
+            source_props = config['source_props']
+            if not inspect.isclass(config['source_class']):
+                # If we have a node instance, always match its primary key!
+                source_props['pk'] = config['source_class'].pk
+
+            target_props = config['target_props']
+
             defaults.update({
                 'source': 'source{0}'.format(format_node(
                     ident=n,
                     label=config['source_class'].__label__,
-                    # If we have a node instance, always match its primary key!
-                    **{'pk': config['source_class'].pk} if not inspect.isclass(config['source_class']) else {}
+                    **source_props
                 )),
                 'target': 'target{0}'.format(format_node(
                     ident=n,
                     label=config['target_class'].__label__,
                     # Add any user specified filters to target node.
-                    **config['filters']
+                    **target_props
                 ))
             })
             relation_str = config['atom'].format(**defaults)
@@ -130,19 +137,20 @@ class PathManager:
 
         return ''.join(statements)
 
-    def add(self, relation_type=None, properties=None, **filters):
+    def add(self, relation_type=None, properties=None, source_props=None, **filters):
         """
         Adds a relationship matching string, based on relation type.
         
         :param relation_type: The relationship type, ie USER.
         :type relation_type: str
         :param properties: Optional properties used to instantiate the
-                           ``StructuredRel`` relationship class. This is used
-                           to gather properties for the generated relationship
-                           statement.
+          ``StructuredRel`` relationship class. This is used to gather properties 
+          for the generated relationship statement.
         :type properties: dict
-        :param filters: Filters which should be applied to the relations types
-                        end node.
+        :param source_props: Property mapping which should be applied for filtering the
+          source node.
+        :type source_props: dict
+        :param filters: Filters which should be applied to the relations types end node.
         :type filters: dict
         :returns: self
         """
@@ -167,9 +175,10 @@ class PathManager:
 
         self._statements.append({
             'source_class': self.next_class,
+            'source_props': source_props or {},
             'target_class': traversal.target_class,
+            'target_props': filters,
             'params': params,
-            'filters': filters,
             'atom': build_relation_string(lhs='{source}', rhs='{target}',
                                           props=relation_properties, **traversal.definition)
         })
