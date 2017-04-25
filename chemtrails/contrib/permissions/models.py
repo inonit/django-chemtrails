@@ -39,6 +39,8 @@ class AccessRule(models.Model):
                                 help_text=_('Required relation types for generating a Cypher path.'))
     is_active = models.BooleanField(default=True, help_text=_('Uncheck to disable evaluation of the rule '
                                                               'in the rule chain.'))
+    requires_staff = models.BooleanField(default=False, help_text=_('Requires user which should have '
+                                                                    'permissions evaluated to be a staff user.'))
     created = models.DateTimeField(verbose_name=_('created'), auto_now_add=True)
     updated = models.DateTimeField(verbose_name=_('updated'), auto_now=True)
 

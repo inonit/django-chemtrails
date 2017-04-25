@@ -17,11 +17,12 @@ from chemtrails.neoutils.query import get_node_relationship_types
 class AccessRuleAdmin(admin.ModelAdmin):
 
     form = AccessRuleForm
-    list_display = ('ctype_target', 'ctype_source', 'is_active', 'created')
-    list_filter = ('is_active', 'ctype_target')
+    list_display = ('ctype_target', 'ctype_source', 'requires_staff', 'is_active', 'created')
+    list_filter = ('requires_staff', 'is_active', 'ctype_target')
     filter_horizontal = ('permissions',)
     fieldsets = (
-         (None, {'fields': ('ctype_target', 'ctype_source', 'permissions', 'relation_types', 'is_active')}),
+         (None, {'fields': ('ctype_target', 'ctype_source', 'permissions',
+                            'relation_types', 'requires_staff', 'is_active')}),
          ('Rule editor', {'fields': ('graph',)}),
     )
 
