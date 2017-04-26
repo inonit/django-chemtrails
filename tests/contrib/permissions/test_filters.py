@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
+from rest_framework.permissions import DjangoObjectPermissions
 
 from rest_framework.serializers import ModelSerializer
 from rest_framework import status
@@ -33,6 +34,7 @@ class ChemoPermissionsFilterTestCase(TestCase):
         class BookViewSet(ModelViewSet):
             queryset = Book.objects.all()
             serializer_class = BookSerializer
+            permission_classes = [DjangoObjectPermissions]
             filter_backends = [ChemoPermissionsFilter]
 
         self.book_view = BookViewSet
