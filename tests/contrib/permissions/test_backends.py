@@ -9,7 +9,7 @@ from chemtrails.contrib.permissions.backends import ChemoPermissionsBackend
 from chemtrails.contrib.permissions.models import AccessRule
 from chemtrails.neoutils import get_nodeset_for_queryset
 
-from tests.utils import flush_nodes, clear_neo4j_model_nodes
+from tests.utils import clear_neo4j_model_nodes
 from tests.testapp.autofixtures import Author, AuthorFixture, Store, StoreFixture
 
 User = get_user_model()
