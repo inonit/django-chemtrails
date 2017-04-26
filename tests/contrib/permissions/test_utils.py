@@ -9,7 +9,7 @@ from django.test import TestCase
 from chemtrails.contrib.permissions import utils
 from chemtrails.contrib.permissions.exceptions import MixedContentTypeError
 from chemtrails.contrib.permissions.models import AccessRule
-from chemtrails.neoutils import get_nodeset_for_queryset
+from chemtrails.neoutils import get_node_for_object, get_nodeset_for_queryset
 from tests.testapp.autofixtures import Author, AuthorFixture, Book, BookFixture, Store, StoreFixture
 from tests.utils import flush_nodes, clear_neo4j_model_nodes
 
@@ -123,12 +123,29 @@ class GetObjectsForUserTestCase(TestCase):
         self.assertEqual(set(queryset), set(objects))
 
     def test_with_superuser_false(self):
-        self.user1.is_superuser = True
-        queryset = Book.objects.all()
-        book = BookFixture(Book, follow_fk=True, generate_m2m={'authors': (1, 1)}).create_one()
-        objects = utils.get_objects_for_user(self.user1,
-                                             ['testapp.change_book'], queryset, with_superuser=False)
-        self.assertEqual({book}, set(objects))
+        BookFixture(Book, follow_fk=True, generate_m2m={'authors': (1, 1)}).create(count=2)
+
+        user = User.objects.latest('pk')
+        user.is_superuser = True
+
+        # `with_superuser=False` requires defined access rules - should yield no results!
+        self.assertEqual(set(Book.objects.none()),
+                         set(utils.get_objects_for_user(
+                             user, ['testapp.change_book'], Book.objects.all(), with_superuser=False)))
+
+        access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(user),
+                                                ctype_target=utils.get_content_type(Book),
+                                                relation_types=[
+                                                    'AUTHOR',
+                                                    'BOOK'
+                                                ])
+        perm = Permission.objects.get(content_type__app_label='testapp', codename='change_book')
+        access_rule.permissions.add(perm)
+        user.user_permissions.add(perm)
+
+        objects = utils.get_objects_for_user(user,
+                                             ['testapp.change_book'], Book.objects.all(), with_superuser=False)
+        self.assertEqual(set(user.author.book_set.all()), set(objects))
 
     def test_anonymous(self):
         user = AnonymousUser()
@@ -136,6 +153,15 @@ class GetObjectsForUserTestCase(TestCase):
         objects = utils.get_objects_for_user(user,
                                              ['testapp.change_book'], queryset)
         self.assertEqual(set(Book.objects.none()), set(objects))
+
+    def test_nonexistent_source_node(self):
+        user = User.objects.create_user(username='testuser')
+
+        node = get_node_for_object(user).sync()
+        node.delete()
+
+        objects = utils.get_objects_for_user(user, ['testapp.add_book'])
+        self.assertEqual(set(objects), set(Book.objects.none()))
 
     def test_mixed_permissions(self):
         codenames = [
@@ -173,8 +199,8 @@ class GetObjectsForUserTestCase(TestCase):
         self.assertEqual(set(objects), set())
 
     def test_permissions_single(self):
-        access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(self.user1),
-                                                ctype_target=utils.get_content_type(self.group),
+        access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(User),
+                                                ctype_target=utils.get_content_type(Group),
                                                 relation_types=[
                                                     'GROUPS'
                                                 ])
@@ -188,42 +214,48 @@ class GetObjectsForUserTestCase(TestCase):
         )
 
     def test_klass_as_model(self):
-        access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(self.user1),
-                                                ctype_target=utils.get_content_type(self.group),
+        access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(User),
+                                                ctype_target=utils.get_content_type(Group),
                                                 relation_types=[
                                                     'GROUPS'
                                                 ])
         perm = Permission.objects.get(content_type__app_label='auth', codename='change_group')
         access_rule.permissions.add(perm)
         self.user1.user_permissions.add(perm)
+
+        self.user1.groups.add(self.group)
 
         objects = utils.get_objects_for_user(self.user1,
                                              ['auth.change_group'], Group)
         self.assertEqual([obj.name for obj in objects], [self.group.name])
 
     def test_klass_as_manager(self):
-        access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(self.user1),
-                                                ctype_target=utils.get_content_type(self.group),
+        access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(User),
+                                                ctype_target=utils.get_content_type(Group),
                                                 relation_types=[
                                                     'GROUPS'
                                                 ])
         perm = Permission.objects.get(content_type__app_label='auth', codename='change_group')
         access_rule.permissions.add(perm)
         self.user1.user_permissions.add(perm)
+
+        self.user1.groups.add(self.group)
 
         objects = utils.get_objects_for_user(self.user1,
                                              ['auth.change_group'], Group.objects)
         self.assertEqual([obj.name for obj in objects], [self.group.name])
 
     def test_klass_as_queryset(self):
-        access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(self.user1),
-                                                ctype_target=utils.get_content_type(self.group),
+        access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(User),
+                                                ctype_target=utils.get_content_type(Group),
                                                 relation_types=[
                                                     'GROUPS'
                                                 ])
         perm = Permission.objects.get(content_type__app_label='auth', codename='change_group')
         access_rule.permissions.add(perm)
         self.user1.user_permissions.add(perm)
+
+        self.user1.groups.add(self.group)
 
         objects = utils.get_objects_for_user(self.user1,
                                              ['auth.change_group'], Group.objects.all())
@@ -234,10 +266,10 @@ class GetObjectsForUserTestCase(TestCase):
         self.assertTrue(isinstance(objects, QuerySet))
         self.assertEqual(objects.model, Group)
 
-    def test_single_perm_to_check(self):
+    def test_single_permission_to_check(self):
         groups = Group.objects.bulk_create([Group(name=name) for name in ['group1', 'group2', 'group3']])
-        access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(self.user1),
-                                                ctype_target=utils.get_content_type(self.group),
+        access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(User),
+                                                ctype_target=utils.get_content_type(Group),
                                                 relation_types=[
                                                     'GROUPS'
                                                 ])
@@ -252,13 +284,91 @@ class GetObjectsForUserTestCase(TestCase):
         self.assertEqual(set(groups), set(objects))
 
     def test_multiple_permissions_to_check(self):
-        pass
+        groups = Group.objects.bulk_create([Group(name=name) for name in ['group1', 'group2', 'group3']])
+        access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(User),
+                                                ctype_target=utils.get_content_type(Group),
+                                                relation_types=[
+                                                    'GROUPS'
+                                                ])
+        add_perm = Permission.objects.get(content_type__app_label='auth', codename='add_group')
+        change_perm = Permission.objects.get(content_type__app_label='auth', codename='change_group')
+        access_rule.permissions.add(*[add_perm, change_perm])
+        self.user1.user_permissions.add(*[add_perm, change_perm])
 
-    def test_multiple_permissions_to_check_no_groups(self):
-        pass
+        self.user1.groups.add(*groups)
+        objects = utils.get_objects_for_user(self.user1, ['auth.add_group', 'auth.change_group'])
+
+        self.assertEqual(len(groups), len(objects))
+        self.assertEqual(set(groups), set(objects))
+
+    def test_multiple_permissions_to_check_requires_staff(self):
+        groups = Group.objects.bulk_create([Group(name=name) for name in ['group1', 'group2', 'group3']])
+        access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(User),
+                                                ctype_target=utils.get_content_type(Group),
+                                                requires_staff=True,
+                                                relation_types=[
+                                                    'GROUPS'
+                                                ])
+        perms = Permission.objects.filter(content_type__app_label='auth', codename__in=['add_group', 'delete_group'])
+        access_rule.permissions.add(*perms)
+
+        self.user1.user_permissions.add(*perms)
+        self.user1.groups.add(*groups)
+
+        self.user1.is_staff = True
+        get_node_for_object(self.user1).sync()  # Sync node in order to write `is_staff` property
+
+        objects = utils.get_objects_for_user(self.user1, ['auth.add_group', 'auth.delete_group'])
+        self.assertEqual(set(groups), set(objects))
+
+        self.user2.user_permissions.add(*perms)
+        self.user2.groups.add(*groups)
+
+        self.assertFalse(self.user2.is_staff)
+
+        objects = utils.get_objects_for_user(self.user2, ['auth.add_group', 'auth.delete_group'])
+        self.assertEqual(set(), set(objects))
+
+    def test_multiple_permissions_to_check_use_groups(self):
+        self.group.permissions.add(Permission.objects.get(content_type__app_label='auth', codename='add_group'))
+        self.user1.user_permissions.add(Permission.objects.get(content_type__app_label='auth', codename='change_group'))
+
+        access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(User),
+                                                ctype_target=utils.get_content_type(Group),
+                                                relation_types=[
+                                                    'GROUPS'
+                                                ])
+        access_rule.permissions.add(*Permission.objects.filter(content_type__app_label='auth',
+                                                               codename__in=['add_group', 'change_group']))
+
+        self.user1.groups.add(self.group)
+        objects = utils.get_objects_for_user(self.user1,
+                                             ['auth.add_group', 'auth.change_group'], use_groups=True)
+        self.assertEqual(set(self.user1.groups.all()), set(objects))
+
+        self.user1.groups.remove(self.group)
+        objects = utils.get_objects_for_user(self.user1,
+                                             ['auth.add_group', 'auth.change_group'], use_groups=False)
+        self.assertEqual(set(), set(objects))
 
     def test_any_permissions(self):
-        pass
+        groups = Group.objects.bulk_create([Group(name=name) for name in ['group1', 'group2', 'group3']])
+        access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(User),
+                                                ctype_target=utils.get_content_type(Group),
+                                                relation_types=[
+                                                    'GROUPS'
+                                                ])
+        perms = Permission.objects.filter(content_type__app_label='auth', codename__in=['add_group', 'change_group'])
+        access_rule.permissions.add(*perms)
+
+        self.user1.user_permissions.add(*perms)
+        self.user1.groups.add(*groups)
+
+        objects = utils.get_objects_for_user(self.user1, ['auth.add_group'], any_perm=False)
+        self.assertEqual(set(), set(objects))
+
+        objects = utils.get_objects_for_user(self.user1, ['auth.add_group'], any_perm=True)
+        self.assertEqual(set(groups), set(objects))
 
     def test_group_permissions(self):
         pass

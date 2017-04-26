@@ -184,13 +184,13 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True, any_per
 
     # Next, get all permissions the user has, either directly set through user permissions
     # or if ``use_groups`` are set, derived from a group membership.
-    global_perms = set(get_perms(user, queryset.model) if use_groups
-                       else get_user_perms(user, queryset.model))
+    global_perms = {c for c in (get_perms(user, queryset.model) if use_groups
+                    else get_user_perms(user, queryset.model)) if c in codenames}
 
     defaults = {
-        'is_active': True,
         'ctype_source': get_content_type(user),
-        'ctype_target': ctype
+        'ctype_target': ctype,
+        'is_active': True,
     }
     rules_queryset = AccessRule.objects.prefetch_related('permissions').filter(**defaults)
 
@@ -212,8 +212,11 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True, any_per
     queries = []
     for access_rule in rules_queryset:
         manager = source_node.paths
-        for relation_type in access_rule.relation_types:
-            manager = manager.add(relation_type)
+        for n, relation_type in enumerate(access_rule.relation_types):
+            props = {}
+            if n == 0 and access_rule.requires_staff:
+                props.update({'is_staff': True})
+            manager = manager.add(relation_type, source_props=props)
 
         if manager.statement:
             queries.append(manager.get_path())
@@ -228,10 +231,10 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True, any_per
             values = set()
             for item in flatten(result):
                 if not isinstance(item, Path):
-                    continue
+                    continue  # pragma: no cover
                 try:
                     values.add(item.end.properties['pk'])
-                except KeyError:
+                except KeyError:  # pragma: no cover
                     continue
             q_values |= Q(pk__in=values)
 
