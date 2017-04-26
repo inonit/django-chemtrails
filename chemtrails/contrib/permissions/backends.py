@@ -11,10 +11,16 @@ from chemtrails.contrib.permissions.utils import GraphPermissionChecker, check_p
 class ChemoPermissionsBackend(ModelBackend):
     """
     Graph based permission backend for Django.
+    
+    This backend is built around the idea that entities has to have 
+    some sort of relationships between them in order to let users 
+    access them. It is done by querying Neo4j for a PATH between
+    the ``user_obj`` node and the ``obj`` node. One or more ``AccessRule``
+    objects are used to build the PATH query and required permissions.
     """
     def authenticate(self, username=None, password=None, **kwargs):
         """
-        This backend does not support authentication.
+        ``ChemoPermissionsBackend`` does not support authentication.
         """
         return None
 
