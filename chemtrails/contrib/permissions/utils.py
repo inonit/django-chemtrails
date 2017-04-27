@@ -218,13 +218,11 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True, any_per
         if manager.statement:
             queries.append(manager.get_path())
 
-    empty = True
     q_values = Q()
     for query in queries:
         validate_cypher(query, raise_exception=True)
         result, _ = db.cypher_query(query)
         if result:
-            empty = False
             values = set()
             for item in flatten(result):
                 if not isinstance(item, Path):
@@ -235,10 +233,10 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True, any_per
                     continue
             q_values |= Q(pk__in=values)
 
-    # If the "empty" flag is True, it means we couldn't get a path from the
+    # If no values in the Q filter, it means we couldn't get a path from the
     # user node to given object in queryset by any evaluated rule.
     # Return an empty queryset.
-    if empty is True:
+    if not q_values:
         return queryset.none()
     return queryset.filter(q_values)
 
