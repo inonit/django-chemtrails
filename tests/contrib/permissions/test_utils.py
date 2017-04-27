@@ -364,10 +364,10 @@ class GetObjectsForUserTestCase(TestCase):
         self.user1.user_permissions.add(*perms)
         self.user1.groups.add(*groups)
 
-        objects = utils.get_objects_for_user(self.user1, ['auth.add_group'], any_perm=False)
+        objects = utils.get_objects_for_user(self.user1, ['auth.add_group', 'auth.delete_group'], any_perm=False)
         self.assertEqual(set(), set(objects))
 
-        objects = utils.get_objects_for_user(self.user1, ['auth.add_group'], any_perm=True)
+        objects = utils.get_objects_for_user(self.user1, ['auth.add_group', 'auth.delete_group'], any_perm=True)
         self.assertEqual(set(groups), set(objects))
 
 

@@ -184,29 +184,26 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True, any_per
 
     # Next, get all permissions the user has, either directly set through user permissions
     # or if ``use_groups`` are set, derived from a group membership.
-    global_perms = {c for c in (get_perms(user, queryset.model) if use_groups
-                    else get_user_perms(user, queryset.model)) if c in codenames}
-
-    defaults = {
-        'ctype_source': get_content_type(user),
-        'ctype_target': ctype,
-        'is_active': True,
-    }
-    rules_queryset = AccessRule.objects.prefetch_related('permissions').filter(**defaults)
+    global_perms = set(get_perms(user, queryset.model) if use_groups
+                       else get_user_perms(user, queryset.model))
 
     # Check if we requires the user to have *all* permissions or if it is
     # sufficient with any provided.
-    if not any_perm:
-        # To reduce search space, first retrieve all access rules with n permissions.
-        rules_queryset = rules_queryset.annotate(count=Count('permissions')).filter(count=len(global_perms))
-        for codename in global_perms:
-            rules_queryset = rules_queryset.filter(permissions__codename=codename)
-    else:
-        rules_queryset = rules_queryset.filter(permissions__codename__in=global_perms)
-
-    # If no matching rules exists, return empty queryset.
-    if not rules_queryset.exists():
+    if not any_perm and not all((code in global_perms for code in codenames)):
         return queryset.none()
+    elif any_perm:
+        for code in codenames.copy():
+            if code not in global_perms:
+                codenames.remove(code)
+
+    # Retrieve all defined access rules originating from user content types,
+    # and targets `queryset.model`.
+    # To reduce search space, first retrieve all access rules with n or greater permissions count.
+    rules_queryset = (AccessRule.objects.prefetch_related('permissions')
+                      .annotate(count=Count('permissions')).filter(count__gte=len(codenames)))
+    rules_queryset = rules_queryset.filter(ctype_source=get_content_type(user),
+                                           ctype_target=ctype, is_active=True,
+                                           permissions__codename__in=codenames)
 
     # Calculate a PATH query for each rule
     queries = []
