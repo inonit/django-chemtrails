@@ -1,19 +1,18 @@
 # -*- coding: utf-8 -*-
 
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Permission
-from django.contrib.contenttypes.models import ContentType
-from django.test import TestCase
-from rest_framework.permissions import DjangoObjectPermissions
+from django.contrib.auth.models import Group, Permission
+from django.test import TestCase, modify_settings
 
-from rest_framework.serializers import ModelSerializer
 from rest_framework import status
+from rest_framework.permissions import DjangoObjectPermissions
+from rest_framework.serializers import ModelSerializer
 from rest_framework.test import APIRequestFactory, force_authenticate
 from rest_framework.viewsets import ModelViewSet
 
 from chemtrails.contrib.permissions.models import AccessRule
 from chemtrails.contrib.permissions.rest_framework.filters import ChemoPermissionsFilter
-from tests.testapp.autofixtures import Book, BookFixture
+from chemtrails.contrib.permissions.utils import get_content_type
 
 User = get_user_model()
 factory = APIRequestFactory()
@@ -21,42 +20,122 @@ factory = APIRequestFactory()
 
 class ChemoPermissionsFilterTestCase(TestCase):
 
-    def setUp(self):
-        # Create two separate graphs, each with a single book,
-        # one publisher, two authors and two user objects.
-        BookFixture(Book, generate_m2m={'authors': (2, 2)}).create(2)
+    backend = 'chemtrails.contrib.permissions.backends.ChemoPermissionsBackend'
 
-        class BookSerializer(ModelSerializer):
+    def setUp(self):
+        Group.objects.bulk_create([Group(name=name) for name in ['group1', 'group2', 'group3']])
+
+        class GroupSerializer(ModelSerializer):
             class Meta:
-                model = Book
+                model = Group
                 fields = '__all__'
 
-        class BookViewSet(ModelViewSet):
-            queryset = Book.objects.all()
-            serializer_class = BookSerializer
+        class GroupViewSet(ModelViewSet):
+            queryset = Group.objects.all()
+            serializer_class = GroupSerializer
             permission_classes = [DjangoObjectPermissions]
             filter_backends = [ChemoPermissionsFilter]
 
-        self.book_view = BookViewSet
+        self.user = User.objects.create_user(username='testuser', password='test123.')
+        self.perm = Permission.objects.create(content_type=get_content_type(Group),
+                                              name='Can view group', codename='view_group')
+        self.access_rule = AccessRule.objects.create(ctype_source=get_content_type(User),
+                                                     ctype_target=get_content_type(Group),
+                                                     is_active=True,
+                                                     relation_types=[
+                                                         'GROUPS'
+                                                     ])
+        self.view = GroupViewSet
 
-    def test_filter_get_objects_for_user(self):
-        user = User.objects.latest('pk')
-
-        permission = Permission.objects.get(codename='view_book')
-        user.user_permissions.add(permission)
-
-        access_rule = AccessRule.objects.create(
-            ctype_source=ContentType.objects.get_by_natural_key('auth', 'user'),
-            ctype_target=ContentType.objects.get_by_natural_key('testapp', 'book'),
-            is_active=True,
-            relation_types=['AUTHOR', 'BOOK']
+        self.patched_settings = modify_settings(
+            AUTHENTICATION_BACKENDS={'append': self.backend}
         )
-        access_rule.permissions.add(permission)
+        self.patched_settings.enable()
 
-        request = factory.get(path='/', data='', content_type='application/json')
-        force_authenticate(request, user)
-        response = self.book_view.as_view(actions={'get': 'list'})(request)
+    def tearDown(self):
+        self.patched_settings.disable()
 
-        # Make sure we can't reach any nodes living in the "other"
-        # graph.
-        self.assertEqual(len(response.data), 1)
+    def test_filter_get_list(self):
+        groups = Group.objects.filter(name__in=['group1', 'group2'])
+        self.user.user_permissions.add(self.perm)
+        self.user.groups.add(*groups)
+        self.access_rule.permissions.add(self.perm)
+
+        request = factory.get(path='', format='json')
+        force_authenticate(request, self.user)
+
+        # User should now be able to see group1 and group2, but not group3
+        response = self.view.as_view(actions={'get': 'list'})(request)
+        self.assertEqual(len(response.data), len(groups))
+        for result in response.data:
+            self.assertTrue(result['name'] in groups.values_list('name', flat=True))
+
+    def test_filter_get_detail(self):
+        group1, group2 = (Group.objects.get(name='group1'),
+                          Group.objects.get(name='group2'))
+        self.user.user_permissions.add(self.perm)
+        self.user.groups.add(group1)
+        self.access_rule.permissions.add(self.perm)
+
+        request = factory.get(path='', format='json')
+        force_authenticate(request, self.user)
+
+        response = self.view.as_view(actions={'get': 'retrieve'})(request, pk=group1.pk)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['name'], group1.name)
+
+        response = self.view.as_view(actions={'get': 'retrieve'})(request, pk=group2.pk)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.data, {'detail': 'Not found.'})
+
+    def test_filter_post(self):
+        self.user.user_permissions.add(
+            Permission.objects.get(content_type__app_label='auth', codename='add_group'))
+
+        request = factory.post(path='', data={'name': 'new group'}, format='json')
+        force_authenticate(request, self.user)
+
+        response = self.view.as_view(actions={'post': 'create'})(request)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['name'], 'new group')
+
+    def test_filter_put(self):
+        group = Group.objects.get(name='group1')
+        perms = Permission.objects.filter(content_type__app_label='auth', codename__in=['view_group', 'change_group'])
+        self.user.groups.add(group)
+        self.user.user_permissions.add(*perms)
+        self.access_rule.permissions.add(*perms)
+
+        request = factory.put(path='', data={'name': 'put group'}, format='json')
+        force_authenticate(request, self.user)
+
+        response = self.view.as_view(actions={'put': 'update'})(request, pk=group.pk)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['name'], 'put group')
+
+    def test_filter_patch(self):
+        group = Group.objects.get(name='group1')
+        perms = Permission.objects.filter(content_type__app_label='auth', codename__in=['view_group', 'change_group'])
+        self.user.groups.add(group)
+        self.user.user_permissions.add(*perms)
+        self.access_rule.permissions.add(*perms)
+
+        request = factory.patch(path='', data={'name': 'patch group'}, format='json')
+        force_authenticate(request, self.user)
+
+        response = self.view.as_view(actions={'patch': 'update'})(request, pk=group.pk)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['name'], 'patch group')
+
+    def test_filter_delete(self):
+        group = Group.objects.create(name='some group')
+        perms = Permission.objects.filter(content_type__app_label='auth', codename__in=['view_group', 'delete_group'])
+        self.user.groups.add(group)
+        self.user.user_permissions.add(*perms)
+        self.access_rule.permissions.add(*perms)
+
+        request = factory.delete(path='', format='json')
+        force_authenticate(request, self.user)
+
+        response = self.view.as_view(actions={'delete': 'destroy'})(request, pk=group.pk)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
