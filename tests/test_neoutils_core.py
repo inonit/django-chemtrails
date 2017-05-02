@@ -232,6 +232,9 @@ class GraphMapperTestCase(TestCase):
         )
         from django.db import models
 
+        class CustomField(object):
+            pass
+
         klass = get_node_class_for_model(Book)
 
         self.assertEqual(klass.get_property_class_for_field(models.ForeignKey), RelationshipTo)
@@ -281,6 +284,11 @@ class GraphMapperTestCase(TestCase):
         self.assertEqual(klass.get_property_class_for_field(FloatRangeField), FloatProperty)
         self.assertEqual(klass.get_property_class_for_field(DateTimeRangeField), DateTimeProperty)
         self.assertEqual(klass.get_property_class_for_field(DateRangeField), DateProperty)
+
+        # Test unsupported field
+        self.assertRaisesMessage(
+            NotImplementedError, 'Unsupported field. Field CustomField is currently not supported.',
+            klass.get_property_class_for_field, CustomField)
 
     @flush_nodes()
     def test_sync_related_branch(self):
