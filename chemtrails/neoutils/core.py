@@ -10,11 +10,11 @@ from django.db.models import Manager
 from django.contrib.contenttypes.fields import GenericRelation, GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ImproperlyConfigured, ValidationError, ObjectDoesNotExist
+from django.contrib.postgres.fields import ArrayField, HStoreField, JSONField, RangeField
 
 from neomodel import *
 from chemtrails import settings
 from chemtrails.utils import get_model_string, flatten
-from chemtrails.contrib.permissions.fields import ArrayChoiceField
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,6 @@ field_property_map = {
     GenericRelation: RelationshipTo,
 
     models.AutoField: IntegerProperty,
-    # models.BigAutoField: IntegerProperty,  # Breaks Django 1.9 compatibility
     models.BigIntegerField: IntegerProperty,
     models.BooleanField: BooleanProperty,
     models.CharField: StringProperty,
@@ -55,8 +54,11 @@ field_property_map = {
     models.URLField: StringProperty,
     models.UUIDField: StringProperty,
 
-    # Special fields
-    ArrayChoiceField: ArrayProperty,
+    # PostgreSQL special fields
+    ArrayField: ArrayProperty,
+    HStoreField: JSONProperty,
+    JSONField: JSONProperty
+
 }
 
 # Caches to avoid infinity loops
@@ -214,6 +216,21 @@ class ModelNodeMixinBase:
         """
         if klass in field_property_map:
             return field_property_map[klass]
+        else:
+            # If ``klass`` not found in the field mapping, inspect it's bases
+            # and return the first matching base class.
+            # NOTE: This might not be very safe, so perhaps we should find a better way.
+            for base in klass.__bases__:
+                if base in field_property_map:
+                    return field_property_map[base]
+
+            # If we're reaching this point we've got a field with an undefined
+            # base class. Final attempt at identifying the class type.
+            if issubclass(klass, RangeField) and hasattr(klass, 'base_field'):
+                # Looks like a PostgreSQL RangeField
+                if klass.base_field in field_property_map:
+                    return field_property_map[klass.base_field]
+
         raise NotImplementedError('Unsupported field. Field %s is currently not supported.' % klass.__name__)
 
     @classmethod

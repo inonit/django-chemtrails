@@ -223,16 +223,64 @@ class GraphMapperTestCase(TestCase):
     Test that node relationships are mapped correctly
     """
 
-    @flush_nodes()
-    @override_settings(CHEMTRAILS={'MAX_CONNECTION_DEPTH': 1})
-    def test_sync_recursive_depth_one(self):
-        book = BookFixture(Book, {
-            'generate_fk': True,
-            'generate_m2m': {'authors': 1}
-        }).create_one()
-        book_node = get_node_for_object(book)
-        # TODO: This does nothing for now... Not quite sure how to test?
-        self.assertTrue(True)
+    def test_get_property_class_for_field(self):
+        from django.contrib.contenttypes.fields import GenericRelation
+        from django.contrib.postgres.fields import (
+            ArrayField, HStoreField, JSONField,
+            IntegerRangeField, BigIntegerRangeField, FloatRangeField,
+            DateTimeRangeField, DateRangeField
+        )
+        from django.db import models
+
+        klass = get_node_class_for_model(Book)
+
+        self.assertEqual(klass.get_property_class_for_field(models.ForeignKey), RelationshipTo)
+        self.assertEqual(klass.get_property_class_for_field(models.ForeignKey), RelationshipTo)
+        self.assertEqual(klass.get_property_class_for_field(models.OneToOneField), RelationshipTo)
+        self.assertEqual(klass.get_property_class_for_field(models.ManyToManyField), RelationshipTo)
+        self.assertEqual(klass.get_property_class_for_field(models.ManyToOneRel), RelationshipTo)
+        self.assertEqual(klass.get_property_class_for_field(models.OneToOneRel), RelationshipTo)
+        self.assertEqual(klass.get_property_class_for_field(models.ManyToManyRel), RelationshipTo)
+        self.assertEqual(klass.get_property_class_for_field(GenericRelation), RelationshipTo)
+
+        self.assertEqual(klass.get_property_class_for_field(models.AutoField), IntegerProperty)
+        self.assertEqual(klass.get_property_class_for_field(models.BigAutoField), IntegerProperty)
+        self.assertEqual(klass.get_property_class_for_field(models.BooleanField), BooleanProperty)
+        self.assertEqual(klass.get_property_class_for_field(models.CharField), StringProperty)
+        self.assertEqual(klass.get_property_class_for_field(models.CommaSeparatedIntegerField), ArrayProperty)
+        self.assertEqual(klass.get_property_class_for_field(models.DateField), DateProperty)
+        self.assertEqual(klass.get_property_class_for_field(models.DateTimeField), DateTimeProperty)
+        self.assertEqual(klass.get_property_class_for_field(models.DecimalField), FloatProperty)
+        self.assertEqual(klass.get_property_class_for_field(models.DurationField), StringProperty)
+        self.assertEqual(klass.get_property_class_for_field(models.EmailField), StringProperty)
+        self.assertEqual(klass.get_property_class_for_field(models.FilePathField), StringProperty)
+        self.assertEqual(klass.get_property_class_for_field(models.FileField), StringProperty)
+        self.assertEqual(klass.get_property_class_for_field(models.FloatField), FloatProperty)
+        self.assertEqual(klass.get_property_class_for_field(models.GenericIPAddressField), StringProperty)
+        self.assertEqual(klass.get_property_class_for_field(models.IntegerField), IntegerProperty)
+        self.assertEqual(klass.get_property_class_for_field(models.IPAddressField), StringProperty)
+        self.assertEqual(klass.get_property_class_for_field(models.NullBooleanField), BooleanProperty)
+        self.assertEqual(klass.get_property_class_for_field(models.PositiveIntegerField), IntegerProperty)
+        self.assertEqual(klass.get_property_class_for_field(models.PositiveSmallIntegerField), IntegerProperty)
+        self.assertEqual(klass.get_property_class_for_field(models.SlugField), StringProperty)
+        self.assertEqual(klass.get_property_class_for_field(models.SmallIntegerField), IntegerProperty)
+        self.assertEqual(klass.get_property_class_for_field(models.TextField), StringProperty)
+        self.assertEqual(klass.get_property_class_for_field(models.TimeField), IntegerProperty)
+        self.assertEqual(klass.get_property_class_for_field(models.URLField), StringProperty)
+        self.assertEqual(klass.get_property_class_for_field(models.UUIDField), StringProperty)
+
+        # Test special fields
+        self.assertEqual(klass.get_property_class_for_field(ArrayField), ArrayProperty)
+        self.assertEqual(klass.get_property_class_for_field(HStoreField), JSONProperty)
+        self.assertEqual(klass.get_property_class_for_field(JSONField), JSONProperty)
+
+        # Test undefined fields by inspecting their base classes.
+        self.assertEqual(klass.get_property_class_for_field(models.BigIntegerField), IntegerProperty)
+        self.assertEqual(klass.get_property_class_for_field(IntegerRangeField), IntegerProperty)
+        self.assertEqual(klass.get_property_class_for_field(BigIntegerRangeField), IntegerProperty)
+        self.assertEqual(klass.get_property_class_for_field(FloatRangeField), FloatProperty)
+        self.assertEqual(klass.get_property_class_for_field(DateTimeRangeField), DateTimeProperty)
+        self.assertEqual(klass.get_property_class_for_field(DateRangeField), DateProperty)
 
     @flush_nodes()
     def test_sync_related_branch(self):
