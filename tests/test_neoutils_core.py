@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from django.contrib.auth.models import Permission
+from django.contrib.auth.models import Group, Permission
 from django.core.exceptions import ImproperlyConfigured
 from django.test import TestCase, override_settings
 from django.utils import six
@@ -137,6 +137,32 @@ class ModelNodeTestCase(TestCase):
             self.fail('Did not fail when defining a ModelNode without a Meta class.')
         except ImproperlyConfigured as e:
             self.assertEqual(str(e), '%s must implement a Meta class.' % 'ModelNode')
+
+    def test_save_existing_node_is_updated(self):
+        group = Group.objects.create(name='a group')
+
+        node1 = get_node_for_object(group)
+        self.assertEqual(group.name, node1.name)
+
+        group.name = 'still the same group'
+        group.save()
+
+        node2 = get_node_for_object(group)
+        self.assertEqual(group.name, node2.name)
+
+        self.assertEqual(node1.id, node2.id)
+
+    def test_sync_existing_node_is_updated(self):
+        group = Group.objects.create(name='a group')
+
+        node = get_node_for_object(group)
+        self.assertEqual(group.name, node.name)
+
+        group.name = 'another name'
+        group.save()
+
+        node.sync()
+        self.assertEqual(group.name, node.name)
 
 
 class MetaNodeTestCase(TestCase):

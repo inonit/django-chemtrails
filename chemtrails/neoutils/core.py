@@ -525,6 +525,13 @@ class ModelNodeMixin(ModelNodeMixinBase):
                 node = cls.nodes.get_or_none(**{'pk': self.pk})
                 if node:
                     self.id = node.id
+            if self._instance is not None:
+                # Update the node instance with data from object instance
+                # whenever we're syncing.
+                defaults = {key: getattr(self._instance, key, None)
+                            for key, _ in self.__all_properties__ if hasattr(self._instance, key)}
+                for key, value in defaults.items():
+                    setattr(self, key, value)
             self.save()
 
         # Connect relations
