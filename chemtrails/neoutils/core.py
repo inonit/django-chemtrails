@@ -617,13 +617,15 @@ class MetaNodeMixin(ModelNodeMixin):
 
         # FIXME: Don't look up against id if using inflate with a raw query.
         if not hasattr(self, 'id'):
-            props = self.deflate(self.__properties__)
+            params = self.deflate(self.__properties__)
 
-            # We don't need to match permissions here.
-            if 'model_permissions' in props:
-                del props['model_permissions']
+            # Remove any attributes we don't want to include in the MATCH query.
+            exclude = ('model_permisssions', 'is_intermediary')
+            for attr in exclude:
+                if attr in params:
+                    del params[attr]
 
-            node_id = self._get_id_from_database(props)
+            node_id = self._get_id_from_database(params)
             if node_id:
                 self.id = node_id
 
@@ -677,6 +679,10 @@ class MetaNodeMixin(ModelNodeMixin):
             return None
 
         if update_existing:
+            node = list(cls.nodes.filter(**{'app_label': self.app_label,
+                                            'model_name': self.model_name}))
+            if len(node) > 1:
+                brk = ''
             if not self._is_bound:
                 node = cls.nodes.get_or_none(**{'app_label': self.app_label,
                                                 'model_name': self.model_name})
