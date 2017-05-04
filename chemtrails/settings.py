@@ -24,7 +24,7 @@ DEFAULTS = {
     'CONNECT_META_NODES': False,
     'IGNORE_MODELS': [
         'admin.logentry',
-        'migrations.migration',
+        # 'migrations.migration',
     ],
 }
 

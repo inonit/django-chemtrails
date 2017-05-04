@@ -6,6 +6,7 @@ import operator
 from functools import reduce
 
 from django.db import models
+from django.db import migrations
 from django.db.models import Manager
 from django.contrib.contenttypes.fields import GenericRelation, GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
@@ -113,6 +114,10 @@ class NodeBase(NodeMeta):
 
     def add_to_class(cls, name, value):
         setattr(cls, name, value)
+
+    def remove_from_class(cls, name):
+        if hasattr(cls, name):
+            delattr(cls, name)
 
     @staticmethod
     def get_model_permissions(model):
@@ -648,7 +653,11 @@ class MetaNodeMixin(ModelNodeMixin):
                 n.recursive_connect(getattr(n, p), r, max_depth=n._recursion_depth - 1)
 
         relations = prop.all()
-        klass = relation.definition['node_class']
+        try:
+            klass = relation.definition['node_class']
+        except:
+            brk = ''
+            raise
         is_meta = relation.definition['model'].is_meta.default_value()
         if is_meta:
             node = get_meta_node_for_model(klass.Meta.model)
@@ -665,19 +674,71 @@ class MetaNodeMixin(ModelNodeMixin):
                     self._log_relationship_definition('Connected', node, prop)
                     back_connect(node, max_depth)
 
-    def sync(self, max_depth=1, update_existing=True, create_empty=False):
+    def sync(self, max_depth=1, plan=None, update_existing=True, create_empty=False):
         """
         Synchronizes the current node with data from the database and
         connect all directly related nodes.
         :param max_depth: Maximum depth of recursive connections to be made.
+        :param plan: migration execution plan
         :param update_existing: If True, save data from the django model to graph node.
         :param create_empty: If the Node has no relational fields, don't create it.
         :returns: The ``MetaNode`` instance or None if not created.
         """
         cls = self.__class__
 
+
         if not cls.has_relations and not create_empty:
             return None
+
+        # filter out migrations for other apps:
+        filtered_plan = [elem for elem
+                         in plan
+                         if elem[0].app_label == self.app_label
+                         and elem[1] is False]
+
+        for migration in filtered_plan:
+            for operation in migration[0].operations:
+
+                # runpython not (yet) supported:
+                if isinstance(operation, migrations.RunPython):
+                    continue
+
+                if isinstance(operation, migrations.CreateModel):
+                    pass
+
+                elif isinstance(operation, migrations.AddField):
+                    # continue
+                    # skip if model_name does not match
+                    if operation.model_name_lower != self.model_name:
+                        continue
+
+                    field = cls.get_property_class_for_field(operation.field.__class__)
+                    if field != RelationshipTo:
+                        cls.add_to_class(operation.name_lower, field(default=operation.field.default))
+                    elif field == RelationshipTo:
+                        from chemtrails.neoutils import model_cache
+                        key = '{object_name}MetaNode'.format(object_name=cls.Meta.model._meta.object_name)
+
+                        if key in model_cache:
+                            del model_cache[key]
+
+                        f = getattr(cls.Meta.model, operation.name_lower)
+                        relation = cls.get_related_node_property_for_field(f.field, meta_node=True)
+                        cls.add_to_class(operation.name_lower, relation)
+
+                    cls.__all_properties__ = tuple(cls.defined_properties(aliases=False, rels=False).items())
+
+                elif isinstance(operation, migrations.RemoveField):
+                    # continue
+                    # skip if model_name does not match
+                    if operation.model_name_lower != self.model_name:
+                        continue
+
+                    cls.remove_from_class(operation.name_lower)
+                    cls.__all_properties__ = tuple(cls.defined_properties(aliases=False, rels=False).items())
+
+                elif isinstance(operation, migrations.AlterField):
+                    pass
 
         if update_existing:
             node = list(cls.nodes.filter(**{'app_label': self.app_label,
@@ -691,6 +752,7 @@ class MetaNodeMixin(ModelNodeMixin):
                     self.id = node.id
             self.save()
 
+        p = self.defined_properties(aliases=False, properties=False).items()
         # Connect relations
         for prop, relation in self.defined_properties(aliases=False, properties=False).items():
             prop = getattr(self, prop)

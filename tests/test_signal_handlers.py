@@ -1,13 +1,18 @@
 # -*- coding: utf-8 -*-
-
-from django.db.models.signals import post_save, pre_delete, m2m_changed
+from django.core.management import call_command
+from django.db import transaction
+from django.db.models.signals import post_save, pre_delete, m2m_changed, post_migrate
 from django.test import TestCase
 
-from chemtrails.neoutils import get_node_class_for_model
-from chemtrails.signals.handlers import post_save_handler, pre_delete_handler, m2m_changed_handler
+from chemtrails.neoutils import get_node_class_for_model, get_meta_node_for_model
+from chemtrails.signals.handlers import post_save_handler, pre_delete_handler, m2m_changed_handler, post_migrate_handler
 
-from tests.testapp.autofixtures import Author, Book, BookFixture
+from tests.testapp.autofixtures import Author, Book, BookFixture, AuthorFixture
 from tests.utils import flush_nodes
+from django.db import models
+from neomodel import db
+from chemtrails.utils import flatten
+from chemtrails.neoutils.query import validate_cypher
 
 
 class PostSaveHandlerTestCase(TestCase):
@@ -25,6 +30,7 @@ class PostSaveHandlerTestCase(TestCase):
         finally:
             post_save.connect(post_save_handler, dispatch_uid='chemtrails.signals.handlers.post_save_handler')
             post_save.disconnect(post_save_handler, dispatch_uid='post_save_handler.test')
+
 
     @flush_nodes()
     def test_delete_object_is_deleted(self):
@@ -68,3 +74,69 @@ class PostSaveHandlerTestCase(TestCase):
         finally:
             m2m_changed.connect(m2m_changed_handler, dispatch_uid='chemtrails.signals.handlers.m2m_changed_handler')
             m2m_changed.disconnect(m2m_changed_handler, dispatch_uid='m2m_changed_handler.test')
+
+
+class PostMigrateHandleTestCase(TestCase):
+
+
+    @flush_nodes()
+    def test_post_migrate_add_property(self):
+        post_migrate.disconnect(post_migrate_handler, dispatch_uid='chemtrails.signals.handlers.post_migrate_handler')
+        post_migrate.connect(post_migrate_handler, dispatch_uid='post_migrate_handler.test')
+        try:
+            # roll back to migration 0004:
+            call_command('migrate', 'testapp', '0004', interactive=False)
+            # apply migration 0005:
+            call_command('migrate', 'testapp', '0005', interactive=False)
+
+            with transaction.atomic():
+
+                node = get_meta_node_for_model(Author)
+
+            self.assertTrue(hasattr(node, 'test'))
+            self.assertEquals(node.test, False)
+
+        finally:
+            post_migrate.connect(post_migrate_handler, dispatch_uid='chemtrails.signals.handlers.post_migrate_handler')
+            post_migrate.disconnect(post_migrate_handler, dispatch_uid='post_migrate_handler.test')
+
+    @flush_nodes()
+    def test_post_migrate_remove_property(self):
+        post_migrate.disconnect(post_migrate_handler, dispatch_uid='chemtrails.signals.handlers.post_migrate_handler')
+        post_migrate.connect(post_migrate_handler, dispatch_uid='post_migrate_handler.test')
+        try:
+            # roll back to migration 0005:
+            call_command('migrate', 'testapp', '0001', interactive=False)
+            # apply migration 0006:
+            call_command('migrate', 'testapp', '0006', interactive=False)
+
+            with transaction.atomic():
+
+                node = get_meta_node_for_model(Author)
+
+            self.assertFalse(hasattr(node, 'test'))
+
+        finally:
+            post_migrate.connect(post_migrate_handler, dispatch_uid='chemtrails.signals.handlers.post_migrate_handler')
+            post_migrate.disconnect(post_migrate_handler, dispatch_uid='post_migrate_handler.test')
+
+    @flush_nodes()
+    def test_post_migrate_add_relation(self):
+        post_migrate.disconnect(post_migrate_handler, dispatch_uid='chemtrails.signals.handlers.post_migrate_handler')
+        post_migrate.connect(post_migrate_handler, dispatch_uid='post_migrate_handler.test')
+        try:
+            # roll back to migration 0005:
+            call_command('migrate', 'testapp', '0001', interactive=False)
+            # apply migration 0006:
+            call_command('migrate', 'testapp', '0006', interactive=False)
+
+            with transaction.atomic():
+
+                node = get_meta_node_for_model(Author)
+
+            self.assertFalse(hasattr(node, 'tag'))
+
+        finally:
+            post_migrate.connect(post_migrate_handler, dispatch_uid='chemtrails.signals.handlers.post_migrate_handler')
+            post_migrate.disconnect(post_migrate_handler, dispatch_uid='post_migrate_handler.test')
+

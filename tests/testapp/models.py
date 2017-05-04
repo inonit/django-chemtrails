@@ -5,15 +5,6 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models
 
 
-class Author(models.Model):
-    user = models.OneToOneField('auth.User')
-    name = models.CharField(max_length=100)
-    age = models.IntegerField()
-
-    def __str__(self):
-        return self.name
-
-
 class Tag(models.Model):
     tag = models.CharField(max_length=20)
     content_type = models.ForeignKey(ContentType, verbose_name='content type',
@@ -23,6 +14,17 @@ class Tag(models.Model):
 
     def __str__(self):
         return self.tag
+
+
+class Author(models.Model):
+    user = models.OneToOneField('auth.User')
+    name = models.CharField(max_length=100)
+    age = models.IntegerField()
+    publishers = models.ManyToManyField('testapp.Publisher')
+
+
+    def __str__(self):
+        return self.name
 
 
 class Publisher(models.Model):
