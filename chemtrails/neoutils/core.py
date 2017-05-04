@@ -653,11 +653,9 @@ class MetaNodeMixin(ModelNodeMixin):
                 n.recursive_connect(getattr(n, p), r, max_depth=n._recursion_depth - 1)
 
         relations = prop.all()
-        try:
-            klass = relation.definition['node_class']
-        except:
-            brk = ''
-            raise
+
+        klass = relation.definition['node_class']
+
         is_meta = relation.definition['model'].is_meta.default_value()
         if is_meta:
             node = get_meta_node_for_model(klass.Meta.model)
@@ -743,8 +741,6 @@ class MetaNodeMixin(ModelNodeMixin):
         if update_existing:
             node = list(cls.nodes.filter(**{'app_label': self.app_label,
                                             'model_name': self.model_name}))
-            if len(node) > 1:
-                brk = ''
             if not self._is_bound:
                 node = cls.nodes.get_or_none(**{'app_label': self.app_label,
                                                 'model_name': self.model_name})
@@ -752,7 +748,6 @@ class MetaNodeMixin(ModelNodeMixin):
                     self.id = node.id
             self.save()
 
-        p = self.defined_properties(aliases=False, properties=False).items()
         # Connect relations
         for prop, relation in self.defined_properties(aliases=False, properties=False).items():
             prop = getattr(self, prop)
