@@ -525,6 +525,13 @@ class ModelNodeMixin(ModelNodeMixinBase):
                 node = cls.nodes.get_or_none(**{'pk': self.pk})
                 if node:
                     self.id = node.id
+            if self._instance is not None:
+                # Update the node instance with data from object instance
+                # whenever we're syncing.
+                defaults = {key: getattr(self._instance, key, None)
+                            for key, _ in self.__all_properties__ if hasattr(self._instance, key)}
+                for key, value in defaults.items():
+                    setattr(self, key, value)
             self.save()
 
         # Connect relations
@@ -547,6 +554,7 @@ class MetaNodeMeta(NodeBase):
 
         # Add some default fields
         cls.type = StringProperty(default='MetaNode')
+        cls.label = StringProperty(default=cls.Meta.model._meta.label_lower, unique_index=True)
         cls.app_label = StringProperty(default=cls.Meta.model._meta.app_label)
         cls.model_name = StringProperty(default=cls.Meta.model._meta.model_name)
         cls.model_permissions = ArrayProperty(default=cls.get_model_permissions(cls.Meta.model))
@@ -610,13 +618,15 @@ class MetaNodeMixin(ModelNodeMixin):
 
         # FIXME: Don't look up against id if using inflate with a raw query.
         if not hasattr(self, 'id'):
-            props = self.deflate(self.__properties__)
+            params = self.deflate(self.__properties__)
 
-            # We don't need to match permissions here.
-            if 'model_permissions' in props:
-                del props['model_permissions']
+            # Remove any attributes we don't want to include in the MATCH query.
+            exclude = ('model_permisssions', 'is_intermediary')
+            for attr in exclude:
+                if attr in params:
+                    del params[attr]
 
-            node_id = self._get_id_from_database(props)
+            node_id = self._get_id_from_database(params)
             if node_id:
                 self.id = node_id
 
@@ -670,6 +680,10 @@ class MetaNodeMixin(ModelNodeMixin):
             return None
 
         if update_existing:
+            node = list(cls.nodes.filter(**{'app_label': self.app_label,
+                                            'model_name': self.model_name}))
+            if len(node) > 1:
+                brk = ''
             if not self._is_bound:
                 node = cls.nodes.get_or_none(**{'app_label': self.app_label,
                                                 'model_name': self.model_name})
