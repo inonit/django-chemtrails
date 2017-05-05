@@ -13,6 +13,7 @@ from chemtrails.neoutils import (
     get_meta_node_class_for_model, get_meta_node_for_model,
     get_node_class_for_model, get_node_for_object, get_nodeset_for_queryset
 )
+from chemtrails.utils import flatten
 
 from tests.utils import flush_nodes
 from tests.testapp.autofixtures import (
@@ -315,6 +316,47 @@ class GraphMapperTestCase(TestCase):
         self.assertRaisesMessage(
             NotImplementedError, 'Unsupported field. Field CustomField is currently not supported.',
             klass.get_property_class_for_field, CustomField)
+
+    def test_update_raw_node_property(self):
+        group = Group.objects.create(name='group')
+        node = get_node_for_object(group)
+
+        # Set a custom attribute on the node and make sure it's saved on the node
+        result, _ = list(flatten(db.cypher_query('MATCH (n) WHERE ID(n) = %d SET n.foo = "bar" RETURN n' % node.id)))
+        self.assertTrue('foo' in result.properties)
+        self.assertEqual(result.properties['foo'], 'bar')
+
+        self.assertFalse(hasattr(node, 'foo'))
+        node._update_raw_node()
+
+        # Make sure the custom attribute has been deleted
+        result, _ = list(flatten(db.cypher_query('MATCH (n) WHERE ID(n) = %d RETURN n' % node.id)))
+        self.assertFalse('foo' in result.properties)
+
+    def test_update_raw_node_relationship(self):
+        group1, group2 = Group.objects.create(name='group1'), Group.objects.create(name='group2')
+        node1, node2 = get_node_for_object(group1), get_node_for_object(group2)
+
+        # Create a custom relationship between group1 and group2
+        results, _ = db.cypher_query(
+            'MATCH (a), (b) WHERE ID(a) = %d AND ID(b) = %d '
+            'CREATE (a)-[r1:RELATION]->(b), (b)-[r2:RELATION]->(a) '
+            'RETURN r1, r2' % (node1.id, node2.id)
+        )
+        results = list(flatten(results))
+        self.assertEqual(len(results), 2)
+        self.assertTrue(all([r.type == 'RELATION' for r in results]))
+
+        node1._update_raw_node()
+
+        # Make sure custom relationship is deleted
+        results, _ = db.cypher_query('MATCH (n)-[r]->() WHERE ID(n) = %d RETURN r' % node1.id)
+        self.assertEqual(len(results), 0)
+
+        # The other relationship should still be intact
+        results, _ = db.cypher_query('MATCH (n)-[r]->() WHERE ID(n) = %d RETURN r' % node2.id)
+        results = list(flatten(results))
+        self.assertEqual(len(results), 1)
 
     @flush_nodes()
     def test_sync_related_branch(self):
