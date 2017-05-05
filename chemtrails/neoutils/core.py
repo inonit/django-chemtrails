@@ -3,6 +3,7 @@
 import itertools
 import logging
 import operator
+from collections import defaultdict
 from functools import reduce
 
 from django.db import models
@@ -188,6 +189,57 @@ class ModelNodeMixinBase:
                    })
         logger.log(level=level, msg=message)
 
+    def _update_raw_node(self):
+        """
+        Compares the node class attributes to raw node attributes and removes
+        any artifacts from the raw node. We want the defined node class 
+        attributes to be the source of truth at all times.
+        
+        :param params: Mapping of parameters used to filter cypher query.
+        :type params: dict
+        
+        :returns None
+        """
+        # We can only operate on bound nodes
+        if not self._is_bound:
+            return
+
+        query = ' '.join((
+            'MATCH (n:{label})-[r]->() WHERE ID(n) = {id}'.format(label=self.__label__, id=self.id),
+            'RETURN n, r'
+        ))
+        results, _ = db.cypher_query(query)
+
+        # Identify all properties and relationships which exists on the raw node,
+        # but which are not defined on the class model.
+        to_remove = defaultdict(set)
+        for node, relation in results:
+
+            if node.id in to_remove:
+                continue
+
+            for prop in node.properties.keys():
+                if prop not in self.defined_properties(aliases=False, rels=False):
+                    to_remove[node.id].add(prop)
+
+            if relation.type not in [r.definition['relation_type']
+                                     for r in self.defined_properties(aliases=False, properties=False).values()]:
+                query = 'MATCH (n:{label})-[r]-() WHERE ID(n) = {id} AND ID(r) = {rid} DELETE r'.format(**{
+                    'label': self.__label__,
+                    'id': node.id,
+                    'rid': relation.id
+                })
+                db.cypher_query(query)
+                # TODO: Log this
+
+            if node.id in to_remove:
+                query = ' '.join((
+                    'MATCH (n:{label}) WHERE ID(n) = {id} REMOVE'.format(label=self.__label__, id=node.id),
+                    ', '.join(['n.%s' % prop for prop in to_remove[node.id]])
+                ))
+                db.cypher_query(query)
+                # TODO: Log this
+
     @classproperty
     def _pk_field(cls):
         model = cls.Meta.model
@@ -311,6 +363,12 @@ class ModelNodeMixinBase:
                      if reverse_field and field.related_model in __node_cache__
                      else get_node_class_for_model(field.related_model))
             return prop(cls_name=klass, rel_type=relationship_type, model=DynamicRelation)
+
+    def sync(self, *args, **kwargs):
+        """
+        Responsible for syncing the node class with Neo4j.
+        """
+        raise NotImplementedError('This method must be implemented in derived class!')
 
 
 class ModelNodeMixin(ModelNodeMixinBase):
@@ -532,6 +590,12 @@ class ModelNodeMixin(ModelNodeMixinBase):
                             for key, _ in self.__all_properties__ if hasattr(self._instance, key)}
                 for key, value in defaults.items():
                     setattr(self, key, value)
+
+            # Make sure the neo4j node properties and relationships matches
+            # the class definition.
+            self._update_raw_node()
+
+            # Finally save the node.
             self.save()
 
         # Connect relations
@@ -680,15 +744,17 @@ class MetaNodeMixin(ModelNodeMixin):
             return None
 
         if update_existing:
-            node = list(cls.nodes.filter(**{'app_label': self.app_label,
-                                            'model_name': self.model_name}))
-            if len(node) > 1:
-                brk = ''
             if not self._is_bound:
                 node = cls.nodes.get_or_none(**{'app_label': self.app_label,
                                                 'model_name': self.model_name})
                 if node:
                     self.id = node.id
+
+            # Make sure the neo4j node properties and relationships matches
+            # the class definition.
+            self._update_raw_node()
+
+            # Finally save the node
             self.save()
 
         # Connect relations
