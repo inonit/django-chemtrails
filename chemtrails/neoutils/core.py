@@ -12,6 +12,7 @@ from django.contrib.contenttypes.fields import GenericRelation, GenericForeignKe
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ImproperlyConfigured, ValidationError, ObjectDoesNotExist
 from django.contrib.postgres.fields import ArrayField, HStoreField, JSONField, RangeField
+from django.utils.translation import ungettext
 
 from neomodel import *
 from chemtrails import settings
@@ -129,8 +130,8 @@ class ModelNodeMeta(NodeBase):
     def __new__(mcs, name, bases, attrs):
         cls = super(ModelNodeMeta, mcs).__new__(mcs, str(name), bases, attrs)
 
-        # Set label for node
-        cls.__label__ = '{object_name}Node'.format(object_name=cls.Meta.model._meta.object_name)
+        # Set class name and label for node
+        cls.__name__ = cls.__label__ = '{object_name}Node'.format(object_name=cls.Meta.model._meta.object_name)
 
         # Add some default fields
         cls.type = StringProperty(default='ModelNode')
@@ -178,11 +179,11 @@ class ModelNodeMixinBase:
     Base mixin class
     """
     def _log_relationship_definition(self, action: str, node, prop, level: int = 10):
-        prop_direction = {-1: 'INCOMING', 0: 'MUTUAL', 1: 'OUTGOING'}
+        direction = {-1: 'INCOMING', 0: 'MUTUAL', 1: 'OUTGOING'}
         message = ('%(action)s %(direction)s relation %(relation_type)s '
                    'between %(klass)r and %(node)r' % {
                        'action': action,
-                       'direction': prop_direction[prop.definition['direction']],
+                       'direction': direction[prop.definition['direction']],
                        'relation_type': prop.definition['relation_type'],
                        'klass': prop.source,
                        'node': node
@@ -201,8 +202,8 @@ class ModelNodeMixinBase:
             return
 
         query = ' '.join((
-            'MATCH (n:{label})-[r]->() WHERE ID(n) = {id}'.format(label=self.__label__, id=self.id),
-            'RETURN n, r'
+            'MATCH (n:{label}) WHERE ID(n) = {id}'.format(label=self.__label__, id=self.id),
+            'OPTIONAL MATCH (n)-[r]->() RETURN n, r'
         ))
         results, _ = db.cypher_query(query)
 
@@ -211,22 +212,27 @@ class ModelNodeMixinBase:
         to_remove = defaultdict(set)
         for node, relation in results:
 
-            if node.id in to_remove:
+            if not node or node.id in to_remove:
                 continue
 
             for prop in node.properties.keys():
                 if prop not in self.defined_properties(aliases=False, rels=False):
                     to_remove[node.id].add(prop)
 
-            if relation.type not in [r.definition['relation_type']
-                                     for r in self.defined_properties(aliases=False, properties=False).values()]:
+            relationships = [r.definition['relation_type'] for r in
+                             self.defined_properties(aliases=False, properties=False).values()]
+            if relation is not None and relation.type not in relationships:
                 query = 'MATCH (n:{label})-[r]-() WHERE ID(n) = {id} AND ID(r) = {rid} DELETE r'.format(**{
                     'label': self.__label__,
                     'id': node.id,
                     'rid': relation.id
                 })
                 db.cypher_query(query)
-                # TODO: Log this
+                logger.debug('Relationship type %(type)s is not defined on %(klass)s. '
+                             'Removed relationship from raw node.' % {
+                                 'type': relation.type,
+                                 'klass': self.__class__.__name__
+                             })
 
             if node.id in to_remove:
                 query = ' '.join((
@@ -234,7 +240,12 @@ class ModelNodeMixinBase:
                     ', '.join(['n.%s' % prop for prop in to_remove[node.id]])
                 ))
                 db.cypher_query(query)
-                # TODO: Log this
+                logger.debug('The following %(text)s %(props)s is not defined on %(klass)s. '
+                             'Removed %(props)s from raw node.' % {
+                                 'text': ungettext('property', 'properties', len(to_remove[node.id])),
+                                 'props': ', '.join([prop for prop in to_remove[node.id]]),
+                                 'klass': self.__class__.__name__
+                             })
 
     @classproperty
     def _pk_field(cls):
@@ -609,8 +620,8 @@ class MetaNodeMeta(NodeBase):
     def __new__(mcs, name, bases, attrs):
         cls = super(MetaNodeMeta, mcs).__new__(mcs, str(name), bases, attrs)
 
-        # Set label for node
-        cls.__label__ = '{object_name}'.format(object_name=cls.Meta.model._meta.object_name)
+        # Set class name and label for node
+        cls.__name__ = cls.__label__ = '{object_name}'.format(object_name=cls.Meta.model._meta.object_name)
 
         # Add some default fields
         cls.type = StringProperty(default='MetaNode')

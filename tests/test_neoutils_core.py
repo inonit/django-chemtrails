@@ -317,22 +317,26 @@ class GraphMapperTestCase(TestCase):
             NotImplementedError, 'Unsupported field. Field CustomField is currently not supported.',
             klass.get_property_class_for_field, CustomField)
 
+    @flush_nodes()
     def test_update_raw_node_property(self):
         group = Group.objects.create(name='group')
         node = get_node_for_object(group)
 
         # Set a custom attribute on the node and make sure it's saved on the node
-        result, _ = list(flatten(db.cypher_query('MATCH (n) WHERE ID(n) = %d SET n.foo = "bar" RETURN n' % node.id)))
-        self.assertTrue('foo' in result.properties)
+        result, _ = list(flatten(db.cypher_query('MATCH (n) WHERE ID(n) = %d '
+                                                 'SET n.foo = "bar", n.baz = "qux" RETURN n' % node.id)))
+        self.assertTrue(all(i in result.properties for i in ('foo', 'baz')))
         self.assertEqual(result.properties['foo'], 'bar')
+        self.assertEqual(result.properties['baz'], 'qux')
 
-        self.assertFalse(hasattr(node, 'foo'))
+        self.assertFalse(all(hasattr(node, i) for i in ('foo', 'baz')))
         node._update_raw_node()
 
         # Make sure the custom attribute has been deleted
         result, _ = list(flatten(db.cypher_query('MATCH (n) WHERE ID(n) = %d RETURN n' % node.id)))
-        self.assertFalse('foo' in result.properties)
+        self.assertFalse(all(i in result.properties for i in ('foo', 'baz')))
 
+    @flush_nodes()
     def test_update_raw_node_relationship(self):
         group1, group2 = Group.objects.create(name='group1'), Group.objects.create(name='group2')
         node1, node2 = get_node_for_object(group1), get_node_for_object(group2)
