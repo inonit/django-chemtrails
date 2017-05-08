@@ -194,10 +194,6 @@ class ModelNodeMixinBase:
         Compares the node class attributes to raw node attributes and removes
         any artifacts from the raw node. We want the defined node class 
         attributes to be the source of truth at all times.
-        
-        :param params: Mapping of parameters used to filter cypher query.
-        :type params: dict
-        
         :returns None
         """
         # We can only operate on bound nodes
