@@ -30,6 +30,9 @@ setup(
     license='MIT License',
     packages=[
         'chemtrails',
+        'chemtrails.neoutils',
+        'chemtrails.signals',
+        'chemtrails.contrib.permissions'
     ],
     include_package_data=True,
     install_requires=[
