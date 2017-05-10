@@ -123,6 +123,7 @@ class ModelNodeMeta(NodeBase):
     """
     Meta class for ``ModelNode``.
     """
+
     def __new__(mcs, name, bases, attrs):
         cls = super(ModelNodeMeta, mcs).__new__(mcs, str(name), bases, attrs)
 
@@ -175,7 +176,8 @@ class ModelNodeMixinBase:
     """
     Base mixin class
     """
-    def _log_relationship_definition(self, action: str, node, prop, level: int = 10):
+
+    def _log_relationship_definition(self, action: str, node, prop, level: int = 20):
         direction = {-1: 'INCOMING', 0: 'MUTUAL', 1: 'OUTGOING'}
         message = ('%(action)s %(direction)s relation %(relation_type)s '
                    'between %(klass)r and %(node)r' % {
@@ -225,11 +227,11 @@ class ModelNodeMixinBase:
                     'rid': relation.id
                 })
                 db.cypher_query(query)
-                logger.debug('Relationship type %(type)s is not defined on %(klass)s. '
-                             'Removed relationship from raw node.' % {
-                                 'type': relation.type,
-                                 'klass': self.__class__.__name__
-                             })
+                logger.info('Relationship type %(type)s is not defined on %(klass)s. '
+                            'Removed relationship from raw node.' % {
+                                'type': relation.type,
+                                'klass': self.__class__.__name__
+                            })
 
             if node.id in to_remove:
                 query = ' '.join((
@@ -237,12 +239,12 @@ class ModelNodeMixinBase:
                     ', '.join(['n.%s' % prop for prop in to_remove[node.id]])
                 ))
                 db.cypher_query(query)
-                logger.debug('The following %(text)s %(props)s is not defined on %(klass)s. '
-                             'Removed %(props)s from raw node.' % {
-                                 'text': ungettext('property', 'properties', len(to_remove[node.id])),
-                                 'props': ', '.join([prop for prop in to_remove[node.id]]),
-                                 'klass': self.__class__.__name__
-                             })
+                logger.info('The following %(text)s %(props)s is not defined on %(klass)s. '
+                            'Removed %(props)s from raw node.' % {
+                                'text': ungettext('property', 'properties', len(to_remove[node.id])),
+                                'props': ', '.join([prop for prop in to_remove[node.id]]),
+                                'klass': self.__class__.__name__
+                            })
 
     @classproperty
     def _pk_field(cls):
@@ -250,7 +252,6 @@ class ModelNodeMixinBase:
         pk_field = reduce(operator.eq,
                           filter(lambda field: field.primary_key, model._meta.fields))
         return pk_field
-
 
     @classproperty
     def has_relations(cls):
@@ -348,6 +349,11 @@ class ModelNodeMixinBase:
         reverse_field = True if isinstance(field, (
             models.ManyToManyRel, models.ManyToOneRel, models.OneToOneRel, GenericRelation)) else False
 
+        # FIXME:
+        # Accessing `field.target_field` property raises error when
+        # using a custom user model. Cannot look up intermediary model
+        # on `auth.User.group`.
+
         class DynamicRelation(StructuredRel):
             type = StringProperty(default=field.__class__.__name__)
             is_meta = BooleanProperty(default=meta_node)
@@ -380,8 +386,7 @@ class ModelNodeMixinBase:
 
 
 class ModelNodeMixin(ModelNodeMixinBase):
-
-    def __init__(self, instance=None, bind =True, *args, **kwargs):
+    def __init__(self, instance=None, bind=True, *args, **kwargs):
         self._instance = instance
         self.__recursion_depth__ = 0
 
@@ -418,19 +423,15 @@ class ModelNodeMixin(ModelNodeMixinBase):
 
             queryparams += p + ': '
             value = getattr(self, p)
-            if isinstance(value,int):
+            if isinstance(value, int):
                 queryparams += str(value)
             else:
                 queryparams += '\'' + str(value) + '\''
-
-
 
         with open('eggs.csv', 'a', newline='') as csvfile:
             spamwriter = csv.writer(csvfile, delimiter=';',
                                     quotechar='|', quoting=csv.QUOTE_MINIMAL)
             spamwriter.writerow(['n'] + ['Create (a:%s { %s })' % (self.__label__, queryparams)])
-
-
 
     @property
     def _is_bound(self):
@@ -522,6 +523,8 @@ class ModelNodeMixin(ModelNodeMixinBase):
         klass = relation.definition['node_class']
         source = getattr(instance, prop.name)
 
+        # FIXME:
+        # Log timings for creation and nesting of relationships.
         if isinstance(source, models.Model):
             node = klass.nodes.get_or_none(pk=source.pk)
             if not node:
@@ -545,7 +548,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
                 existing = list(map(lambda n: n.pk, nodeset))
                 for obj in source.exclude(pk__in=existing):
                     node = get_node_for_object(obj).save()
-                    logger.debug('Created missing node %(node)r while synchronizing %(instance)r' % {
+                    logger.info('Created missing node %(node)r while synchronizing %(instance)r' % {
                         'node': node,
                         'instance': instance
                     })
@@ -569,6 +572,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
         :param max_depth: Maximum depth of recursive connections to be made.
         :returns: None
         """
+
         def back_disconnect(n, depth):
             if n._recursion_depth >= depth:
                 return
@@ -593,7 +597,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
 
         elif isinstance(source, Manager):
             disconnect = prop.filter(pk__in=list(source.model.objects.exclude(pk__in=source.values('pk'))
-                                     .values_list('pk', flat=True)))
+                                                 .values_list('pk', flat=True)))
             for node in disconnect:
                 prop.disconnect(node)
                 self._log_relationship_definition('Disconnected', node, prop)
@@ -647,6 +651,7 @@ class MetaNodeMeta(NodeBase):
     """
     Meta class for ``MetaNode``.
     """
+
     def __new__(mcs, name, bases, attrs):
         cls = super(MetaNodeMeta, mcs).__new__(mcs, str(name), bases, attrs)
 
