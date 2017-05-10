@@ -14,9 +14,13 @@ __all__ = [
     'get_node_class_for_model',
     'get_node_for_object',
     'get_nodeset_for_queryset',
-    'model_cache'
+    '__meta_cache__',
+    '__node_cache__'
 ]
-model_cache = {}
+
+# Caches to avoid infinity loops
+__meta_cache__ = {}
+__node_cache__ = {}
 
 
 def get_meta_node_class_for_model(model, for_concrete_model=True):
@@ -29,9 +33,8 @@ def get_meta_node_class_for_model(model, for_concrete_model=True):
     if for_concrete_model:
         model = model._meta.concrete_model
 
-    cache_key = '{object_name}MetaNode'.format(object_name=model._meta.object_name)
-    if cache_key in model_cache:
-        return model_cache[cache_key]
+    if model in __meta_cache__:
+        return __meta_cache__[model]
     else:
         @six.add_metaclass(MetaNodeMeta)
         class MetaNode(MetaNodeMixin, StructuredNode):
@@ -40,7 +43,7 @@ def get_meta_node_class_for_model(model, for_concrete_model=True):
             class Meta:
                 model = None  # Will pick model from parent class __metaclass_model__ attribute
 
-        model_cache[cache_key] = MetaNode
+        __meta_cache__[model] = MetaNode
         return MetaNode
 
 
@@ -63,9 +66,8 @@ def get_node_class_for_model(model, for_concrete_model=True):
     if for_concrete_model:
         model = model._meta.concrete_model
 
-    cache_key = '{object_name}Node'.format(object_name=model._meta.object_name)
-    if cache_key in model_cache:
-        return model_cache[cache_key]
+    if model in __node_cache__:
+        return __node_cache__[model]
     else:
         @six.add_metaclass(ModelNodeMeta)
         class ModelNode(ModelNodeMixin, StructuredNode):
@@ -74,7 +76,7 @@ def get_node_class_for_model(model, for_concrete_model=True):
             class Meta:
                 model = None  # Will pick model from parent class __metaclass_model__ attribute
 
-        model_cache[cache_key] = ModelNode
+        __node_cache__[model] = ModelNode
         return ModelNode
 
 

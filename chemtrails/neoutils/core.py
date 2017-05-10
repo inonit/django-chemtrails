@@ -63,10 +63,6 @@ field_property_map = {
 
 }
 
-# Caches to avoid infinity loops
-__node_cache__ = {}
-__meta_cache__ = {}
-
 
 class Meta(type):
     """
@@ -143,6 +139,7 @@ class ModelNodeMeta(NodeBase):
         reverse_relations = cls.get_reverse_relation_fields()
 
         # Add to cache before recursively looking up relationships.
+        from chemtrails.neoutils import __node_cache__
         __node_cache__.update({cls.Meta.model: cls})
 
         for field in cls.Meta.model._meta.get_fields():
@@ -342,7 +339,10 @@ class ModelNodeMixinBase:
                           else return the model node.
         :returns: A ``RelationshipDefinition`` instance.
         """
-        from chemtrails.neoutils import get_node_class_for_model, get_meta_node_class_for_model
+        from chemtrails.neoutils import (
+            __meta_cache__, __node_cache__,
+            get_node_class_for_model, get_meta_node_class_for_model
+        )
 
         reverse_field = True if isinstance(field, (
             models.ManyToManyRel, models.ManyToOneRel, models.OneToOneRel, GenericRelation)) else False
@@ -636,6 +636,7 @@ class MetaNodeMeta(NodeBase):
         reverse_relations = cls.get_reverse_relation_fields()
 
         # Add to cache before recursively looking up relationships.
+        from chemtrails.neoutils import __meta_cache__
         __meta_cache__.update({cls.Meta.model: cls})
 
         # # Add relations for the model
