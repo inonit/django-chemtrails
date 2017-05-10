@@ -251,6 +251,7 @@ class ModelNodeMixinBase:
                           filter(lambda field: field.primary_key, model._meta.fields))
         return pk_field
 
+
     @classproperty
     def has_relations(cls):
         return len(cls.__all_relationships__) > 0
@@ -380,7 +381,7 @@ class ModelNodeMixinBase:
 
 class ModelNodeMixin(ModelNodeMixinBase):
 
-    def __init__(self, instance=None, *args, **kwargs):
+    def __init__(self, instance=None, bind =True, *args, **kwargs):
         self._instance = instance
         self.__recursion_depth__ = 0
 
@@ -391,7 +392,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
 
         # Query the database for an existing node and set the id if found.
         # This will make this a "bound" node.
-        if not hasattr(self, 'id') and getattr(self, 'pk', None) is not None:
+        if bind and not hasattr(self, 'id') and getattr(self, 'pk', None) is not None:
             node_id = self._get_id_from_database(self.deflate(self.__properties__))
             if node_id:
                 self.id = node_id
@@ -401,6 +402,35 @@ class ModelNodeMixin(ModelNodeMixinBase):
 
     def __repr__(self):
         return '<{label}: {id}>'.format(label=self.__class__.__label__, id=self.id if self._is_bound else None)
+
+    def to_csv(self):
+
+        import csv
+        prop = self.defined_properties(aliases=False, rels=False)
+        queryparams = ''
+        skip = True
+        for p, v in prop.items():
+
+            if skip:
+                skip = False
+            else:
+                queryparams += ', '
+
+            queryparams += p + ': '
+            value = getattr(self, p)
+            if isinstance(value,int):
+                queryparams += str(value)
+            else:
+                queryparams += '\'' + str(value) + '\''
+
+
+
+        with open('eggs.csv', 'a', newline='') as csvfile:
+            spamwriter = csv.writer(csvfile, delimiter=';',
+                                    quotechar='|', quoting=csv.QUOTE_MINIMAL)
+            spamwriter.writerow(['n'] + ['Create (a:%s { %s })' % (self.__label__, queryparams)])
+
+
 
     @property
     def _is_bound(self):

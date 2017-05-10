@@ -25,6 +25,19 @@ DEFAULTS = {
     'IGNORE_MODELS': [
         'admin.logentry',
         'migrations.migration',
+        'autofixture',
+        'corsheaders',
+        'auth',
+        'staticfiles',
+        'sessions',
+        'chemtrails',
+        # 'testapp',
+        'contenttypes',
+        'admin',
+        'rest_framework',
+        'chemtrails_permissions',
+        'messages',
+
     ],
 }
 
