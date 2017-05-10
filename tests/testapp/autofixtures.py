@@ -6,6 +6,8 @@ from datetime import timedelta, date
 from django.contrib.auth import get_user_model
 
 from autofixture import generators, register, AutoFixture
+
+from chemtrails.contrib.permissions.utils import get_content_type
 from tests.testapp.models import Author, Publisher, Book, Store, Tag
 
 
@@ -66,11 +68,12 @@ class BookFixture(AutoFixture):
         'pubdate': generators.DateGenerator(min_date=date.today() - timedelta(days=36500),
                                             max_date=date.today())
     }
-    # FIXME: This doesn't work!
-    # def post_process_instance(self, instance, commit):
-    #     values = ('sci-fi', 'drama', 'fantasy', 'romance', 'self help', 'satire')
-    #     Tag(content_object=instance, tag=random.choice(values)).save()
-    #     return instance
+
+    def post_process_instance(self, instance, commit):
+        Tag.objects.get_or_create(content_type=get_content_type(instance), object_pk=instance.pk,
+                                  defaults={'tag': random.choice(('sci-fi', 'drama', 'fantasy',
+                                                                  'romance', 'self help', 'satire'))})
+        return instance
 register(Book, BookFixture, overwrite=True)
 
 
@@ -88,14 +91,3 @@ class StoreFixture(AutoFixture):
             instance.books.add(instance.bestseller)
         return instance
 register(Store, StoreFixture, overwrite=True)
-
-
-# class TagFixture(AutoFixture):
-#     from django.contrib.contenttypes.models import ContentType
-#     field_values = {
-#         'tag': generators.ChoicesGenerator(values=('sci-fi', 'drama', 'fantasy', 'romance', 'self help', 'satire')),
-#         'content_type': generators.StaticGenerator(value=ContentType.objects.get_for_model(Book)),
-#         'object_pk': generators.ChoicesGenerator(values=Book.objects.values_list('pk', flat=True)
-#                                                  or list(BookFixture(Book).create_one().pk))
-#     }
-# register(Tag, TagFixture, overwrite=True)

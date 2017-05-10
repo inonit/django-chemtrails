@@ -9,6 +9,7 @@ class Author(models.Model):
     user = models.OneToOneField('auth.User')
     name = models.CharField(max_length=100)
     age = models.IntegerField()
+    guilds = models.ManyToManyField('testapp.Guild', blank=True)
 
     def __str__(self):
         return self.name
@@ -65,3 +66,9 @@ class Store(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Guild(models.Model):
+    name = models.CharField(max_length=100)
+    contact = models.ForeignKey(Author, related_name='guild_contacts')
+    members = models.ManyToManyField(Author, verbose_name='members', related_name='guild_set')
