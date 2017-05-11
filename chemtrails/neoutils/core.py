@@ -16,7 +16,7 @@ from django.utils.translation import ungettext
 
 from neomodel import *
 from chemtrails import settings
-from chemtrails.utils import get_model_string, flatten
+from chemtrails.utils import get_model_string, flatten, timeit
 
 logger = logging.getLogger(__name__)
 
@@ -176,7 +176,6 @@ class ModelNodeMixinBase:
     """
     Base mixin class
     """
-
     def _log_relationship_definition(self, action: str, node, prop, level: int = 20):
         direction = {-1: 'INCOMING', 0: 'MUTUAL', 1: 'OUTGOING'}
         message = ('%(action)s %(direction)s relation %(relation_type)s '
@@ -362,7 +361,7 @@ class ModelNodeMixinBase:
                     field.related_name or '%s_set' % field.name
                     if not isinstance(field, (models.OneToOneRel, GenericRelation)) else field.name))
                                                       if reverse_field else field.remote_field.field).lower())
-            target_field = StringProperty(default=str(field.target_field).lower())
+            target_field = StringProperty(default=str(field.target_field).lower())  # FIXME!
 
         prop = cls.get_property_class_for_field(field.__class__)
         relationship_type = cls.get_relationship_type(field)
@@ -496,6 +495,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
         except RequiredProperty as e:
             raise ValidationError({e.property_name: 'is required'})
 
+    @timeit
     def recursive_connect(self, prop, relation, max_depth, instance=None):
         """
         Recursively connect a related branch.
@@ -507,6 +507,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
         """
         from chemtrails.neoutils import get_node_for_object
 
+        @timeit
         def back_connect(n, depth):
             if n._recursion_depth >= depth:
                 return
@@ -523,8 +524,6 @@ class ModelNodeMixin(ModelNodeMixinBase):
         klass = relation.definition['node_class']
         source = getattr(instance, prop.name)
 
-        # FIXME:
-        # Log timings for creation and nesting of relationships.
         if isinstance(source, models.Model):
             node = klass.nodes.get_or_none(pk=source.pk)
             if not node:
@@ -563,6 +562,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
                 elif self._recursion_depth <= max_depth:
                     back_connect(node, max_depth)
 
+    @timeit
     def recursive_disconnect(self, prop, relation, max_depth, instance=None):
         """
         Recursively disconnect a related branch.
@@ -573,6 +573,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
         :returns: None
         """
 
+        @timeit
         def back_disconnect(n, depth):
             if n._recursion_depth >= depth:
                 return
@@ -737,6 +738,7 @@ class MetaNodeMixin(ModelNodeMixin):
             if node_id:
                 self.id = node_id
 
+    @timeit
     def recursive_connect(self, prop, relation, max_depth):
         """
         Recursively connect a related branch.
@@ -747,6 +749,7 @@ class MetaNodeMixin(ModelNodeMixin):
         """
         from chemtrails.neoutils import get_meta_node_for_model
 
+        @timeit
         def back_connect(n, depth):
             if n._recursion_depth >= depth:
                 return
