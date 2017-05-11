@@ -348,11 +348,6 @@ class ModelNodeMixinBase:
         reverse_field = True if isinstance(field, (
             models.ManyToManyRel, models.ManyToOneRel, models.OneToOneRel, GenericRelation)) else False
 
-        # FIXME:
-        # Accessing `field.target_field` property raises error when
-        # using a custom user model. Cannot look up intermediary model
-        # on `auth.User.group`.
-
         class DynamicRelation(StructuredRel):
             type = StringProperty(default=field.__class__.__name__)
             is_meta = BooleanProperty(default=meta_node)
@@ -361,7 +356,8 @@ class ModelNodeMixinBase:
                     field.related_name or '%s_set' % field.name
                     if not isinstance(field, (models.OneToOneRel, GenericRelation)) else field.name))
                                                       if reverse_field else field.remote_field.field).lower())
-            target_field = StringProperty(default=str(field.target_field).lower())  # FIXME!
+            target_field = StringProperty(default=str(field.target_field).lower()
+                                          if getattr(field, 'target_field', None) else '')
 
         prop = cls.get_property_class_for_field(field.__class__)
         relationship_type = cls.get_relationship_type(field)
