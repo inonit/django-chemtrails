@@ -402,6 +402,18 @@ class GraphMapperTestCase(TestCase):
         finally:
             settings.IGNORE_MODELS = default
 
+    def test_ignore_model_save(self):
+        # Make sure ignored models are not saved
+        pass
+
+    def test_ignored_model_sync(self):
+        # Make sure ignored models are not synced
+        pass
+
+    def test_related_ignore_model_sync(self):
+        # Make sure an ignored related model is not synced
+        pass
+
     @flush_nodes()
     def test_sync_related_branch(self):
         queryset = Store.objects.filter(pk__in=map(lambda n: n.pk,

@@ -16,6 +16,9 @@ def post_migrate_handler(sender, **kwargs):
         for model in sender.models.values():
             get_meta_node_for_model(model).sync(max_depth=settings.MAX_CONNECTION_DEPTH, update_existing=True)
 
+        # from jodacare.account.models import User
+        # User.objects.latest('pk').save()
+
 
 def post_save_handler(sender, instance, **kwargs):
     """

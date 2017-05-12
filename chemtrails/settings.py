@@ -13,31 +13,16 @@ from django.conf import settings
 
 from django.core.signals import setting_changed
 
-# TODO: IGNORE_MODELS should support following formats:
-# - app_label: 'migrations.*'
-# - model:     '*.migration'
-# - specific:  'migrations.migration'
+# Following formats are supported:
+#   - app_label: 'migrations' or 'migrations.*'
+#   - specific:  'migrations.migration'
 DEFAULTS = {
     'ENABLED': True,
     'MAX_CONNECTION_DEPTH': 1,
     'NAMED_RELATIONSHIPS': True,
     'CONNECT_META_NODES': False,
     'IGNORE_MODELS': [
-        'admin.logentry',
         'migrations.migration',
-        'autofixture',
-        'corsheaders',
-        'auth',
-        'staticfiles',
-        'sessions',
-        'chemtrails',
-        # 'testapp',
-        'contenttypes',
-        'admin',
-        'rest_framework',
-        'chemtrails_permissions',
-        'messages',
-
     ],
 }
 
@@ -45,7 +30,8 @@ DEFAULTS = {
 class CSettings:
 
     def __init__(self, user_settings=None, defaults=None):
-        self._user_settings = user_settings
+        if user_settings:
+            self._user_settings = user_settings
         self.defaults = defaults or DEFAULTS
 
     def __getattr__(self, attr):
@@ -63,7 +49,7 @@ class CSettings:
 
     @property
     def user_settings(self):
-        if not getattr(self, '_user_settings'):
+        if not hasattr(self, '_user_settings'):
             self._user_settings = getattr(settings, 'CHEMTRAILS', {})
         return self._user_settings
 

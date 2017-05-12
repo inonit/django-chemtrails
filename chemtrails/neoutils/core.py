@@ -151,12 +151,14 @@ class ModelNodeMeta(NodeBase):
             # Add forward relations
             if field in forward_relations:
                 relation = cls.get_related_node_property_for_field(field)
-                cls.add_to_class(field.name, relation)
+                if relation:
+                    cls.add_to_class(field.name, relation)
 
             # Add reverse relations
             elif field in reverse_relations:
                 relation = cls.get_related_node_property_for_field(field)
-                cls.add_to_class(field.related_name or '%s_set' % field.name, relation)
+                if relation:
+                    cls.add_to_class(field.related_name or '%s_set' % field.name, relation)
 
             # Add concrete fields
             else:
@@ -253,6 +255,15 @@ class ModelNodeMixinBase:
         return pk_field
 
     @classproperty
+    def _is_ignored(cls):
+        lookups = (
+            cls.Meta.app_label,
+            '{app_label}.*'.format(app_label=cls.Meta.app_label),
+            get_model_string(cls.Meta.model)
+        )
+        return any(match in settings.IGNORE_MODELS for match in lookups)
+
+    @classproperty
     def has_relations(cls):
         return len(cls.__all_relationships__) > 0
 
@@ -281,7 +292,7 @@ class ModelNodeMixinBase:
                 if base in field_property_map:
                     return field_property_map[base]
 
-            # If we're reaching this point we've got a field with an undefined
+            # If we're reaching this point we've got a field with an unknown
             # base class. Final attempt at identifying the class type.
             if issubclass(klass, RangeField) and hasattr(klass, 'base_field'):
                 # Looks like a PostgreSQL RangeField
@@ -357,7 +368,7 @@ class ModelNodeMixinBase:
                     if not isinstance(field, (models.OneToOneRel, GenericRelation)) else field.name))
                                                       if reverse_field else field.remote_field.field).lower())
             target_field = StringProperty(default=str(field.target_field).lower()
-                                          if getattr(field, 'target_field', None) else '')
+                                          if getattr(field, 'target_field', None) else '')  # NOTE: Workaround for #27
 
         prop = cls.get_property_class_for_field(field.__class__)
         relationship_type = cls.get_relationship_type(field)
@@ -366,12 +377,14 @@ class ModelNodeMixinBase:
             klass = (__meta_cache__[field.related_model]
                      if field.related_model in __meta_cache__
                      else get_meta_node_class_for_model(field.related_model))
-            return prop(cls_name=klass, rel_type=relationship_type, model=DynamicRelation)
+            return (prop(cls_name=klass, rel_type=relationship_type, model=DynamicRelation)
+                    if not klass._is_ignored else None)
         else:
             klass = (__node_cache__[field.related_model]
                      if reverse_field and field.related_model in __node_cache__
                      else get_node_class_for_model(field.related_model))
-            return prop(cls_name=klass, rel_type=relationship_type, model=DynamicRelation)
+            return (prop(cls_name=klass, rel_type=relationship_type, model=DynamicRelation)
+                    if not klass._is_ignored else None)
 
     def sync(self, *args, **kwargs):
         """
@@ -389,6 +402,10 @@ class ModelNodeMixin(ModelNodeMixinBase):
                     for key, _ in self.__all_properties__}
         kwargs.update(defaults)
         super(ModelNodeMixinBase, self).__init__(self, *args, **kwargs)
+
+        # Never try to bind ignore nodes
+        if bind and self._is_ignored:
+            bind = False
 
         # Query the database for an existing node and set the id if found.
         # This will make this a "bound" node.
@@ -611,6 +628,14 @@ class ModelNodeMixin(ModelNodeMixinBase):
         """
         cls = self.__class__
 
+        if self._is_ignored:
+            try:
+                self.delete()
+            except ValueError:
+                pass
+            finally:
+                return None
+
         if not cls.has_relations and not create_empty:
             return None
 
@@ -657,7 +682,7 @@ class MetaNodeMeta(NodeBase):
 
         # Add some default fields
         cls.type = StringProperty(default='MetaNode')
-        cls.label = StringProperty(default=cls.Meta.model._meta.label_lower, unique_index=True)
+        cls.label = StringProperty(default=cls.Meta.model._meta.label, unique_index=True)
         cls.app_label = StringProperty(default=cls.Meta.model._meta.app_label)
         cls.model_name = StringProperty(default=cls.Meta.model._meta.model_name)
         cls.model_permissions = ArrayProperty(default=cls.get_model_permissions(cls.Meta.model))
@@ -680,21 +705,25 @@ class MetaNodeMeta(NodeBase):
             # Add forward relations
             if field in forward_relations:
                 relation = cls.get_related_node_property_for_field(field, meta_node=True)
-                cls.add_to_class(field.name, relation)
+                if relation:
+                    cls.add_to_class(field.name, relation)
 
                 if settings.CONNECT_META_NODES:
-                    node_relation = cls.get_related_node_property_for_field(field, meta_node=False)
-                    cls.add_to_class('_%s' % field.name, node_relation)
+                    relation = cls.get_related_node_property_for_field(field, meta_node=False)
+                    if relation:
+                        cls.add_to_class('_%s' % field.name, relation)
 
             # Add reverse relations
             elif field in reverse_relations:
                 related_name = field.related_name or '%s_set' % field.name
                 relation = cls.get_related_node_property_for_field(field, meta_node=True)
-                cls.add_to_class(related_name, relation)
+                if relation:
+                    cls.add_to_class(related_name, relation)
 
                 if settings.CONNECT_META_NODES:
-                    node_relation = cls.get_related_node_property_for_field(field, meta_node=False)
-                    cls.add_to_class('_%s' % related_name, node_relation)
+                    relation = cls.get_related_node_property_for_field(field, meta_node=False)
+                    if relation:
+                        cls.add_to_class('_%s' % related_name, relation)
 
         # Recalculate definitions
         cls.__all_properties__ = tuple(cls.defined_properties(aliases=False, rels=False).items())
@@ -781,6 +810,14 @@ class MetaNodeMixin(ModelNodeMixin):
         :returns: The ``MetaNode`` instance or None if not created.
         """
         cls = self.__class__
+
+        if self._is_ignored:
+            try:
+                self.delete()
+            except ValueError:
+                pass
+            finally:
+                return None
 
         if not cls.has_relations and not create_empty:
             return None
