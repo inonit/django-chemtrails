@@ -13,6 +13,7 @@ from chemtrails.neoutils import (
     get_meta_node_class_for_model, get_meta_node_for_model,
     get_node_class_for_model, get_node_for_object, get_nodeset_for_queryset
 )
+from chemtrails import settings
 from chemtrails.utils import flatten
 
 from tests.utils import flush_nodes
@@ -361,6 +362,45 @@ class GraphMapperTestCase(TestCase):
         results, _ = db.cypher_query('MATCH (n)-[r]->() WHERE ID(n) = %d RETURN r' % node2.id)
         results = list(flatten(results))
         self.assertEqual(len(results), 1)
+
+    def test_ignored_models_app_label(self):
+        default = settings.IGNORE_MODELS
+        try:
+            settings.IGNORE_MODELS = ['auth']
+
+            klass = get_node_class_for_model(Group)
+            self.assertTrue(klass._is_ignored)
+
+            klass = get_node_class_for_model(Book)
+            self.assertFalse(klass._is_ignored)
+        finally:
+            settings.IGNORE_MODELS = default
+
+    def test_ignored_models_app_label_wildcard(self):
+        default = settings.IGNORE_MODELS
+        try:
+            settings.IGNORE_MODELS = ['auth.*']
+
+            klass = get_node_class_for_model(Group)
+            self.assertTrue(klass._is_ignored)
+
+            klass = get_node_class_for_model(Book)
+            self.assertFalse(klass._is_ignored)
+        finally:
+            settings.IGNORE_MODELS = default
+
+    def test_ignored_models_app_label_model_name(self):
+        default = settings.IGNORE_MODELS
+        try:
+            settings.IGNORE_MODELS = ['auth.group']
+
+            klass = get_node_class_for_model(Group)
+            self.assertTrue(klass._is_ignored)
+
+            klass = get_node_class_for_model(Permission)
+            self.assertFalse(klass._is_ignored)
+        finally:
+            settings.IGNORE_MODELS = default
 
     @flush_nodes()
     def test_sync_related_branch(self):
