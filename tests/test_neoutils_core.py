@@ -2,18 +2,20 @@
 
 from django.contrib.auth.models import Group, Permission
 from django.core.exceptions import ImproperlyConfigured
+from django.db.models.signals import post_save
 from django.test import TestCase, override_settings
 from django.utils import six
 
 from neomodel import *
 from neomodel.match import NodeSet
 
+from chemtrails import settings
 from chemtrails.neoutils import (
     ModelNodeMeta, ModelNodeMixin, MetaNodeMeta, MetaNodeMixin,
     get_meta_node_class_for_model, get_meta_node_for_model,
     get_node_class_for_model, get_node_for_object, get_nodeset_for_queryset
 )
-from chemtrails import settings
+from chemtrails.signals.handlers import post_save_handler
 from chemtrails.utils import flatten
 
 from tests.utils import flush_nodes
@@ -413,6 +415,29 @@ class GraphMapperTestCase(TestCase):
     def test_related_ignore_model_sync(self):
         # Make sure an ignored related model is not synced
         pass
+
+    @flush_nodes()
+    def test_sync_recursion_max_depth(self):
+        post_save.disconnect(post_save_handler, dispatch_uid='chemtrails.signals.handlers.post_save_handler')
+        try:
+            book = BookFixture(Book, generate_m2m={'authors': (1, 1)}).create_one()
+            for depth in range(3):
+                db.cypher_query('MATCH (n)-[r]-() WHERE n.type = "ModelNode" DELETE r')  # Delete all relationships
+                book_node = get_node_for_object(book).sync(max_depth=depth)
+                brk = ''
+                # for prop in book_node.defined_properties(aliases=False, properties=False).keys():
+                #     relation = getattr(book_node, prop)
+                #     if depth == 0:
+                #         # Max depth 0 means that no recursion should occur, and no connections
+                #         # can be made, because the connected objects might not exist.
+                #         self.assertEqual(len(relation.all()), 0)
+                #     elif depth == 1:
+                #         pass
+                #     else:
+                #         pass
+
+        finally:
+            post_save.connect(post_save_handler, dispatch_uid='chemtrails.signals.handlers.post_save_handler')
 
     @flush_nodes()
     def test_sync_related_branch(self):

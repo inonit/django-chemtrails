@@ -523,10 +523,19 @@ class ModelNodeMixin(ModelNodeMixinBase):
         @timeit
         def back_connect(n, depth):
             if n._recursion_depth >= depth:
+                direction = {-1: 'INCOMING', 0: 'MUTUAL', 1: 'OUTGOING'}
+                logger.debug(
+                    'Reached maximum recursion depth %(depth)d for '
+                    '%(direction)s relation %(relation_type)s on %(node)r.' % {
+                        'depth': n._recursion_depth,
+                        'direction': direction[prop.definition['direction']],
+                        'relation_type': prop.definition['relation_type'],
+                        'node': n
+                    })
                 return
             n._recursion_depth += 1
             for p, r in n.defined_properties(aliases=False, properties=False).items():
-                n.recursive_connect(getattr(n, p), r, max_depth=n._recursion_depth - 1)
+                n.recursive_connect(getattr(n, p), r, max_depth=depth - 1)
 
         # We require a model instance to look for filter values.
         instance = instance or self.get_object(self.pk)
@@ -540,7 +549,11 @@ class ModelNodeMixin(ModelNodeMixinBase):
         if isinstance(source, models.Model):
             node = klass.nodes.get_or_none(pk=source.pk)
             if not node:
-                node = get_node_for_object(source).sync(update_existing=True)
+                node = get_node_for_object(source).save()
+                logger.info('Created missing node %(node)r while synchronizing %(instance)r' % {
+                    'node': node,
+                    'instance': instance
+                })
 
             if node not in relations:
                 if isinstance(node, prop.definition['node_class']):
@@ -617,7 +630,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
                 self._log_relationship_definition('Disconnected', node, prop)
                 back_disconnect(node, max_depth)
 
-    def sync(self, max_depth=1, update_existing=True, create_empty=False):
+    def sync(self, max_depth=settings.MAX_CONNECTION_DEPTH, update_existing=True, create_empty=False):
         """
         Synchronizes the current node with data from the database and
         connect all directly related nodes.
