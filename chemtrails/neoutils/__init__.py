@@ -80,14 +80,14 @@ def get_node_class_for_model(model, for_concrete_model=True):
         return ModelNode
 
 
-def get_node_for_object(instance):
+def get_node_for_object(instance, bind=True):
     """
     Get a ``ModelNode`` instance for the current object instance.
     :param instance: Django model instance.
     :returns: A ``ModelNode`` instance.
     """
     klass = get_node_class_for_model(instance, True)
-    return klass(instance=instance)
+    return klass(instance=instance, bind=bind)
 
 
 def get_nodeset_for_queryset(queryset, sync=False, max_depth=1):

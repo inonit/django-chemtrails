@@ -394,6 +394,9 @@ class ModelNodeMixinBase:
 
 
 class ModelNodeMixin(ModelNodeMixinBase):
+
+
+
     def __init__(self, instance=None, bind=True, *args, **kwargs):
         self._instance = instance
         self.__recursion_depth__ = 0
@@ -421,29 +424,150 @@ class ModelNodeMixin(ModelNodeMixinBase):
         return '<{label}: {id}>'.format(label=self.__class__.__label__, id=self.id if self._is_bound else None)
 
     def to_csv(self):
-
+        from chemtrails.neoutils import get_node_for_object
         import csv
+
+        def format_prop(prop_list):
+            formated_string = ''
+            first = True
+            for name, value in prop_list.items():
+                if hasattr(value, 'default') and isinstance(value, Property):
+
+                    if first:
+                        first = False
+                    else:
+                        formated_string += ', '
+
+                    formated_string += name + ': '
+
+                    if value.default == None:
+                        value = getattr(self, name)
+                        if isinstance(value, int):
+                            formated_string += str(value)
+                        else:
+                            formated_string += '\'' + str(value) + '\''
+
+                    elif isinstance(value, int):
+                        formated_string += str(value.default)
+                    else:
+                        formated_string += '\'' + str(value.default) + '\''
+
+            return formated_string
+
         prop = self.defined_properties(aliases=False, rels=False)
-        queryparams = ''
-        skip = True
-        for p, v in prop.items():
 
-            if skip:
-                skip = False
-            else:
-                queryparams += ', '
-
-            queryparams += p + ': '
-            value = getattr(self, p)
-            if isinstance(value, int):
-                queryparams += str(value)
-            else:
-                queryparams += '\'' + str(value) + '\''
+        source_node_name = self.__label__
+        source_node_pk = self.pk
 
         with open('eggs.csv', 'a', newline='') as csvfile:
             spamwriter = csv.writer(csvfile, delimiter=';',
                                     quotechar='|', quoting=csv.QUOTE_MINIMAL)
-            spamwriter.writerow(['n'] + ['Create (a:%s { %s })' % (self.__label__, queryparams)])
+
+            # for p, v in prop.items():
+            #
+            #     if skip:
+            #         skip = False
+            #     else:
+            #         queryparams += ', '
+            #
+            #     queryparams += p + ': '
+            #     value = getattr(self, p)
+            #
+            #     if isinstance(value, int):
+            #         queryparams += str(value)
+            #     else:
+            #         queryparams += '\'' + str(value) + '\''
+            queryparams = format_prop(prop)
+            spamwriter.writerow(['n'] + ['CREATE (:%s { %s })' % (self.__label__, queryparams)])
+            # spamwriter.writerow(['n'] + [self.__label__] + [queryparams])
+
+            rels = self.defined_properties(aliases=False, properties=False)
+
+            cntr = 0
+
+
+            for name, obj in rels.items():
+
+                relation_type = obj.definition['relation_type']
+                obj_attr = getattr(self._instance, name)
+
+                if isinstance(obj_attr, models.Model):
+
+                    node = get_node_for_object(obj_attr, False)
+                    target_node_name = node.__label__
+                    target_node_pk = node.pk
+                    label_a = source_node_name + str(cntr) + str(source_node_pk)
+                    label_b = target_node_name + str(cntr) + str(target_node_pk)
+
+                    rel_props = format_prop(obj.definition['model'].__dict__)
+                    # first = True
+                    # for prop_name, prop_value in obj.definition['model'].__dict__.items():
+                    #     if hasattr(prop_value, 'default') and isinstance(prop_value, Property):
+                    #         pr=prop_name
+                    #         prr=prop_value.default
+                    #
+                    #         if first:
+                    #             first = False
+                    #         else:
+                    #             rel_props += ', '
+                    #
+                    #         rel_props += prop_name + ': '
+                    #
+                    #
+                    #         if isinstance(prop_value, int):
+                    #             rel_props += str(prop_value.default)
+                    #         else:
+                    #             rel_props += '\'' + str(prop_value.default) + '\''
+
+
+                    spamwriter.writerow(
+                        ['r'] + [('MATCH(%(node_a)s { pk:%(node_a_pk)d }), (%(node_b)s { pk:%(node_b_pk)d })'
+                                  ' WITH %(node_a_label)s, %(node_b_label)s CREATE (%(node_a_label)s)-[r:%(rel)s{%(rel_prop)s}]->(%(node_b_label)s)' %
+                                  {'node_a': label_a + ':' + source_node_name,
+                                   'node_a_pk': source_node_pk,
+                                   'node_a_label': label_a,
+                                   'node_b': label_b + ':' + target_node_name,
+                                   'node_b_pk': target_node_pk,
+                                   'node_b_label': label_b,
+                                   'rel': relation_type,
+                                   'rel_prop': rel_props
+                                   }
+                                  )
+                                 ]
+                    )
+                    cntr = cntr + 1
+                    print(cntr)
+
+                elif isinstance(obj_attr, Manager):
+                    for item in obj_attr.all():
+                        i = item
+
+                        node = get_node_for_object(i, False)
+                        target_node_name = node.__label__
+                        target_node_pk = node.pk
+                        label_a = 'a' + str(cntr)
+                        label_b = 'b' + str(cntr)
+                        rel_props = format_prop(obj.definition['model'].__dict__)
+
+                        spamwriter.writerow(
+                            ['r'] + [('MATCH(%(node_a)s { pk:%(node_a_pk)d }), (%(node_b)s { pk:%(node_b_pk)d })'
+                                      ' WITH %(node_a_label)s, %(node_b_label)s CREATE (%(node_a_label)s)-[r:%(rel)s{%(rel_prop)s}]->(%(node_b_label)s)' %
+                                      {'node_a': label_a + ':' + source_node_name,
+                                       'node_a_pk': source_node_pk,
+                                       'node_a_label': label_a,
+                                       'node_b': label_b + ':' + target_node_name,
+                                       'node_b_pk': target_node_pk,
+                                       'node_b_label': label_b,
+                                       'rel': relation_type,
+                                       'rel_prop': rel_props
+                                       }
+                                      )
+                                     ]
+                        )
+                        cntr = cntr + 1
+                        print(cntr)
+                else:
+                    raise NotImplementedError
 
     @property
     def _is_bound(self):
