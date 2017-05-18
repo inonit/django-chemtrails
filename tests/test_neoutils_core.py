@@ -2,7 +2,7 @@
 
 from django.contrib.auth.models import Group, Permission
 from django.core.exceptions import ImproperlyConfigured
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, m2m_changed
 from django.test import TestCase, override_settings
 from django.utils import six
 
@@ -15,7 +15,7 @@ from chemtrails.neoutils import (
     get_meta_node_class_for_model, get_meta_node_for_model,
     get_node_class_for_model, get_node_for_object, get_nodeset_for_queryset
 )
-from chemtrails.signals.handlers import post_save_handler
+from chemtrails.signals.handlers import post_save_handler, m2m_changed_handler
 from chemtrails.utils import flatten
 
 from tests.utils import flush_nodes
@@ -419,11 +419,14 @@ class GraphMapperTestCase(TestCase):
     @flush_nodes()
     def test_sync_recursion_max_depth(self):
         post_save.disconnect(post_save_handler, dispatch_uid='chemtrails.signals.handlers.post_save_handler')
+        m2m_changed.disconnect(m2m_changed_handler, dispatch_uid='chemtrails.signals.handlers.m2m_changed_handler')
         try:
             book = BookFixture(Book, generate_m2m={'authors': (1, 1)}).create_one()
             for depth in range(3):
                 db.cypher_query('MATCH (n)-[r]-() WHERE n.type = "ModelNode" DELETE r')  # Delete all relationships
-                book_node = get_node_for_object(book).sync(max_depth=depth)
+                # book_node = get_node_for_object(book).sync(max_depth=depth)
+                book_node = get_node_for_object(book).save()
+                book_node.recursive_connect2(book_node, depth)
                 brk = ''
                 # for prop in book_node.defined_properties(aliases=False, properties=False).keys():
                 #     relation = getattr(book_node, prop)
@@ -438,6 +441,7 @@ class GraphMapperTestCase(TestCase):
 
         finally:
             post_save.connect(post_save_handler, dispatch_uid='chemtrails.signals.handlers.post_save_handler')
+            m2m_changed.connect(m2m_changed_handler, dispatch_uid='chemtrails.signals.handlers.m2m_changed_handler')
 
     @flush_nodes()
     def test_sync_related_branch(self):
