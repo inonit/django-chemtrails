@@ -673,6 +673,16 @@ class ModelNodeMixin(ModelNodeMixinBase):
                     if issubclass(p.definition['node_class'], self.__class__):
                         p.connect(self)
 
+        def disconnect(node, prop):
+            """
+            Disconnect both sides of the relationship.
+            """
+            prop.disconnect(node)
+            for p, r in node.defined_properties(aliases=False, properties=False).items():
+                p = getattr(node, p)
+                if issubclass(p.definition['node_class'], self.__class__):
+                    p.disconnect(self)
+
         if max_depth <= 0:
             return
 
@@ -687,6 +697,8 @@ class ModelNodeMixin(ModelNodeMixinBase):
 
             source = getattr(instance, prop.name, None)
             if not source:
+                for node in prop.all():
+                    disconnect(node, prop)
                 continue
 
             if isinstance(source, models.Model):
@@ -702,6 +714,11 @@ class ModelNodeMixin(ModelNodeMixinBase):
 
             elif isinstance(source, Manager):
                 if not source.exists():
+                    to_disconnect = prop.filter(
+                        pk__in=list(source.model._meta.default_manager.exclude(pk__in=source.values('pk'))
+                                    .values_list('pk', flat=True)))
+                    for n in to_disconnect:
+                        disconnect(n, prop)
                     continue
 
                 nodeset = klass.nodes.filter(pk__in=list(source.values_list('pk', flat=True)))
