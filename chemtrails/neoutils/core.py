@@ -508,122 +508,185 @@ class ModelNodeMixin(ModelNodeMixinBase):
         except RequiredProperty as e:
             raise ValidationError({e.property_name: 'is required'})
 
+    # @timeit
+    # def recursive_connect(self, prop, relation, max_depth, instance=None):
+    #     """
+    #     Recursively connect a related branch.
+    #     :param prop: For example a ``ZeroOrMore`` instance.
+    #     :param relation: ``RelationShipDefinition`` instance
+    #     :param instance: Optional django model instance.
+    #     :param max_depth: Maximum depth of recursive connections to be made.
+    #     :returns: None
+    #     """
+    #     from chemtrails.neoutils import get_node_for_object
+    #
+    #     # @timeit
+    #     # def back_connect(n, depth):
+    #     #     if n._recursion_depth >= depth:
+    #     #         direction = {-1: 'INCOMING', 0: 'MUTUAL', 1: 'OUTGOING'}
+    #     #         logger.debug(
+    #     #             'Reached maximum recursion depth %(depth)d for '
+    #     #             '%(direction)s relation %(relation_type)s on %(node)r.' % {
+    #     #                 'depth': n._recursion_depth,
+    #     #                 'direction': direction[prop.definition['direction']],
+    #     #                 'relation_type': prop.definition['relation_type'],
+    #     #                 'node': n
+    #     #             })
+    #     #         return
+    #     #     n._recursion_depth += 1
+    #     #     for p, r in n.defined_properties(aliases=False, properties=False).items():
+    #     #         n.recursive_connect(getattr(n, p), r, max_depth=depth - 1)
+    #
+    #     if self._recursion_depth >= max_depth:
+    #         direction = {-1: 'INCOMING', 0: 'MUTUAL', 1: 'OUTGOING'}
+    #         logger.debug(
+    #             'Reached maximum recursion depth %(depth)d for '
+    #             '%(direction)s relation %(relation_type)s on %(node)r.' % {
+    #                 'depth': self._recursion_depth,
+    #                 'direction': direction[prop.definition['direction']],
+    #                 'relation_type': prop.definition['relation_type'],
+    #                 'node': self
+    #             })
+    #         return
+    #
+    #     # We require a model instance to look for filter values.
+    #     instance = instance or self.get_object(self.pk)
+    #     if not instance or not hasattr(instance, prop.name):
+    #         return
+    #
+    #     relations = prop.all()
+    #     klass = relation.definition['node_class']
+    #     source = getattr(instance, prop.name)
+    #
+    #     if isinstance(source, models.Model):
+    #         node = klass.nodes.get_or_none(pk=source.pk)
+    #         if not node:
+    #             node = get_node_for_object(source).save()
+    #             logger.info('Created missing node %(node)r while synchronizing %(instance)r' % {
+    #                 'node': node,
+    #                 'instance': instance
+    #             })
+    #         node._recursion_depth += 1
+    #         if node not in relations:
+    #             if isinstance(node, prop.definition['node_class']):
+    #                 prop.connect(node)
+    #                 self._log_relationship_definition('Connected', node, prop)
+    #                 # back_connect(node, max_depth)
+    #                 for p, r in node.defined_properties(aliases=False, properties=False).items():
+    #                     node_prop = getattr(node, p)
+    #                     if issubclass(node_prop.definition['node_class'], self.__class__):
+    #                         node_prop.connect(self)
+    #                         continue
+    #                     node.recursive_connect(getattr(node, p), r, max_depth=max_depth)
+    #         elif self._recursion_depth <= max_depth:
+    #             # back_connect(node, max_depth)
+    #             for p, r in node.defined_properties(aliases=False, properties=False).items():
+    #                 node_prop = getattr(node, p)
+    #                 if issubclass(node_prop.definition['node_class'], self.__class__):
+    #                     node_prop.connect(self)
+    #                     continue
+    #                 node.recursive_connect(getattr(node, p), r, max_depth=max_depth)
+    #
+    #     elif isinstance(source, Manager):
+    #         if not source.exists():
+    #             return
+    #
+    #         nodeset = klass.nodes.filter(pk__in=list(source.values_list('pk', flat=True)))
+    #         if len(nodeset) != source.count():
+    #             # Save missing nodes
+    #             existing = [n.pk for n in nodeset]
+    #             for obj in source.exclude(pk__in=existing):
+    #                 node = get_node_for_object(obj).save()
+    #                 logger.info('Created missing node %(node)r while synchronizing %(instance)r' % {
+    #                     'node': node,
+    #                     'instance': instance
+    #                 })
+    #             nodeset = klass.nodes.filter(pk__in=list(source.values_list('pk', flat=True)))
+    #
+    #         for node in nodeset:
+    #             node._recursion_depth += 1
+    #             if node not in relations:
+    #                 if isinstance(node, prop.definition['node_class']):
+    #                     prop.connect(node)
+    #                     self._log_relationship_definition('Connected', node, prop)
+    #                     # back_connect(node, max_depth)
+    #                     for p, r in node.defined_properties(aliases=False, properties=False).items():
+    #                         node_prop = getattr(node, p)
+    #                         if issubclass(node_prop.definition['node_class'], self.__class__):
+    #                             node_prop.connect(self)
+    #                             continue
+    #                         node.recursive_connect(getattr(node, p), r, max_depth=max_depth)
+    #             elif self._recursion_depth <= max_depth:
+    #                 # back_connect(node, max_depth)
+    #                 for p, r in node.defined_properties(aliases=False, properties=False).items():
+    #                     node_prop = getattr(node, p)
+    #                     if issubclass(node_prop.definition['node_class'], self.__class__):
+    #                         node_prop.connect(self)
+    #                         continue
+    #                     node.recursive_connect(getattr(node, p), r, max_depth=max_depth)
+
     @timeit
-    def recursive_connect(self, prop, relation, max_depth, instance=None):
-        """
-        Recursively connect a related branch.
-        :param prop: For example a ``ZeroOrMore`` instance.
-        :param relation: ``RelationShipDefinition`` instance
-        :param instance: Optional django model instance.
-        :param max_depth: Maximum depth of recursive connections to be made.
-        :returns: None
-        """
+    def recursive_connect(self, max_depth=settings.MAX_CONNECTION_DEPTH):
         from chemtrails.neoutils import get_node_for_object
 
-        # @timeit
-        # def back_connect(n, depth):
-        #     if n._recursion_depth >= depth:
-        #         direction = {-1: 'INCOMING', 0: 'MUTUAL', 1: 'OUTGOING'}
-        #         logger.debug(
-        #             'Reached maximum recursion depth %(depth)d for '
-        #             '%(direction)s relation %(relation_type)s on %(node)r.' % {
-        #                 'depth': n._recursion_depth,
-        #                 'direction': direction[prop.definition['direction']],
-        #                 'relation_type': prop.definition['relation_type'],
-        #                 'node': n
-        #             })
-        #         return
-        #     n._recursion_depth += 1
-        #     for p, r in n.defined_properties(aliases=False, properties=False).items():
-        #         n.recursive_connect(getattr(n, p), r, max_depth=depth - 1)
-
-        if self._recursion_depth >= max_depth:
-            direction = {-1: 'INCOMING', 0: 'MUTUAL', 1: 'OUTGOING'}
-            logger.debug(
-                'Reached maximum recursion depth %(depth)d for '
-                '%(direction)s relation %(relation_type)s on %(node)r.' % {
-                    'depth': self._recursion_depth,
-                    'direction': direction[prop.definition['direction']],
-                    'relation_type': prop.definition['relation_type'],
-                    'node': self
-                })
+        if max_depth <= 0:
             return
 
         # We require a model instance to look for filter values.
-        instance = instance or self.get_object(self.pk)
-        if not instance or not hasattr(instance, prop.name):
+        instance = self.get_object(self.pk)
+        if not instance:
             return
 
-        relations = prop.all()
-        klass = relation.definition['node_class']
-        source = getattr(instance, prop.name)
+        defined_properties = self.defined_properties(aliases=False, properties=False).items()
+        for attr, relation in defined_properties:
+            prop = getattr(self, attr)
+            klass = relation.definition['node_class']
 
-        if isinstance(source, models.Model):
-            node = klass.nodes.get_or_none(pk=source.pk)
-            if not node:
-                node = get_node_for_object(source).save()
-                logger.info('Created missing node %(node)r while synchronizing %(instance)r' % {
-                    'node': node,
-                    'instance': instance
-                })
-            node._recursion_depth += 1
-            if node not in relations:
-                if isinstance(node, prop.definition['node_class']):
-                    prop.connect(node)
-                    self._log_relationship_definition('Connected', node, prop)
-                    # back_connect(node, max_depth)
-                    for p, r in node.defined_properties(aliases=False, properties=False).items():
-                        node_prop = getattr(node, p)
-                        if issubclass(node_prop.definition['node_class'], self.__class__):
-                            node_prop.connect(self)
-                            continue
-                        node.recursive_connect(getattr(node, p), r, max_depth=max_depth)
-            elif self._recursion_depth <= max_depth:
-                # back_connect(node, max_depth)
-                for p, r in node.defined_properties(aliases=False, properties=False).items():
-                    node_prop = getattr(node, p)
-                    if issubclass(node_prop.definition['node_class'], self.__class__):
-                        node_prop.connect(self)
-                        continue
-                    node.recursive_connect(getattr(node, p), r, max_depth=max_depth)
+            source = getattr(instance, prop.name, None)
+            if not source:
+                continue
 
-        elif isinstance(source, Manager):
-            if not source.exists():
-                return
-
-            nodeset = klass.nodes.filter(pk__in=list(source.values_list('pk', flat=True)))
-            if len(nodeset) != source.count():
-                # Save missing nodes
-                existing = [n.pk for n in nodeset]
-                for obj in source.exclude(pk__in=existing):
-                    node = get_node_for_object(obj).save()
+            if isinstance(source, models.Model):
+                node = klass.nodes.get_or_none(pk=source.pk)
+                if not node:
+                    node = get_node_for_object(source).save()
                     logger.info('Created missing node %(node)r while synchronizing %(instance)r' % {
                         'node': node,
                         'instance': instance
                     })
-                nodeset = klass.nodes.filter(pk__in=list(source.values_list('pk', flat=True)))
-
-            for node in nodeset:
-                node._recursion_depth += 1
-                if node not in relations:
-                    if isinstance(node, prop.definition['node_class']):
-                        prop.connect(node)
-                        self._log_relationship_definition('Connected', node, prop)
-                        # back_connect(node, max_depth)
-                        for p, r in node.defined_properties(aliases=False, properties=False).items():
-                            node_prop = getattr(node, p)
-                            if issubclass(node_prop.definition['node_class'], self.__class__):
-                                node_prop.connect(self)
-                                continue
-                            node.recursive_connect(getattr(node, p), r, max_depth=max_depth)
-                elif self._recursion_depth <= max_depth:
-                    # back_connect(node, max_depth)
+                if node not in prop.all() and isinstance(node, prop.definition['node_class']):
+                    prop.connect(node)
                     for p, r in node.defined_properties(aliases=False, properties=False).items():
-                        node_prop = getattr(node, p)
-                        if issubclass(node_prop.definition['node_class'], self.__class__):
-                            node_prop.connect(self)
-                            continue
-                        node.recursive_connect(getattr(node, p), r, max_depth=max_depth)
+                        p = getattr(node, p)
+                        if issubclass(p.definition['node_class'], self.__class__):
+                            p.connect(self)
+                node.recursive_connect(max_depth=max_depth - 1)
+
+            elif isinstance(source, Manager):
+                if not source.exists():
+                    continue
+
+                nodeset = klass.nodes.filter(pk__in=list(source.values_list('pk', flat=True)))
+                if len(nodeset) != source.count():
+                    # Save missing nodes
+                    existing = [n.pk for n in nodeset]
+                    for obj in source.exclude(pk__in=existing):
+                        node = get_node_for_object(obj).save()
+                        logger.info('Created missing node %(node)r while synchronizing %(instance)r' % {
+                            'node': node,
+                            'instance': instance
+                        })
+                    nodeset = klass.nodes.filter(pk__in=list(source.values_list('pk', flat=True)))
+
+                for node in nodeset:
+                    if node not in prop.all() and isinstance(node, prop.definition['node_class']):
+                        prop.connect(node)
+                        for p, r in node.defined_properties(aliases=False, properties=False).items():
+                            p = getattr(node, p)
+                            if issubclass(p.definition['node_class'], self.__class__):
+                                p.connect(self)
+                    node.recursive_connect(max_depth=max_depth - 1)
+
 
     @timeit
     def recursive_disconnect(self, prop, relation, max_depth, instance=None):
@@ -711,80 +774,14 @@ class ModelNodeMixin(ModelNodeMixinBase):
             # Finally save the node.
             self.save()
 
-        # self.recursive_connect2(node=self, max_depth=max_depth)
+        self.recursive_connect(max_depth=max_depth)
 
         # Connect relations
-        for prop, relation in self.defined_properties(aliases=False, properties=False).items():
-            prop = getattr(self, prop)
-            self.recursive_connect(prop, relation, max_depth=max_depth)
-            self.recursive_disconnect(prop, relation, max_depth=max_depth)
+        # for prop, relation in self.defined_properties(aliases=False, properties=False).items():
+        #     prop = getattr(self, prop)
+        #     self.recursive_connect(prop, relation, max_depth=max_depth)
+        #     self.recursive_disconnect(prop, relation, max_depth=max_depth)
         return self
-
-    @staticmethod
-    def recursive_connect2(node, max_depth=settings.MAX_CONNECTION_DEPTH):
-        from chemtrails.neoutils import get_node_for_object
-
-        if max_depth <= 0:
-            return
-        # if node._recursion_depth >= max_depth:
-        #     logger.debug('Reached maximum recursion depth %(depth)d for %(node)r' % {
-        #         'depth': node._recursion_depth,
-        #         'node': node
-        #     })
-        #     return
-        # node._recursion_depth += 1
-
-        # We require a model instance to look for filter values.
-        instance = node.get_object(node.pk)
-        if not instance:
-            return
-
-        defined_properties = node.defined_properties(aliases=False, properties=False).items()
-        for attr, relation in defined_properties:
-            prop = getattr(node, attr)
-            klass = relation.definition['node_class']
-            source = getattr(instance, prop.name)
-
-            if isinstance(source, models.Model):
-                other = klass.nodes.get_or_none(pk=source.pk)
-                if not other:
-                    other = get_node_for_object(source).save()
-                    logger.info('Created missing node %(node)r while synchronizing %(instance)r' % {
-                        'node': other,
-                        'instance': instance
-                    })
-                if other not in prop.all() and isinstance(other, prop.definition['node_class']):
-                    prop.connect(other)
-                    for p, r in other.defined_properties(aliases=False, properties=False).items():
-                        p = getattr(other, p)
-                        if issubclass(p.definition['node_class'], node.__class__):
-                            p.connect(node)
-                other.recursive_connect2(node=other, max_depth=max_depth - 1)
-
-            elif isinstance(source, Manager):
-                if not source.exists():
-                    continue
-
-                nodeset = klass.nodes.filter(pk__in=list(source.values_list('pk', flat=True)))
-                if len(nodeset) != source.count():
-                    # Save missing nodes
-                    existing = [n.pk for n in nodeset]
-                    for obj in source.exclude(pk__in=existing):
-                        other = get_node_for_object(obj).save()
-                        logger.info('Created missing node %(node)r while synchronizing %(instance)r' % {
-                            'node': other,
-                            'instance': instance
-                        })
-                    nodeset = klass.nodes.filter(pk__in=list(source.values_list('pk', flat=True)))
-
-                for other in nodeset:
-                    if other not in prop.all() and isinstance(other, prop.definition['node_class']):
-                        prop.connect(other)
-                        for p, r in other.defined_properties(aliases=False, properties=False).items():
-                            p = getattr(other, p)
-                            if issubclass(p.definition['node_class'], node.__class__):
-                                p.connect(node)
-                    other.recursive_connect2(node=other, max_depth=max_depth - 1)
 
 
 class MetaNodeMeta(NodeBase):

@@ -417,16 +417,15 @@ class GraphMapperTestCase(TestCase):
         pass
 
     @flush_nodes()
-    def test_sync_recursion_max_depth(self):
+    def test_recursive_connect(self):
         post_save.disconnect(post_save_handler, dispatch_uid='chemtrails.signals.handlers.post_save_handler')
         m2m_changed.disconnect(m2m_changed_handler, dispatch_uid='chemtrails.signals.handlers.m2m_changed_handler')
         try:
             book = BookFixture(Book, generate_m2m={'authors': (1, 1)}).create_one()
             for depth in range(3):
                 db.cypher_query('MATCH (n)-[r]-() WHERE n.type = "ModelNode" DELETE r')  # Delete all relationships
-                # book_node = get_node_for_object(book).sync(max_depth=depth)
                 book_node = get_node_for_object(book).save()
-                book_node.recursive_connect2(book_node, depth)
+                book_node.recursive_connect(depth)
                 brk = ''
                 # for prop in book_node.defined_properties(aliases=False, properties=False).keys():
                 #     relation = getattr(book_node, prop)
@@ -443,31 +442,31 @@ class GraphMapperTestCase(TestCase):
             post_save.connect(post_save_handler, dispatch_uid='chemtrails.signals.handlers.post_save_handler')
             m2m_changed.connect(m2m_changed_handler, dispatch_uid='chemtrails.signals.handlers.m2m_changed_handler')
 
-    @flush_nodes()
-    def test_sync_related_branch(self):
-        queryset = Store.objects.filter(pk__in=map(lambda n: n.pk,
-                                                   StoreFixture(Store).create(count=1, commit=True)))
-        store_nodeset = get_nodeset_for_queryset(queryset, sync=True, max_depth=1)
-        for store in store_nodeset:
-            store_obj = store.get_object()
-
-            if store_obj.bestseller:
-                self.assertEqual(store.bestseller.get(), get_node_for_object(store_obj.bestseller))
-
-            self.assertEqual(len(store.books.all()), store_obj.books.count())
-            for book in store.books.all():
-                book_obj = book.get_object()
-                self.assertTrue(store in book.store_set.all())
-                self.assertEqual(book.publisher.get(), get_node_for_object(book_obj.publisher))
-                self.assertEqual(len(book.store_set.all()), book_obj.store_set.count())
-                self.assertEqual(len(book.bestseller_stores.all()), book_obj.bestseller_stores.count())
-                self.assertEqual(len(book.authors.all()), book_obj.authors.count())
-
-                for author in book.authors.all():
-                    author_obj = author.get_object()
-                    self.assertTrue(book in author.book_set.all())
-
-                    user = author.user.get()
-                    self.assertEqual(user, get_node_for_object(author_obj.user).sync())
-                    self.assertEqual(author, user.author.get())
-
+    # @flush_nodes()
+    # def test_sync_related_branch(self):
+    #     queryset = Store.objects.filter(pk__in=map(lambda n: n.pk,
+    #                                                StoreFixture(Store).create(count=1, commit=True)))
+    #     store_nodeset = get_nodeset_for_queryset(queryset, sync=True, max_depth=1)
+    #     for store in store_nodeset:
+    #         store_obj = store.get_object()
+    #
+    #         if store_obj.bestseller:
+    #             self.assertEqual(store.bestseller.get(), get_node_for_object(store_obj.bestseller))
+    #
+    #         self.assertEqual(len(store.books.all()), store_obj.books.count())
+    #         for book in store.books.all():
+    #             book_obj = book.get_object()
+    #             self.assertTrue(store in book.store_set.all())
+    #             self.assertEqual(book.publisher.get(), get_node_for_object(book_obj.publisher))
+    #             self.assertEqual(len(book.store_set.all()), book_obj.store_set.count())
+    #             self.assertEqual(len(book.bestseller_stores.all()), book_obj.bestseller_stores.count())
+    #             self.assertEqual(len(book.authors.all()), book_obj.authors.count())
+    #
+    #             for author in book.authors.all():
+    #                 author_obj = author.get_object()
+    #                 self.assertTrue(book in author.book_set.all())
+    #
+    #                 user = author.user.get()
+    #                 self.assertEqual(user, get_node_for_object(author_obj.user).sync())
+    #                 self.assertEqual(author, user.author.get())
+    #
