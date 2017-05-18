@@ -625,9 +625,53 @@ class ModelNodeMixin(ModelNodeMixinBase):
     #                         continue
     #                     node.recursive_connect(getattr(node, p), r, max_depth=max_depth)
 
+    def disconnect(self):
+
+        # We require a model instance to look for filter values.
+        instance = self.get_object(self.pk)
+        if not instance:
+            return
+
+        for attr, relation in self.defined_properties(aliases=False, properties=False).items():
+            prop = getattr(self, attr)
+
+            source = getattr(instance, prop.name, None)
+            if not source:
+                continue
+
+            disconnect = []
+            if isinstance(source, models.Model):
+                disconnect = prop.filter(pk__in=list(source._meta.model.objects.exclude(pk=source.pk)
+                                                     .values_list('pk', flat=True)))
+            elif isinstance(source, Manager):
+                disconnect = prop.filter(pk__in=list(source.model.objects.exclude(pk__in=source.values('pk'))
+                                                     .values_list('pk', flat=True)))
+            for node in disconnect:
+                prop.disconnect(node)
+                for p, r in node.defined_properties(aliases=False, properties=False).items():
+                    p = getattr(node, p)
+                    if issubclass(p.definition['node_class'], self.__class__):
+                        p.disconnect(self)
+
     @timeit
     def recursive_connect(self, max_depth=settings.MAX_CONNECTION_DEPTH):
+        """
+        Recursively connect a node branch.
+        :param max_depth: Go n nodes deep originating from the current node.
+        :returns: None
+        """
         from chemtrails.neoutils import get_node_for_object
+
+        def connect(node, prop):
+            """
+            Connect both sides of the relationship.
+            """
+            if node not in prop.all() and isinstance(node, prop.definition['node_class']):
+                prop.connect(node)
+                for p, r in node.defined_properties(aliases=False, properties=False).items():
+                    p = getattr(node, p)
+                    if issubclass(p.definition['node_class'], self.__class__):
+                        p.connect(self)
 
         if max_depth <= 0:
             return
@@ -637,8 +681,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
         if not instance:
             return
 
-        defined_properties = self.defined_properties(aliases=False, properties=False).items()
-        for attr, relation in defined_properties:
+        for attr, relation in self.defined_properties(aliases=False, properties=False).items():
             prop = getattr(self, attr)
             klass = relation.definition['node_class']
 
@@ -654,12 +697,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
                         'node': node,
                         'instance': instance
                     })
-                if node not in prop.all() and isinstance(node, prop.definition['node_class']):
-                    prop.connect(node)
-                    for p, r in node.defined_properties(aliases=False, properties=False).items():
-                        p = getattr(node, p)
-                        if issubclass(p.definition['node_class'], self.__class__):
-                            p.connect(self)
+                connect(node, prop)
                 node.recursive_connect(max_depth=max_depth - 1)
 
             elif isinstance(source, Manager):
@@ -679,14 +717,8 @@ class ModelNodeMixin(ModelNodeMixinBase):
                     nodeset = klass.nodes.filter(pk__in=list(source.values_list('pk', flat=True)))
 
                 for node in nodeset:
-                    if node not in prop.all() and isinstance(node, prop.definition['node_class']):
-                        prop.connect(node)
-                        for p, r in node.defined_properties(aliases=False, properties=False).items():
-                            p = getattr(node, p)
-                            if issubclass(p.definition['node_class'], self.__class__):
-                                p.connect(self)
+                    connect(node, prop)
                     node.recursive_connect(max_depth=max_depth - 1)
-
 
     @timeit
     def recursive_disconnect(self, prop, relation, max_depth, instance=None):
