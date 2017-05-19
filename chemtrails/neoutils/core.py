@@ -178,18 +178,6 @@ class ModelNodeMixinBase:
     """
     Base mixin class
     """
-    def _log_relationship_definition(self, action: str, node, prop, level: int = 20):
-        direction = {-1: 'INCOMING', 0: 'MUTUAL', 1: 'OUTGOING'}
-        message = ('%(action)s %(direction)s relation %(relation_type)s '
-                   'between %(klass)r and %(node)r' % {
-                       'action': action,
-                       'direction': direction[prop.definition['direction']],
-                       'relation_type': prop.definition['relation_type'],
-                       'klass': prop.source,
-                       'node': node
-                   })
-        logger.log(level=level, msg=message)
-
     def _update_raw_node(self):
         """
         Compares the node class attributes to raw node attributes and removes
@@ -275,6 +263,19 @@ class ModelNodeMixinBase:
         """
         from chemtrails.neoutils.managers import PathManager
         return PathManager(self)
+
+    @staticmethod
+    def _log_relationship_definition(action: str, node, prop, level: int = 20):
+        direction = {-1: 'INCOMING', 0: 'MUTUAL', 1: 'OUTGOING'}
+        message = ('%(action)s %(direction)s relation %(relation_type)s '
+                   'between %(klass)r and %(node)r' % {
+                       'action': action,
+                       'direction': direction[prop.definition['direction']],
+                       'relation_type': prop.definition['relation_type'],
+                       'klass': prop.source,
+                       'node': node
+                   })
+        logger.log(level=level, msg=message)
 
     @staticmethod
     def get_property_class_for_field(klass):
@@ -625,34 +626,6 @@ class ModelNodeMixin(ModelNodeMixinBase):
     #                         continue
     #                     node.recursive_connect(getattr(node, p), r, max_depth=max_depth)
 
-    def disconnect(self):
-
-        # We require a model instance to look for filter values.
-        instance = self.get_object(self.pk)
-        if not instance:
-            return
-
-        for attr, relation in self.defined_properties(aliases=False, properties=False).items():
-            prop = getattr(self, attr)
-
-            source = getattr(instance, prop.name, None)
-            if not source:
-                continue
-
-            disconnect = []
-            if isinstance(source, models.Model):
-                disconnect = prop.filter(pk__in=list(source._meta.model.objects.exclude(pk=source.pk)
-                                                     .values_list('pk', flat=True)))
-            elif isinstance(source, Manager):
-                disconnect = prop.filter(pk__in=list(source.model.objects.exclude(pk__in=source.values('pk'))
-                                                     .values_list('pk', flat=True)))
-            for node in disconnect:
-                prop.disconnect(node)
-                for p, r in node.defined_properties(aliases=False, properties=False).items():
-                    p = getattr(node, p)
-                    if issubclass(p.definition['node_class'], self.__class__):
-                        p.disconnect(self)
-
     @timeit
     def recursive_connect(self, max_depth=settings.MAX_CONNECTION_DEPTH):
         """
@@ -668,20 +641,27 @@ class ModelNodeMixin(ModelNodeMixinBase):
             """
             if node not in prop.all() and isinstance(node, prop.definition['node_class']):
                 prop.connect(node)
+                self._log_relationship_definition('Connected', node, prop)
                 for p, r in node.defined_properties(aliases=False, properties=False).items():
                     p = getattr(node, p)
                     if issubclass(p.definition['node_class'], self.__class__):
                         p.connect(self)
+                        self._log_relationship_definition('Connected', self, p)
 
         def disconnect(node, prop):
             """
             Disconnect both sides of the relationship.
             """
             prop.disconnect(node)
+            self._log_relationship_definition('Disconnected', node, prop)
             for p, r in node.defined_properties(aliases=False, properties=False).items():
                 p = getattr(node, p)
                 if issubclass(p.definition['node_class'], self.__class__):
-                    p.disconnect(self)
+                    # Make sure we only disconnects the "reverse" relation of ``prop``.
+                    for f in p.source_class.get_reverse_relation_fields():
+                        if p.name == f.related_name or f.name and f.field.name == prop.name:
+                            p.disconnect(self)
+                            self._log_relationship_definition('Disconnected', self, p)
 
         if max_depth <= 0:
             return
@@ -723,7 +703,6 @@ class ModelNodeMixin(ModelNodeMixinBase):
 
                 nodeset = klass.nodes.filter(pk__in=list(source.values_list('pk', flat=True)))
                 if len(nodeset) != source.count():
-                    # Save missing nodes
                     existing = [n.pk for n in nodeset]
                     for obj in source.exclude(pk__in=existing):
                         node = get_node_for_object(obj).save()
@@ -736,48 +715,6 @@ class ModelNodeMixin(ModelNodeMixinBase):
                 for node in nodeset:
                     connect(node, prop)
                     node.recursive_connect(max_depth=max_depth - 1)
-
-    @timeit
-    def recursive_disconnect(self, prop, relation, max_depth, instance=None):
-        """
-        Recursively disconnect a related branch.
-        :param prop: For example a ``ZeroOrMore`` instance.
-        :param relation: ``RelationShipDefinition`` instance
-        :param instance: Optional django model instance.
-        :param max_depth: Maximum depth of recursive connections to be made.
-        :returns: None
-        """
-
-        @timeit
-        def back_disconnect(n, depth):
-            if n._recursion_depth >= depth:
-                return
-            n._recursion_depth += 1
-            for p, r in n.defined_properties(aliases=False, properties=False).items():
-                n.recursive_disconnect(getattr(n, p), r, max_depth=n._recursion_depth - 1)
-
-        # We require a model instance to look for filter values.
-        instance = instance or self.get_object(self.pk)
-        if not instance or not hasattr(instance, prop.name):
-            return
-
-        source = getattr(instance, prop.name)
-
-        if isinstance(source, models.Model):
-            disconnect = prop.filter(pk__in=list(source._meta.model.objects.exclude(pk=source.pk)
-                                                 .values_list('pk', flat=True)))
-            for node in disconnect:
-                prop.disconnect(node)
-                self._log_relationship_definition('Disconnected', node, prop)
-                back_disconnect(node, max_depth)
-
-        elif isinstance(source, Manager):
-            disconnect = prop.filter(pk__in=list(source.model.objects.exclude(pk__in=source.values('pk'))
-                                                 .values_list('pk', flat=True)))
-            for node in disconnect:
-                prop.disconnect(node)
-                self._log_relationship_definition('Disconnected', node, prop)
-                back_disconnect(node, max_depth)
 
     def sync(self, max_depth=settings.MAX_CONNECTION_DEPTH, update_existing=True, create_empty=False):
         """
@@ -823,13 +760,9 @@ class ModelNodeMixin(ModelNodeMixinBase):
             # Finally save the node.
             self.save()
 
+        # Connect relations
         self.recursive_connect(max_depth=max_depth)
 
-        # Connect relations
-        # for prop, relation in self.defined_properties(aliases=False, properties=False).items():
-        #     prop = getattr(self, prop)
-        #     self.recursive_connect(prop, relation, max_depth=max_depth)
-        #     self.recursive_disconnect(prop, relation, max_depth=max_depth)
         return self
 
 
