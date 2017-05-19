@@ -423,7 +423,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
     def __repr__(self):
         return '<{label}: {id}>'.format(label=self.__class__.__label__, id=self.id if self._is_bound else None)
 
-    def to_csv(self):
+    def to_csv(self, cntr=0, target_file=None):
         from chemtrails.neoutils import get_node_for_object
         import csv
 
@@ -459,31 +459,17 @@ class ModelNodeMixin(ModelNodeMixinBase):
         source_node_name = self.__label__
         source_node_pk = self.pk
 
-        with open('eggs.csv', 'a', newline='') as csvfile:
+        with open(target_file.name, 'a', newline='') as csvfile:
             spamwriter = csv.writer(csvfile, delimiter=';',
                                     quotechar='|', quoting=csv.QUOTE_MINIMAL)
 
-            # for p, v in prop.items():
-            #
-            #     if skip:
-            #         skip = False
-            #     else:
-            #         queryparams += ', '
-            #
-            #     queryparams += p + ': '
-            #     value = getattr(self, p)
-            #
-            #     if isinstance(value, int):
-            #         queryparams += str(value)
-            #     else:
-            #         queryparams += '\'' + str(value) + '\''
             queryparams = format_prop(prop)
             spamwriter.writerow(['n'] + ['CREATE (:%s { %s })' % (self.__label__, queryparams)])
-            # spamwriter.writerow(['n'] + [self.__label__] + [queryparams])
+
 
             rels = self.defined_properties(aliases=False, properties=False)
 
-            cntr = 0
+            # cntr = 0
 
 
             for name, obj in rels.items():
@@ -500,29 +486,10 @@ class ModelNodeMixin(ModelNodeMixinBase):
                     label_b = target_node_name + str(cntr) + str(target_node_pk)
 
                     rel_props = format_prop(obj.definition['model'].__dict__)
-                    # first = True
-                    # for prop_name, prop_value in obj.definition['model'].__dict__.items():
-                    #     if hasattr(prop_value, 'default') and isinstance(prop_value, Property):
-                    #         pr=prop_name
-                    #         prr=prop_value.default
-                    #
-                    #         if first:
-                    #             first = False
-                    #         else:
-                    #             rel_props += ', '
-                    #
-                    #         rel_props += prop_name + ': '
-                    #
-                    #
-                    #         if isinstance(prop_value, int):
-                    #             rel_props += str(prop_value.default)
-                    #         else:
-                    #             rel_props += '\'' + str(prop_value.default) + '\''
-
 
                     spamwriter.writerow(
                         ['r'] + [('MATCH(%(node_a)s { pk:%(node_a_pk)d }), (%(node_b)s { pk:%(node_b_pk)d })'
-                                  ' WITH %(node_a_label)s, %(node_b_label)s CREATE (%(node_a_label)s)-[r:%(rel)s{%(rel_prop)s}]->(%(node_b_label)s)' %
+                                  ' WITH %(node_a_label)s, %(node_b_label)s CREATE UNIQUE(%(node_a_label)s)-[r:%(rel)s{%(rel_prop)s}]->(%(node_b_label)s)' %
                                   {'node_a': label_a + ':' + source_node_name,
                                    'node_a_pk': source_node_pk,
                                    'node_a_label': label_a,
@@ -536,7 +503,6 @@ class ModelNodeMixin(ModelNodeMixinBase):
                                  ]
                     )
                     cntr = cntr + 1
-                    print(cntr)
 
                 elif isinstance(obj_attr, Manager):
                     for item in obj_attr.all():
@@ -551,7 +517,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
 
                         spamwriter.writerow(
                             ['r'] + [('MATCH(%(node_a)s { pk:%(node_a_pk)d }), (%(node_b)s { pk:%(node_b_pk)d })'
-                                      ' WITH %(node_a_label)s, %(node_b_label)s CREATE (%(node_a_label)s)-[r:%(rel)s{%(rel_prop)s}]->(%(node_b_label)s)' %
+                                      ' WITH %(node_a_label)s, %(node_b_label)s CREATE UNIQUE(%(node_a_label)s)-[r:%(rel)s{%(rel_prop)s}]->(%(node_b_label)s)' %
                                       {'node_a': label_a + ':' + source_node_name,
                                        'node_a_pk': source_node_pk,
                                        'node_a_label': label_a,
@@ -565,7 +531,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
                                      ]
                         )
                         cntr = cntr + 1
-                        print(cntr)
+
                 else:
                     raise NotImplementedError
 

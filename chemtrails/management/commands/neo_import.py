@@ -3,11 +3,13 @@ from chemtrails.neoutils import get_node_class_for_model
 from django.apps import apps
 from chemtrails import settings
 import csv
-from neomodel import db
+import tempfile
+from neomodel import db, exception
 
 
 class Command(BaseCommand):
     help = 'imports current database to neo4j'
+
 
     def add_arguments(self, parser):
         pass
@@ -15,43 +17,56 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
 
-        for app in apps.all_models:
+        target_file = tempfile.NamedTemporaryFile(delete=True)
 
-            if app in settings.IGNORE_MODELS:
-                continue
+        try:
+            for app in apps.all_models:
 
-            self.stdout.write(self.style.SUCCESS(str(app)))
-
-            filename = "eggs.csv"
-            # opening the file with w+ mode truncates the file
-            f = open(filename, "w+")
-            f.close()
-
-            for model in apps.get_app_config(app_label=app).get_models():
-                cls = get_node_class_for_model(model)
-                for item in model.objects.all():
-                    node = cls(instance=item, bind=False)
-                    node.to_csv()
-
-        # db.cypher_query('LOAD CSV FROM \'file:///eggs.csv\' AS line '
-        #                 'CREATE (:Artist { name: line[1], year: toInt(line[2])})')
-        with open('eggs.csv', newline='') as csvfile:
-
-            spamreader = csv.reader(csvfile, delimiter=';', quotechar='|')
-            for row in spamreader:
-                if row[0] == 'n':
-                    print(row[1])
-                    db.cypher_query(row[1])
-
-        with open('eggs.csv', newline='') as csvfile:
-
-            spamreader = csv.reader(csvfile, delimiter=';', quotechar='|')
-
-            for row in spamreader:
-                if row[0] == 'r':
-                    print(row[1])
-                    db.cypher_query(row[1])
+                if app in settings.IGNORE_MODELS:
+                    continue
 
 
-        self.stdout.write(self.style.SUCCESS('Successfully imported spam'))
+
+                cntr =0
+                for model in apps.get_app_config(app_label=app).get_models():
+                    cls = get_node_class_for_model(model)
+
+                    for item in model.objects.all():
+                        node = cls(instance=item, bind=False)
+
+                        node.to_csv(cntr=cntr, target_file=target_file)
+                        cntr += 1
+
+            with open(target_file.name, newline='') as csvfile:
+
+                spamreader = csv.reader(csvfile, delimiter=';', quotechar='|')
+                self.stdout.write(self.style.SUCCESS('Crucifixion party! Wait for it...'))
+                skip_count = 0
+                for row in spamreader:
+
+                    if row[0] == 'n':
+                        # print(row[1])
+                        try:
+                            db.cypher_query(row[1])
+                        except exception.UniqueProperty:
+                             skip_count+=1
+
+                if skip_count > 0:
+                    self.stdout.write(self.style.SUCCESS(
+                        '{} Nodes already existed, and was not updated'.format(skip_count)))
+
+                self.stdout.write(self.style.SUCCESS('Crucifixion party! By the left! Forward!'))
+
+            with open(target_file.name, newline='') as csvfile:
+                spamreader = csv.reader(csvfile, delimiter=';', quotechar='|')
+                self.stdout.write(self.style.SUCCESS('Crucifixion party! Wait for it...'))
+                for row in spamreader:
+                    if row[0] == 'r':
+                        # print(row[1])
+                        db.cypher_query(row[1])
+                self.stdout.write(self.style.SUCCESS('Crucifixion party! By the left! Forward!'))
+
+            self.stdout.write(self.style.SUCCESS('Successfully imported spam'))
+        finally:
+            target_file.close()
 
