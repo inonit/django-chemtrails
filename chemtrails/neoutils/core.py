@@ -440,7 +440,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
 
                     formated_string += name + ': '
 
-                    if value.default == None:
+                    if value.default is None:
                         value = getattr(self, name)
                         if isinstance(value, int):
                             formated_string += str(value)
@@ -466,11 +466,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
             queryparams = format_prop(prop)
             spamwriter.writerow(['n'] + ['CREATE (:%s { %s })' % (self.__label__, queryparams)])
 
-
             rels = self.defined_properties(aliases=False, properties=False)
-
-            # cntr = 0
-
 
             for name, obj in rels.items():
 
@@ -488,17 +484,18 @@ class ModelNodeMixin(ModelNodeMixinBase):
                     rel_props = format_prop(obj.definition['model'].__dict__)
 
                     spamwriter.writerow(
-                        ['r'] + [('MATCH(%(node_a)s { pk:%(node_a_pk)d }), (%(node_b)s { pk:%(node_b_pk)d })'
-                                  ' WITH %(node_a_label)s, %(node_b_label)s CREATE UNIQUE(%(node_a_label)s)-[r:%(rel)s{%(rel_prop)s}]->(%(node_b_label)s)' %
-                                  {'node_a': label_a + ':' + source_node_name,
-                                   'node_a_pk': source_node_pk,
-                                   'node_a_label': label_a,
-                                   'node_b': label_b + ':' + target_node_name,
-                                   'node_b_pk': target_node_pk,
-                                   'node_b_label': label_b,
-                                   'rel': relation_type,
-                                   'rel_prop': rel_props
-                                   }
+                        ['r'] + [('MATCH({node_a} {{ pk:{node_a_pk:d} }}), ({node_b} {{ pk:{node_b_pk:d} }}) '
+                                  'WITH {node_a_label}, {node_b_label} '
+                                  'CREATE UNIQUE({node_a_label})-[r:{rel}{{{rel_prop}}}]->({node_b_label})'
+                                  .format(**{'node_a': label_a + ':' + source_node_name,
+                                             'node_a_pk': source_node_pk,
+                                             'node_a_label': label_a,
+                                             'node_b': label_b + ':' + target_node_name,
+                                             'node_b_pk': target_node_pk,
+                                             'node_b_label': label_b,
+                                             'rel': relation_type,
+                                             'rel_prop': rel_props
+                                             })
                                   )
                                  ]
                     )
@@ -516,21 +513,21 @@ class ModelNodeMixin(ModelNodeMixinBase):
                         rel_props = format_prop(obj.definition['model'].__dict__)
 
                         spamwriter.writerow(
-                            ['r'] + [('MATCH(%(node_a)s { pk:%(node_a_pk)d }), (%(node_b)s { pk:%(node_b_pk)d })'
-                                      ' WITH %(node_a_label)s, %(node_b_label)s CREATE UNIQUE(%(node_a_label)s)-[r:%(rel)s{%(rel_prop)s}]->(%(node_b_label)s)' %
-                                      {'node_a': label_a + ':' + source_node_name,
-                                       'node_a_pk': source_node_pk,
-                                       'node_a_label': label_a,
-                                       'node_b': label_b + ':' + target_node_name,
-                                       'node_b_pk': target_node_pk,
-                                       'node_b_label': label_b,
-                                       'rel': relation_type,
-                                       'rel_prop': rel_props
-                                       }
+                            ['r'] + [('MATCH({node_a} {{ pk:{node_a_pk:d} }}), ({node_b} {{ pk:{node_b_pk:d} }}) '
+                                      'WITH {node_a_label}, {node_b_label} '
+                                      'CREATE UNIQUE({node_a_label})-[r:{rel}{{{rel_prop}}}]->({node_b_label})'
+                                      .format(**{'node_a': label_a + ':' + source_node_name,
+                                                 'node_a_pk': source_node_pk,
+                                                 'node_a_label': label_a,
+                                                 'node_b': label_b + ':' + target_node_name,
+                                                 'node_b_pk': target_node_pk,
+                                                 'node_b_label': label_b,
+                                                 'rel': relation_type,
+                                                 'rel_prop': rel_props
+                                                 })
                                       )
                                      ]
-                        )
-                        cntr = cntr + 1
+                        )                        cntr = cntr + 1
 
                 else:
                     raise NotImplementedError
