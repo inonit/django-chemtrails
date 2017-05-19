@@ -278,6 +278,17 @@ class ModelNodeMixinBase:
         logger.log(level=level, msg=message)
 
     @staticmethod
+    def _get_remote_field_name(field):
+        reverse_field = True if isinstance(field, (
+            models.ManyToManyRel, models.ManyToOneRel, models.OneToOneRel, GenericRelation)) else False
+
+        return str('{model}.{field}'.format(
+            model=get_model_string(field.model),
+            field=(field.related_name or '%s_set' % field.name
+                   if not isinstance(field, (models.OneToOneRel, GenericRelation)) else field.name))
+                   if reverse_field else field.remote_field.field).lower()
+
+    @staticmethod
     def get_property_class_for_field(klass):
         """
         Returns the appropriate property class for field class.
@@ -363,13 +374,13 @@ class ModelNodeMixinBase:
         class DynamicRelation(StructuredRel):
             type = StringProperty(default=field.__class__.__name__)
             is_meta = BooleanProperty(default=meta_node)
-            remote_field = StringProperty(default=str('{model}.{field}'.format(
-                model=get_model_string(field.model), field=(
-                    field.related_name or '%s_set' % field.name
-                    if not isinstance(field, (models.OneToOneRel, GenericRelation)) else field.name))
-                                                      if reverse_field else field.remote_field.field).lower())
-            target_field = StringProperty(default=str(field.target_field).lower()
-                                          if getattr(field, 'target_field', None) else '')  # NOTE: Workaround for #27
+            # remote_field = StringProperty(default=str('{model}.{field}'.format(
+            #     model=get_model_string(field.model), field=(
+            #         field.related_name or '%s_set' % field.name
+            #         if not isinstance(field, (models.OneToOneRel, GenericRelation)) else field.name))
+            #                                           if reverse_field else field.remote_field.field).lower())
+            remote_field = StringProperty(default=cls._get_remote_field_name(field))
+            target_field = StringProperty(default=str(getattr(field, 'target_field', '')).lower())  # NOTE: Workaround for #27
 
         prop = cls.get_property_class_for_field(field.__class__)
         relationship_type = cls.get_relationship_type(field)
@@ -645,8 +656,15 @@ class ModelNodeMixin(ModelNodeMixinBase):
                 for p, r in node.defined_properties(aliases=False, properties=False).items():
                     p = getattr(node, p)
                     if issubclass(p.definition['node_class'], self.__class__):
-                        p.connect(self)
-                        self._log_relationship_definition('Connected', self, p)
+                        # Make sure we only connects the "reverse" relation of ``prop``.
+                        remote_field = p.definition['model'].remote_field
+                        target_field = p.definition['model'].target_field
+                        for f in p.source_class.get_reverse_relation_fields():
+                            if (remote_field.default == p.source_class._get_remote_field_name(f)
+                                    and target_field.default == str(getattr(f, 'target_field', '')).lower()
+                                    and (p.name == f.related_name or f.name and f.field.name == prop.name)):
+                                p.connect(self)
+                                self._log_relationship_definition('Connected', self, p)
 
         def disconnect(node, prop):
             """
@@ -658,8 +676,12 @@ class ModelNodeMixin(ModelNodeMixinBase):
                 p = getattr(node, p)
                 if issubclass(p.definition['node_class'], self.__class__):
                     # Make sure we only disconnects the "reverse" relation of ``prop``.
+                    remote_field = p.definition['model'].remote_field
+                    target_field = p.definition['model'].target_field
                     for f in p.source_class.get_reverse_relation_fields():
-                        if p.name == f.related_name or f.name and f.field.name == prop.name:
+                        if (remote_field.default == p.source_class._get_remote_field_name(f)
+                                and target_field.default == str(getattr(f, 'target_field', '')).lower()
+                                and (p.name == f.related_name or f.name and f.field.name == prop.name)):
                             p.disconnect(self)
                             self._log_relationship_definition('Disconnected', self, p)
 
