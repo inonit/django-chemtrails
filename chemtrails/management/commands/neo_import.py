@@ -10,7 +10,6 @@ from neomodel import db, exception
 class Command(BaseCommand):
     help = 'imports current database to neo4j'
 
-
     def add_arguments(self, parser):
         pass
         # parser.add_argument('test', type=int)

@@ -527,7 +527,8 @@ class ModelNodeMixin(ModelNodeMixinBase):
                                                  })
                                       )
                                      ]
-                        )                        cntr = cntr + 1
+                        )
+                        cntr = cntr + 1
 
                 else:
                     raise NotImplementedError
