@@ -178,7 +178,7 @@ class ModelNodeMixinBase:
     """
     Base mixin class
     """
-    def _update_raw_node(self):
+    def __update_raw_node__(self):
         """
         Compares the node class attributes to raw node attributes and removes
         any artifacts from the raw node. We want the defined node class 
@@ -755,7 +755,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
 
             # Make sure the neo4j node properties and relationships matches
             # the class definition.
-            self._update_raw_node()
+            self.__update_raw_node__()
 
             # Finally save the node.
             self.save()
@@ -928,7 +928,7 @@ class MetaNodeMixin(ModelNodeMixin):
 
             # Make sure the neo4j node properties and relationships matches
             # the class definition.
-            self._update_raw_node()
+            self.__update_raw_node__()
 
             # Finally save the node
             self.save()

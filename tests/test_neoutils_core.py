@@ -333,7 +333,7 @@ class GraphMapperTestCase(TestCase):
         self.assertEqual(result.properties['baz'], 'qux')
 
         self.assertFalse(all(hasattr(node, i) for i in ('foo', 'baz')))
-        node._update_raw_node()
+        node.__update_raw_node__()
 
         # Make sure the custom attribute has been deleted
         result, _ = list(flatten(db.cypher_query('MATCH (n) WHERE ID(n) = %d RETURN n' % node.id)))
@@ -354,7 +354,7 @@ class GraphMapperTestCase(TestCase):
         self.assertEqual(len(results), 2)
         self.assertTrue(all([r.type == 'RELATION' for r in results]))
 
-        node1._update_raw_node()
+        node1.__update_raw_node__()
 
         # Make sure custom relationship is deleted
         results, _ = db.cypher_query('MATCH (n)-[r]->() WHERE ID(n) = %d RETURN r' % node1.id)

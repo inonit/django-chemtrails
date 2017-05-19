@@ -44,12 +44,12 @@ class PostSaveHandlerTestCase(TestCase):
             pre_delete.connect(pre_delete_handler, dispatch_uid='chemtrails.signals.handlers.pre_delete_handler')
             pre_delete.disconnect(pre_delete_handler, dispatch_uid='pre_delete_handler.test')
 
-    # @flush_nodes()
+    @flush_nodes()
     def test_null_foreignkey_is_disconnected(self):
         post_save.disconnect(post_save_handler, dispatch_uid='chemtrails.signals.handlers.post_save_handler')
         post_save.connect(post_save_handler, dispatch_uid='post_save_handler.test')
         try:
-            store = StoreFixture(Store, generate_m2m={'books': (1, 1)}).create_one()
+            store = StoreFixture(Store, generate_m2m=False).create_one()
             klass = get_node_class_for_model(Store)
 
             self.assertEqual(store.bestseller.pk,
