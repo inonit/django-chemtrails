@@ -2,6 +2,9 @@ from django.core.management.base import BaseCommand, CommandError
 from chemtrails.neoutils import get_node_class_for_model
 from django.apps import apps
 from chemtrails import settings
+import csv
+import tempfile
+from neomodel import db, exception
 
 
 class Command(BaseCommand):
@@ -13,21 +16,56 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
 
-        for app in apps.all_models:
-            if app not in settings.IGNORE_MODELS:
-                self.stdout.write(self.style.SUCCESS(str(app)))
+        target_file = tempfile.NamedTemporaryFile(delete=True)
 
-                filename = "eggs.csv"
-                # opening the file with w+ mode truncates the file
-                f = open(filename, "w+")
-                f.close()
+        try:
+            for app in apps.all_models:
+
+                if app in settings.IGNORE_MODELS:
+                    continue
+
+
+
+                cntr =0
                 for model in apps.get_app_config(app_label=app).get_models():
                     cls = get_node_class_for_model(model)
+
                     for item in model.objects.all():
                         node = cls(instance=item, bind=False)
-                        node.to_csv()
 
+                        node.to_csv(cntr=cntr, target_file=target_file)
+                        cntr += 1
 
+            with open(target_file.name, newline='') as csvfile:
 
-        self.stdout.write(self.style.SUCCESS('Successfully imported spam'))
-        pass
+                spamreader = csv.reader(csvfile, delimiter=';', quotechar='|')
+                self.stdout.write(self.style.SUCCESS('Crucifixion party! Wait for it...'))
+                skip_count = 0
+                for row in spamreader:
+
+                    if row[0] == 'n':
+                        # print(row[1])
+                        try:
+                            db.cypher_query(row[1])
+                        except exception.UniqueProperty:
+                             skip_count+=1
+
+                if skip_count > 0:
+                    self.stdout.write(self.style.SUCCESS(
+                        '{} Nodes already existed, and was not updated'.format(skip_count)))
+
+                self.stdout.write(self.style.SUCCESS('Crucifixion party! By the left! Forward!'))
+
+            with open(target_file.name, newline='') as csvfile:
+                spamreader = csv.reader(csvfile, delimiter=';', quotechar='|')
+                self.stdout.write(self.style.SUCCESS('Crucifixion party! Wait for it...'))
+                for row in spamreader:
+                    if row[0] == 'r':
+                        # print(row[1])
+                        db.cypher_query(row[1])
+                self.stdout.write(self.style.SUCCESS('Crucifixion party! By the left! Forward!'))
+
+            self.stdout.write(self.style.SUCCESS('Successfully imported spam'))
+        finally:
+            target_file.close()
+

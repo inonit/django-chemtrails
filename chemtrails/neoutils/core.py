@@ -407,6 +407,9 @@ class ModelNodeMixinBase:
 
 
 class ModelNodeMixin(ModelNodeMixinBase):
+
+
+
     def __init__(self, instance=None, bind=True, *args, **kwargs):
         self._instance = instance
         self.__recursion_depth__ = 0
@@ -433,30 +436,115 @@ class ModelNodeMixin(ModelNodeMixinBase):
     def __repr__(self):
         return '<{label}: {id}>'.format(label=self.__class__.__label__, id=self.id if self._is_bound else None)
 
-    def to_csv(self):
-
+    def to_csv(self, cntr=0, target_file=None):
+        from chemtrails.neoutils import get_node_for_object
         import csv
+
+        def format_prop(prop_list):
+            formated_string = ''
+            first = True
+            for name, value in prop_list.items():
+                if hasattr(value, 'default') and isinstance(value, Property):
+
+                    if first:
+                        first = False
+                    else:
+                        formated_string += ', '
+
+                    formated_string += name + ': '
+
+                    if value.default is None:
+                        value = getattr(self, name)
+                        if isinstance(value, int):
+                            formated_string += str(value)
+                        else:
+                            formated_string += '\'' + str(value) + '\''
+
+                    elif isinstance(value, int):
+                        formated_string += str(value.default)
+                    else:
+                        formated_string += '\'' + str(value.default) + '\''
+
+            return formated_string
+
         prop = self.defined_properties(aliases=False, rels=False)
-        queryparams = ''
-        skip = True
-        for p, v in prop.items():
 
-            if skip:
-                skip = False
-            else:
-                queryparams += ', '
+        source_node_name = self.__label__
+        source_node_pk = self.pk
 
-            queryparams += p + ': '
-            value = getattr(self, p)
-            if isinstance(value, int):
-                queryparams += str(value)
-            else:
-                queryparams += '\'' + str(value) + '\''
-
-        with open('eggs.csv', 'a', newline='') as csvfile:
+        with open(target_file.name, 'a', newline='') as csvfile:
             spamwriter = csv.writer(csvfile, delimiter=';',
                                     quotechar='|', quoting=csv.QUOTE_MINIMAL)
-            spamwriter.writerow(['n'] + ['Create (a:%s { %s })' % (self.__label__, queryparams)])
+
+            queryparams = format_prop(prop)
+            spamwriter.writerow(['n'] + ['CREATE (:%s { %s })' % (self.__label__, queryparams)])
+
+            rels = self.defined_properties(aliases=False, properties=False)
+
+            for name, obj in rels.items():
+
+                relation_type = obj.definition['relation_type']
+                obj_attr = getattr(self._instance, name)
+
+                if isinstance(obj_attr, models.Model):
+
+                    node = get_node_for_object(obj_attr, False)
+                    target_node_name = node.__label__
+                    target_node_pk = node.pk
+                    label_a = source_node_name + str(cntr) + str(source_node_pk)
+                    label_b = target_node_name + str(cntr) + str(target_node_pk)
+
+                    rel_props = format_prop(obj.definition['model'].__dict__)
+
+                    spamwriter.writerow(
+                        ['r'] + [('MATCH({node_a} {{ pk:{node_a_pk:d} }}), ({node_b} {{ pk:{node_b_pk:d} }}) '
+                                  'WITH {node_a_label}, {node_b_label} '
+                                  'CREATE UNIQUE({node_a_label})-[r:{rel}{{{rel_prop}}}]->({node_b_label})'
+                                  .format(**{'node_a': label_a + ':' + source_node_name,
+                                             'node_a_pk': source_node_pk,
+                                             'node_a_label': label_a,
+                                             'node_b': label_b + ':' + target_node_name,
+                                             'node_b_pk': target_node_pk,
+                                             'node_b_label': label_b,
+                                             'rel': relation_type,
+                                             'rel_prop': rel_props
+                                             })
+                                  )
+                                 ]
+                    )
+                    cntr = cntr + 1
+
+                elif isinstance(obj_attr, Manager):
+                    for item in obj_attr.all():
+                        i = item
+
+                        node = get_node_for_object(i, False)
+                        target_node_name = node.__label__
+                        target_node_pk = node.pk
+                        label_a = 'a' + str(cntr)
+                        label_b = 'b' + str(cntr)
+                        rel_props = format_prop(obj.definition['model'].__dict__)
+
+                        spamwriter.writerow(
+                            ['r'] + [('MATCH({node_a} {{ pk:{node_a_pk:d} }}), ({node_b} {{ pk:{node_b_pk:d} }}) '
+                                      'WITH {node_a_label}, {node_b_label} '
+                                      'CREATE UNIQUE({node_a_label})-[r:{rel}{{{rel_prop}}}]->({node_b_label})'
+                                      .format(**{'node_a': label_a + ':' + source_node_name,
+                                                 'node_a_pk': source_node_pk,
+                                                 'node_a_label': label_a,
+                                                 'node_b': label_b + ':' + target_node_name,
+                                                 'node_b_pk': target_node_pk,
+                                                 'node_b_label': label_b,
+                                                 'rel': relation_type,
+                                                 'rel_prop': rel_props
+                                                 })
+                                      )
+                                     ]
+                        )
+                        cntr = cntr + 1
+
+                else:
+                    raise NotImplementedError
 
     @property
     def _is_bound(self):
