@@ -20,15 +20,11 @@ class Command(BaseCommand):
 
         try:
             for app in apps.all_models:
-
-                if app in settings.IGNORE_MODELS:
-                    continue
-
-
-
                 cntr =0
                 for model in apps.get_app_config(app_label=app).get_models():
                     cls = get_node_class_for_model(model)
+                    if cls._is_ignored:
+                        continue
 
                     for item in model.objects.all():
                         node = cls(instance=item, bind=False)
