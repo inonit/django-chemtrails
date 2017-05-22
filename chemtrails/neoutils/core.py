@@ -497,7 +497,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
                     rel_props = format_prop(obj.definition['model'].__dict__)
 
                     spamwriter.writerow(
-                        ['r'] + [('MATCH({node_a} {{ pk:{node_a_pk:d} }}), ({node_b} {{ pk:{node_b_pk:d} }}) '
+                        ['r'] + [('MATCH({node_a} {{ pk:{node_a_pk} }}), ({node_b} {{ pk:{node_b_pk} }}) '
                                   'WITH {node_a_label}, {node_b_label} '
                                   'CREATE UNIQUE({node_a_label})-[r:{rel}{{{rel_prop}}}]->({node_b_label})'
                                   .format(**{'node_a': label_a + ':' + source_node_name,
@@ -526,7 +526,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
                         rel_props = format_prop(obj.definition['model'].__dict__)
 
                         spamwriter.writerow(
-                            ['r'] + [('MATCH({node_a} {{ pk:{node_a_pk:d} }}), ({node_b} {{ pk:{node_b_pk:d} }}) '
+                            ['r'] + [('MATCH({node_a} {{ pk:{node_a_pk} }}), ({node_b} {{ pk:{node_b_pk} }}) '
                                       'WITH {node_a_label}, {node_b_label} '
                                       'CREATE UNIQUE({node_a_label})-[r:{rel}{{{rel_prop}}}]->({node_b_label})'
                                       .format(**{'node_a': label_a + ':' + source_node_name,
