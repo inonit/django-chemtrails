@@ -29,10 +29,12 @@ class GetIdentityTestCase(TestCase):
         except NotImplementedError as e:
             self.assertEqual(str(e), 'Implement support for AnonymousUser, please!')
 
+    @flush_nodes()
     def test_get_identity_user(self):
         user = User.objects.create_user(username='testuser', password='test123.')
         self.assertEqual(utils.get_identity(user), (user, None))
 
+    @flush_nodes()
     def test_get_identity_group(self):
         group = Group.objects.create(name='mygroup')
         self.assertEqual(utils.get_identity(group), (None, group))
@@ -47,6 +49,7 @@ class GetContentTypeTestCase(TestCase):
         self.assertEqual(utils.get_content_type(User),
                          ContentType.objects.get_for_model(User))
 
+    @flush_nodes()
     def test_get_content_type_from_instance(self):
         user = User.objects.create_user(username='testuser', password='test123.')
         self.assertEqual(utils.get_content_type(user),
@@ -57,7 +60,7 @@ class CheckPermissionsAppLabelTestCase(TestCase):
     """
     Testing ``chemtrails.contrib.permissions.utils.check_permissions_app_label()``.
     """
-
+    @flush_nodes()
     def test_check_permissions_app_label_single(self):
         perm = 'testapp.add_book'
         book = BookFixture(Book).create_one()
@@ -66,12 +69,14 @@ class CheckPermissionsAppLabelTestCase(TestCase):
         self.assertEqual(utils.check_permissions_app_label(perm),
                          (utils.get_content_type(Book), {'add_book'}))
 
+    @flush_nodes()
     def test_check_permissions_app_label_invalid_fails(self):
         perm = 'testapp.invalid_permission'
         self.assertRaisesMessage(
             ContentType.DoesNotExist, 'ContentType matching query does not exist.',
             utils.check_permissions_app_label, permissions=perm)
 
+    @flush_nodes()
     def test_check_permissions_app_label_sequence(self):
         perms = ['testapp.add_book', 'testapp.change_book']
         book = BookFixture(Book).create_one()
@@ -382,17 +387,19 @@ class GraphPermissionCheckerTestCase(TestCase):
     """
     Testing ``chemtrails.contrib.permissions.utils.GraphPermissionChecker`` class.
     """
-
+    @flush_nodes()
     def test_checker_has_perm_inactive_user(self):
         user = User.objects.create_user(username='testuser', password='test123.', is_active=False)
         checker = utils.GraphPermissionChecker(user)
         self.assertFalse(checker.has_perm(perm=None, obj=None))
 
+    @flush_nodes()
     def test_checker_has_perm_is_superuser(self):
         user = User.objects.create_user(username='testuser', password='test123.', is_superuser=True)
         checker = utils.GraphPermissionChecker(user)
         self.assertTrue(checker.has_perm(perm=None, obj=None))
 
+    @flush_nodes()
     def test_get_user_filters(self):
         user = User.objects.create_user(username='testuser', password='test123.')
         user.user_permissions.add(*Permission.objects.filter(codename__in=['add_user', 'change_user']))
@@ -404,6 +411,7 @@ class GraphPermissionCheckerTestCase(TestCase):
         self.assertIsInstance(permissions, QuerySet)
         self.assertEqual(permissions.count(), 2)
 
+    @flush_nodes()
     def test_get_user_perms(self):
         user = User.objects.create_user(username='testuser', password='test123.')
         user.user_permissions.add(*Permission.objects.filter(codename__in=['add_user', 'change_user']))
@@ -411,6 +419,7 @@ class GraphPermissionCheckerTestCase(TestCase):
         checker = utils.GraphPermissionChecker(user)
         self.assertListEqual(sorted(list(checker.get_user_perms(user))), ['add_user', 'change_user'])
 
+    @flush_nodes()
     def test_get_group_filters(self):
         group = Group.objects.create(name='test group')
         group.permissions.add(*Permission.objects.filter(codename__in=['add_user', 'change_user']))
@@ -432,6 +441,7 @@ class GraphPermissionCheckerTestCase(TestCase):
         self.assertIsInstance(permissions, QuerySet)
         self.assertEqual(permissions.count(), 2)
 
+    @flush_nodes()
     def test_get_group_perms(self):
         group = Group.objects.create(name='test group')
         group.permissions.add(*Permission.objects.filter(codename__in=['add_user', 'change_user']))
@@ -441,6 +451,7 @@ class GraphPermissionCheckerTestCase(TestCase):
         checker = utils.GraphPermissionChecker(group)
         self.assertListEqual(sorted(list(checker.get_group_perms(user))), ['add_user', 'change_user'])
 
+    @flush_nodes()
     def test_get_perms_user_is_inactive(self):
         user = User.objects.create_user(username='testuser', password='test123.', is_active=False)
         checker = utils.GraphPermissionChecker(user)
@@ -451,6 +462,7 @@ class GraphPermissionCheckerTestCase(TestCase):
         checker = utils.GraphPermissionChecker(user)
         self.assertListEqual(sorted(checker.get_perms(user)), ['add_user', 'change_user', 'delete_user'])
 
+    @flush_nodes()
     def test_get_perms_user_in_group(self):
         group = Group.objects.create(name='test group')
         group.permissions.add(Permission.objects.get(codename='add_user'))
@@ -463,6 +475,7 @@ class GraphPermissionCheckerTestCase(TestCase):
         checker = utils.GraphPermissionChecker(user)
         self.assertListEqual(sorted(checker.get_perms(user)), ['add_user', 'change_user'])
 
+    @flush_nodes()
     def test_get_perms_group(self):
         group = Group.objects.create(name='test group')
         group.permissions.add(Permission.objects.get(codename='add_group'))

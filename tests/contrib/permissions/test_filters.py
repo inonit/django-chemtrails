@@ -13,6 +13,7 @@ from rest_framework.viewsets import ModelViewSet
 from chemtrails.contrib.permissions.models import AccessRule
 from chemtrails.contrib.permissions.rest_framework.filters import ChemoPermissionsFilter
 from chemtrails.contrib.permissions.utils import get_content_type
+from tests.utils import flush_nodes
 
 User = get_user_model()
 factory = APIRequestFactory()
@@ -52,6 +53,7 @@ class ChemoPermissionsFilterTestCase(TestCase):
         )
         self.patched_settings.enable()
 
+    @flush_nodes()
     def tearDown(self):
         self.patched_settings.disable()
 

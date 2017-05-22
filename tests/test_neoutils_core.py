@@ -1,24 +1,28 @@
 # -*- coding: utf-8 -*-
 
-from django.contrib.auth.models import Group, Permission
+from django.contrib.auth.models import Group, Permission, User
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ImproperlyConfigured
+from django.db.models.signals import post_save, m2m_changed
 from django.test import TestCase, override_settings
 from django.utils import six
 
 from neomodel import *
 from neomodel.match import NodeSet
 
+from chemtrails import settings
 from chemtrails.neoutils import (
     ModelNodeMeta, ModelNodeMixin, MetaNodeMeta, MetaNodeMixin,
     get_meta_node_class_for_model, get_meta_node_for_model,
     get_node_class_for_model, get_node_for_object, get_nodeset_for_queryset
 )
-from chemtrails import settings
+from chemtrails.signals.handlers import post_save_handler, m2m_changed_handler
 from chemtrails.utils import flatten
 
 from tests.utils import flush_nodes
 from tests.testapp.autofixtures import (
-    Book, BookFixture, Publisher, PublisherFixture, Store, StoreFixture,
+    Author,
+    Book, BookFixture, Publisher, PublisherFixture, Store, StoreFixture, Tag
 )
 
 
@@ -72,6 +76,19 @@ class ModelNodeTestCase(TestCase):
     """
     Test that we can create ModelNode instances.
     """
+    @flush_nodes()
+    def test_create_node_class_adds_to_cache(self):
+
+        klass1 = get_node_class_for_model(Book)
+
+        @six.add_metaclass(ModelNodeMeta)
+        class ModelNode(ModelNodeMixin, StructuredNode):
+            class Meta:
+                model = Book
+
+        klass2 = get_node_class_for_model(Book)
+        self.assertEqual(klass1, klass2)
+
     @flush_nodes()
     def test_create_model_node(self):
         book = BookFixture(Book).create_one()
@@ -140,6 +157,7 @@ class ModelNodeTestCase(TestCase):
         except ImproperlyConfigured as e:
             self.assertEqual(str(e), '%s must implement a Meta class.' % 'ModelNode')
 
+    @flush_nodes()
     def test_save_existing_node_is_updated(self):
         group = Group.objects.create(name='a group')
 
@@ -154,6 +172,7 @@ class ModelNodeTestCase(TestCase):
 
         self.assertEqual(node1.id, node2.id)
 
+    @flush_nodes()
     def test_sync_existing_node_is_updated(self):
         group = Group.objects.create(name='a group')
 
@@ -331,7 +350,7 @@ class GraphMapperTestCase(TestCase):
         self.assertEqual(result.properties['baz'], 'qux')
 
         self.assertFalse(all(hasattr(node, i) for i in ('foo', 'baz')))
-        node._update_raw_node()
+        node.__update_raw_node__()
 
         # Make sure the custom attribute has been deleted
         result, _ = list(flatten(db.cypher_query('MATCH (n) WHERE ID(n) = %d RETURN n' % node.id)))
@@ -352,7 +371,7 @@ class GraphMapperTestCase(TestCase):
         self.assertEqual(len(results), 2)
         self.assertTrue(all([r.type == 'RELATION' for r in results]))
 
-        node1._update_raw_node()
+        node1.__update_raw_node__()
 
         # Make sure custom relationship is deleted
         results, _ = db.cypher_query('MATCH (n)-[r]->() WHERE ID(n) = %d RETURN r' % node1.id)
@@ -415,30 +434,47 @@ class GraphMapperTestCase(TestCase):
         pass
 
     @flush_nodes()
-    def test_sync_related_branch(self):
-        queryset = Store.objects.filter(pk__in=map(lambda n: n.pk,
-                                                   StoreFixture(Store).create(count=1, commit=True)))
-        store_nodeset = get_nodeset_for_queryset(queryset, sync=True, max_depth=1)
-        for store in store_nodeset:
-            store_obj = store.get_object()
+    def test_recursive_connect(self):
+        post_save.disconnect(post_save_handler, dispatch_uid='chemtrails.signals.handlers.post_save_handler')
+        m2m_changed.disconnect(m2m_changed_handler, dispatch_uid='chemtrails.signals.handlers.m2m_changed_handler')
+        try:
+            book = BookFixture(Book, generate_m2m={'authors': (1, 1)}).create_one()
+            for depth in range(3):
+                db.cypher_query('MATCH (n)-[r]-() WHERE n.type = "ModelNode" DELETE r')  # Delete all relationships
+                book_node = get_node_for_object(book).save()
+                book_node.recursive_connect(depth)
 
-            if store_obj.bestseller:
-                self.assertEqual(store.bestseller.get(), get_node_for_object(store_obj.bestseller))
+                if depth == 0:
+                    # Max depth 0 means that no recursion should occur, and no connections
+                    # can be made, because the connected objects might not exist.
+                    for prop in book_node.defined_properties(aliases=False, properties=False).keys():
+                        relation = getattr(book_node, prop)
+                        self.assertEqual(len(relation.all()), 0)
+                elif depth == 1:
+                    self.assertEqual(0, len(get_node_class_for_model(Book).nodes.has(store_set=True)))
+                    self.assertEqual(0, len(get_node_class_for_model(Store).nodes.has(books=True)))
 
-            self.assertEqual(len(store.books.all()), store_obj.books.count())
-            for book in store.books.all():
-                book_obj = book.get_object()
-                self.assertTrue(store in book.store_set.all())
-                self.assertEqual(book.publisher.get(), get_node_for_object(book_obj.publisher))
-                self.assertEqual(len(book.store_set.all()), book_obj.store_set.count())
-                self.assertEqual(len(book.bestseller_stores.all()), book_obj.bestseller_stores.count())
-                self.assertEqual(len(book.authors.all()), book_obj.authors.count())
+                    self.assertEqual(0, len(get_node_class_for_model(Book).nodes.has(bestseller_stores=True)))
+                    self.assertEqual(0, len(get_node_class_for_model(Store).nodes.has(bestseller=True)))
 
-                for author in book.authors.all():
-                    author_obj = author.get_object()
-                    self.assertTrue(book in author.book_set.all())
+                    self.assertEqual(1, len(get_node_class_for_model(Book).nodes.has(publisher=True)))
+                    self.assertEqual(1, len(get_node_class_for_model(Publisher).nodes.has(book_set=True)))
 
-                    user = author.user.get()
-                    self.assertEqual(user, get_node_for_object(author_obj.user).sync())
-                    self.assertEqual(author, user.author.get())
+                    self.assertEqual(1, len(get_node_class_for_model(Book).nodes.has(authors=True)))
+                    self.assertEqual(1, len(get_node_class_for_model(Author).nodes.has(book_set=True)))
 
+                    self.assertEqual(0, len(get_node_class_for_model(Author).nodes.has(user=True)))
+                    self.assertEqual(0, len(get_node_class_for_model(User).nodes.has(author=True)))
+
+                    self.assertEqual(1, len(get_node_class_for_model(Book).nodes.has(tags=True)))
+                    self.assertEqual(0, len(get_node_class_for_model(Tag).nodes.has(content_type=True)))
+
+                elif depth == 2:
+                    self.assertEqual(1, len(get_node_class_for_model(Author).nodes.has(user=True)))
+                    self.assertEqual(1, len(get_node_class_for_model(User).nodes.has(author=True)))
+                    self.assertEqual(1, len(get_node_class_for_model(Tag).nodes.has(content_type=True)))
+                    self.assertEqual(1, len(get_node_class_for_model(ContentType)
+                                            .nodes.has(content_type_set_for_tag=True)))
+        finally:
+            post_save.connect(post_save_handler, dispatch_uid='chemtrails.signals.handlers.post_save_handler')
+            m2m_changed.connect(m2m_changed_handler, dispatch_uid='chemtrails.signals.handlers.m2m_changed_handler')

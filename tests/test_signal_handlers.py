@@ -6,7 +6,7 @@ from django.test import TestCase
 from chemtrails.neoutils import get_node_class_for_model
 from chemtrails.signals.handlers import post_save_handler, pre_delete_handler, m2m_changed_handler
 
-from tests.testapp.autofixtures import Author, Book, BookFixture
+from tests.testapp.autofixtures import Author, Book, BookFixture, Store, StoreFixture
 from tests.utils import flush_nodes
 
 
@@ -43,6 +43,26 @@ class PostSaveHandlerTestCase(TestCase):
         finally:
             pre_delete.connect(pre_delete_handler, dispatch_uid='chemtrails.signals.handlers.pre_delete_handler')
             pre_delete.disconnect(pre_delete_handler, dispatch_uid='pre_delete_handler.test')
+
+    @flush_nodes()
+    def test_null_foreignkey_is_disconnected(self):
+        post_save.disconnect(post_save_handler, dispatch_uid='chemtrails.signals.handlers.post_save_handler')
+        post_save.connect(post_save_handler, dispatch_uid='post_save_handler.test')
+        try:
+            store = StoreFixture(Store, generate_m2m=False).create_one()
+            klass = get_node_class_for_model(Store)
+
+            self.assertEqual(store.bestseller.pk,
+                             get_node_class_for_model(Book).nodes.get(pk=store.bestseller.pk).pk)
+            self.assertEqual(1, len(klass.nodes.has(bestseller=True)))
+
+            store.bestseller = None
+            store.save()
+
+            self.assertEqual(0, len(klass.nodes.has(bestseller=True)))
+        finally:
+            post_save.connect(post_save_handler, dispatch_uid='chemtrails.signals.handlers.post_save_handler')
+            post_save.disconnect(post_save_handler, dispatch_uid='post_save_handler.test')
 
     @flush_nodes()
     def test_m2m_changed_post_add_handler(self):
