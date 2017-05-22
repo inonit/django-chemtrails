@@ -10,6 +10,7 @@ from rest_framework.reverse import reverse
 from rest_framework.test import APITestCase, APIClient
 
 from chemtrails.contrib.permissions.models import AccessRule
+from tests.utils import flush_nodes
 
 
 class GraphWidgetAPIViews(APITestCase):
@@ -22,6 +23,7 @@ class GraphWidgetAPIViews(APITestCase):
         response = self.client.get(reverse('admin:accessrule-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
+    @flush_nodes()
     def test_get_access_rule_detail(self):
         access_rule = AccessRule.objects.create(
             ctype_source=ContentType.objects.get_by_natural_key('auth', 'user'),
@@ -33,6 +35,7 @@ class GraphWidgetAPIViews(APITestCase):
         response = self.client.get(reverse('admin:accessrule-detail', kwargs={'pk': access_rule.pk}))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
+    @flush_nodes()
     def test_post_access_rule(self):
         response = self.client.post(reverse('admin:accessrule-list'), data={
             'ctype_source': 'auth.user',
@@ -46,6 +49,7 @@ class GraphWidgetAPIViews(APITestCase):
         }, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
+    @flush_nodes()
     def test_patch_access_rule(self):
         access_rule = AccessRule.objects.create(
             ctype_source=ContentType.objects.get_by_natural_key('auth', 'user'),
