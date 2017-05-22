@@ -443,7 +443,6 @@ class ModelNodeMixin(ModelNodeMixinBase):
         def format_prop(prop_list):
             formated_string = ''
             first = True
-
             for name, value in prop_list.items():
                 if hasattr(value, 'default') and isinstance(value, Property):
 
@@ -457,14 +456,14 @@ class ModelNodeMixin(ModelNodeMixinBase):
                     if value.default is None:
                         value = getattr(self, name)
                         if isinstance(value, int):
-                            formated_string += '{}'.format(value)
+                            formated_string += str(value)
                         else:
-                            formated_string += '\'{}\''.format(value)
+                            formated_string += '\'' + str(value) + '\''
 
                     elif isinstance(value, int):
-                        formated_string += '{}'.format(value)
+                        formated_string += str(value.default)
                     else:
-                        formated_string += '\'{}\''.format(value)
+                        formated_string += '\'' + str(value.default) + '\''
 
             return formated_string
 
