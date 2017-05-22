@@ -375,11 +375,6 @@ class ModelNodeMixinBase:
         class DynamicRelation(StructuredRel):
             type = StringProperty(default=field.__class__.__name__)
             is_meta = BooleanProperty(default=meta_node)
-            # remote_field = StringProperty(default=str('{model}.{field}'.format(
-            #     model=get_model_string(field.model), field=(
-            #         field.related_name or '%s_set' % field.name
-            #         if not isinstance(field, (models.OneToOneRel, GenericRelation)) else field.name))
-            #                                           if reverse_field else field.remote_field.field).lower())
             remote_field = StringProperty(default=cls._get_remote_field_name(field))
             target_field = StringProperty(default=str(getattr(field, 'target_field', '')).lower())  # NOTE: Workaround for #27
 
@@ -407,8 +402,6 @@ class ModelNodeMixinBase:
 
 
 class ModelNodeMixin(ModelNodeMixinBase):
-
-
 
     def __init__(self, instance=None, bind=True, *args, **kwargs):
         self._instance = instance
