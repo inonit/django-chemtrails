@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from django.contrib.auth.models import Group, Permission
+from django.contrib.auth.models import Group, Permission, User
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ImproperlyConfigured
 from django.db.models.signals import post_save, m2m_changed
 from django.test import TestCase, override_settings
@@ -20,7 +21,8 @@ from chemtrails.utils import flatten
 
 from tests.utils import flush_nodes
 from tests.testapp.autofixtures import (
-    Book, BookFixture, Publisher, PublisherFixture, Store, StoreFixture,
+    Author,
+    Book, BookFixture, Publisher, PublisherFixture, Store, StoreFixture, Tag
 )
 
 
@@ -441,47 +443,38 @@ class GraphMapperTestCase(TestCase):
                 db.cypher_query('MATCH (n)-[r]-() WHERE n.type = "ModelNode" DELETE r')  # Delete all relationships
                 book_node = get_node_for_object(book).save()
                 book_node.recursive_connect(depth)
-                brk = ''
-                # for prop in book_node.defined_properties(aliases=False, properties=False).keys():
-                #     relation = getattr(book_node, prop)
-                #     if depth == 0:
-                #         # Max depth 0 means that no recursion should occur, and no connections
-                #         # can be made, because the connected objects might not exist.
-                #         self.assertEqual(len(relation.all()), 0)
-                #     elif depth == 1:
-                #         pass
-                #     else:
-                #         pass
 
+                if depth == 0:
+                    # Max depth 0 means that no recursion should occur, and no connections
+                    # can be made, because the connected objects might not exist.
+                    for prop in book_node.defined_properties(aliases=False, properties=False).keys():
+                        relation = getattr(book_node, prop)
+                        self.assertEqual(len(relation.all()), 0)
+                elif depth == 1:
+                    self.assertEqual(0, len(get_node_class_for_model(Book).nodes.has(store_set=True)))
+                    self.assertEqual(0, len(get_node_class_for_model(Store).nodes.has(books=True)))
+
+                    self.assertEqual(0, len(get_node_class_for_model(Book).nodes.has(bestseller_stores=True)))
+                    self.assertEqual(0, len(get_node_class_for_model(Store).nodes.has(bestseller=True)))
+
+                    self.assertEqual(1, len(get_node_class_for_model(Book).nodes.has(publisher=True)))
+                    self.assertEqual(1, len(get_node_class_for_model(Publisher).nodes.has(book_set=True)))
+
+                    self.assertEqual(1, len(get_node_class_for_model(Book).nodes.has(authors=True)))
+                    self.assertEqual(1, len(get_node_class_for_model(Author).nodes.has(book_set=True)))
+
+                    self.assertEqual(0, len(get_node_class_for_model(Author).nodes.has(user=True)))
+                    self.assertEqual(0, len(get_node_class_for_model(User).nodes.has(author=True)))
+
+                    self.assertEqual(1, len(get_node_class_for_model(Book).nodes.has(tags=True)))
+                    self.assertEqual(0, len(get_node_class_for_model(Tag).nodes.has(content_type=True)))
+
+                elif depth == 2:
+                    self.assertEqual(1, len(get_node_class_for_model(Author).nodes.has(user=True)))
+                    self.assertEqual(1, len(get_node_class_for_model(User).nodes.has(author=True)))
+                    self.assertEqual(1, len(get_node_class_for_model(Tag).nodes.has(content_type=True)))
+                    self.assertEqual(1, len(get_node_class_for_model(ContentType)
+                                            .nodes.has(content_type_set_for_tag=True)))
         finally:
             post_save.connect(post_save_handler, dispatch_uid='chemtrails.signals.handlers.post_save_handler')
             m2m_changed.connect(m2m_changed_handler, dispatch_uid='chemtrails.signals.handlers.m2m_changed_handler')
-
-    # @flush_nodes()
-    # def test_sync_related_branch(self):
-    #     queryset = Store.objects.filter(pk__in=map(lambda n: n.pk,
-    #                                                StoreFixture(Store).create(count=1, commit=True)))
-    #     store_nodeset = get_nodeset_for_queryset(queryset, sync=True, max_depth=1)
-    #     for store in store_nodeset:
-    #         store_obj = store.get_object()
-    #
-    #         if store_obj.bestseller:
-    #             self.assertEqual(store.bestseller.get(), get_node_for_object(store_obj.bestseller))
-    #
-    #         self.assertEqual(len(store.books.all()), store_obj.books.count())
-    #         for book in store.books.all():
-    #             book_obj = book.get_object()
-    #             self.assertTrue(store in book.store_set.all())
-    #             self.assertEqual(book.publisher.get(), get_node_for_object(book_obj.publisher))
-    #             self.assertEqual(len(book.store_set.all()), book_obj.store_set.count())
-    #             self.assertEqual(len(book.bestseller_stores.all()), book_obj.bestseller_stores.count())
-    #             self.assertEqual(len(book.authors.all()), book_obj.authors.count())
-    #
-    #             for author in book.authors.all():
-    #                 author_obj = author.get_object()
-    #                 self.assertTrue(book in author.book_set.all())
-    #
-    #                 user = author.user.get()
-    #                 self.assertEqual(user, get_node_for_object(author_obj.user).sync())
-    #                 self.assertEqual(author, user.author.get())
-    #
