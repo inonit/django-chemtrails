@@ -141,7 +141,8 @@ class ModelNodeMeta(NodeBase):
 
         # Add to cache before recursively looking up relationships.
         from chemtrails.neoutils import __node_cache__
-        __node_cache__.update({cls.Meta.model: cls})
+        if cls.Meta.model not in __node_cache__:
+            __node_cache__.update({cls.Meta.model: cls})
 
         for field in cls.Meta.model._meta.get_fields():
 
@@ -539,8 +540,6 @@ class ModelNodeMixin(ModelNodeMixinBase):
                 for p, r in node.defined_properties(aliases=False, properties=False).items():
                     p = getattr(node, p)
                     if issubclass(p.definition['node_class'], self.__class__):
-                        # p.connect(self)
-                        # self._log_relationship_definition('Connected', self, p)
                         # Make sure we only connects the "reverse" relation of ``prop``.
                         remote_field = p.definition['model'].remote_field
                         target_field = p.definition['model'].target_field
@@ -705,7 +704,8 @@ class MetaNodeMeta(NodeBase):
 
         # Add to cache before recursively looking up relationships.
         from chemtrails.neoutils import __meta_cache__
-        __meta_cache__.update({cls.Meta.model: cls})
+        if cls.Meta.model not in __meta_cache__:
+            __meta_cache__.update({cls.Meta.model: cls})
 
         # # Add relations for the model
         for field in itertools.chain(forward_relations, reverse_relations):

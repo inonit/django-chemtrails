@@ -75,6 +75,19 @@ class ModelNodeTestCase(TestCase):
     Test that we can create ModelNode instances.
     """
     @flush_nodes()
+    def test_create_node_class_adds_to_cache(self):
+
+        klass1 = get_node_class_for_model(Book)
+
+        @six.add_metaclass(ModelNodeMeta)
+        class ModelNode(ModelNodeMixin, StructuredNode):
+            class Meta:
+                model = Book
+
+        klass2 = get_node_class_for_model(Book)
+        self.assertEqual(klass1, klass2)
+
+    @flush_nodes()
     def test_create_model_node(self):
         book = BookFixture(Book).create_one()
 
@@ -142,6 +155,7 @@ class ModelNodeTestCase(TestCase):
         except ImproperlyConfigured as e:
             self.assertEqual(str(e), '%s must implement a Meta class.' % 'ModelNode')
 
+    @flush_nodes()
     def test_save_existing_node_is_updated(self):
         group = Group.objects.create(name='a group')
 
@@ -156,6 +170,7 @@ class ModelNodeTestCase(TestCase):
 
         self.assertEqual(node1.id, node2.id)
 
+    @flush_nodes()
     def test_sync_existing_node_is_updated(self):
         group = Group.objects.create(name='a group')
 
