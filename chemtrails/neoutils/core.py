@@ -60,7 +60,6 @@ field_property_map = {
     ArrayField: ArrayProperty,
     HStoreField: JSONProperty,
     JSONField: JSONProperty
-
 }
 
 
