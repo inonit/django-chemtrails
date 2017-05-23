@@ -36,19 +36,18 @@ setup(
     ],
     include_package_data=True,
     install_requires=[
-        'Django>=1.8.0',
-        'django-cors-headers',
+        'Django>=1.9.0',
         'libcypher-parser-python>=0.0.2',
-        'neomodel>=3.2.0',
-        'neo4j-driver>=1.2.0',
-        'psycopg2>=2.6.2',
-        'requests[security]',
+        'neomodel==3.1.0',
+        'requests[security]'
     ],
     tests_require=[
         'nose',
         'coverage',
         'django-autofixture',
-        'djangorestframework'
+        'django-cors-headers',
+        'djangorestframework',
+        'psycopg2>=2.6.2'
     ],
     zip_safe=False,
     test_suite='tests.run_tests.start',
