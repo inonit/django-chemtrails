@@ -629,6 +629,8 @@ class ModelNodeMixin(ModelNodeMixinBase):
                         forward_fields = p.source_class.get_forward_relation_fields()
 
                         for f in itertools.chain(reverse_fields, forward_fields):
+                            if f.__class__ not in field_property_map:
+                                continue
                             if (remote_field.default == p.source_class._get_remote_field_name(f)
                                     and target_field.default == str(getattr(f, 'target_field', '')).lower()):
                                 p.connect(self)
@@ -651,6 +653,8 @@ class ModelNodeMixin(ModelNodeMixinBase):
                     forward_fields = p.source_class.get_forward_relation_fields()
 
                     for f in itertools.chain(reverse_fields, forward_fields):
+                        if f.__class__ not in field_property_map:
+                            continue
                         if (remote_field.default == p.source_class._get_remote_field_name(f)
                                 and target_field.default == str(getattr(f, 'target_field', '')).lower()):
                             p.disconnect(self)
