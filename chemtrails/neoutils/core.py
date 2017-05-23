@@ -536,9 +536,6 @@ class ModelNodeMixin(ModelNodeMixinBase):
                         )
                         cntr = cntr + 1
 
-                else:
-                    raise NotImplementedError
-
     @property
     def _is_bound(self):
         return getattr(self, 'id', None) is not None
