@@ -438,6 +438,11 @@ class ModelNodeMixin(ModelNodeMixinBase):
             for name, value in prop_list.items():
                 if hasattr(value, 'default') and isinstance(value, Property):
 
+                    attr = getattr(self, name, None)
+
+                    if attr is None and value.has_default is False:
+                        continue
+
                     if first:
                         first = False
                     else:
@@ -445,17 +450,19 @@ class ModelNodeMixin(ModelNodeMixinBase):
 
                     formated_string += name + ': '
 
-                    if value.default is None:
-                        value = getattr(self, name)
-                        if isinstance(value, int):
-                            formated_string += str(value)
-                        else:
-                            formated_string += '\'' + str(value) + '\''
+                    v = value.deflate(value=attr)
 
-                    elif isinstance(value, int):
-                        formated_string += str(value.default)
+                    if value.default is None:
+                        if isinstance(v, str):
+                            formated_string += '\'{value}\''.format(
+                                value=v.replace('"', r'\"').replace("'", r"\'"))
+                        else:
+                            formated_string += str(v)
+                    elif isinstance(value, StringProperty):
+                        formated_string += '\'{value}\''.format(
+                            value=value.default.replace('"', r'\"').replace("'", r"\'"))
                     else:
-                        formated_string += '\'' + str(value.default) + '\''
+                        formated_string += str(value.default)
 
             return formated_string
 
