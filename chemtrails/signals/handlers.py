@@ -5,7 +5,6 @@ from chemtrails.neoutils import (
     get_meta_node_for_model,
     get_node_for_object, get_node_class_for_model, get_nodeset_for_queryset
 )
-from chemtrails.utils import get_model_string
 
 
 def post_migrate_handler(sender, **kwargs):
@@ -22,8 +21,7 @@ def post_save_handler(sender, instance, **kwargs):
     Sync the node instance after it has been saved.
     """
     if settings.ENABLED:
-        if not get_model_string(instance._meta.model) in settings.IGNORE_MODELS:
-            get_node_for_object(instance).sync(max_depth=settings.MAX_CONNECTION_DEPTH, update_existing=True)
+        get_node_for_object(instance).sync(max_depth=settings.MAX_CONNECTION_DEPTH, update_existing=True)
 
 
 def pre_delete_handler(sender, instance, **kwargs):
