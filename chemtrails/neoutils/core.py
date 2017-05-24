@@ -502,10 +502,10 @@ class ModelNodeMixin(ModelNodeMixinBase):
                                   'WITH {node_a_label}, {node_b_label} '
                                   'CREATE UNIQUE({node_a_label})-[r:{rel}{{{rel_prop}}}]->({node_b_label})'
                                   .format(**{'node_a': label_a + ':' + source_node_name,
-                                             'node_a_pk': source_node_pk,
+                                             'node_a_pk': '"{pk}"'.format(pk=source_node_pk) if isinstance(source_node_pk, str) else source_node_pk,
                                              'node_a_label': label_a,
                                              'node_b': label_b + ':' + target_node_name,
-                                             'node_b_pk': target_node_pk,
+                                             'node_b_pk': '"{pk}"'.format(pk=target_node_pk) if isinstance(target_node_pk, str) else target_node_pk,
                                              'node_b_label': label_b,
                                              'rel': relation_type,
                                              'rel_prop': rel_props
@@ -533,10 +533,10 @@ class ModelNodeMixin(ModelNodeMixinBase):
                                       'WITH {node_a_label}, {node_b_label} '
                                       'CREATE UNIQUE({node_a_label})-[r:{rel}{{{rel_prop}}}]->({node_b_label})'
                                       .format(**{'node_a': label_a + ':' + source_node_name,
-                                                 'node_a_pk': source_node_pk,
+                                                 'node_a_pk': '"{pk}"'.format(pk=source_node_pk) if isinstance(source_node_pk, str) else source_node_pk,
                                                  'node_a_label': label_a,
                                                  'node_b': label_b + ':' + target_node_name,
-                                                 'node_b_pk': target_node_pk,
+                                                 'node_b_pk': '"{pk}"'.format(pk=target_node_pk) if isinstance(target_node_pk, str) else target_node_pk,
                                                  'node_b_label': label_b,
                                                  'rel': relation_type,
                                                  'rel_prop': rel_props
