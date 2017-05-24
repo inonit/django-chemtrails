@@ -492,11 +492,13 @@ class ModelNodeMixin(ModelNodeMixinBase):
                     target_node_pk = node.pk
                     label_a = source_node_name + str(cntr) + str(source_node_pk)
                     label_b = target_node_name + str(cntr) + str(target_node_pk)
+                    label_a = label_a.replace('-', '_')
+                    label_b = label_b.replace('-', '_')
 
                     rel_props = format_prop(obj.definition['model'].__dict__)
 
                     spamwriter.writerow(
-                        ['r'] + [('MATCH({node_a} {{ pk:{node_a_pk} }}), ({node_b} {{ pk:{node_b_pk} }}) '
+                        ['r'] + [('MATCH({node_a} {{ pk: {node_a_pk} }}), ({node_b} {{ pk: {node_b_pk} }}) '
                                   'WITH {node_a_label}, {node_b_label} '
                                   'CREATE UNIQUE({node_a_label})-[r:{rel}{{{rel_prop}}}]->({node_b_label})'
                                   .format(**{'node_a': label_a + ':' + source_node_name,
@@ -522,10 +524,12 @@ class ModelNodeMixin(ModelNodeMixinBase):
                         target_node_pk = node.pk
                         label_a = 'a' + str(cntr)
                         label_b = 'b' + str(cntr)
+                        label_a = label_a.replace('-', '_')
+                        label_b = label_b.replace('-', '_')
                         rel_props = format_prop(obj.definition['model'].__dict__)
 
                         spamwriter.writerow(
-                            ['r'] + [('MATCH({node_a} {{ pk:{node_a_pk} }}), ({node_b} {{ pk:{node_b_pk} }}) '
+                            ['r'] + [('MATCH({node_a} {{ pk: {node_a_pk} }}), ({node_b} {{ pk: {node_b_pk} }}) '
                                       'WITH {node_a_label}, {node_b_label} '
                                       'CREATE UNIQUE({node_a_label})-[r:{rel}{{{rel_prop}}}]->({node_b_label})'
                                       .format(**{'node_a': label_a + ':' + source_node_name,
