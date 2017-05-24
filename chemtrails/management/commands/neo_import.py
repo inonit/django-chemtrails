@@ -20,6 +20,7 @@ class Command(BaseCommand):
 
         try:
             for app in apps.all_models:
+                self.stdout.write(self.style.SUCCESS('Looking at {}'.format(app)))
                 cntr =0
                 for model in apps.get_app_config(app_label=app).get_models():
                     cls = get_node_class_for_model(model)
