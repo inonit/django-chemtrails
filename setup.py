@@ -29,10 +29,7 @@ setup(
     download_url='https://github.com/inonit/django-chemtrails.git',
     license='MIT License',
     packages=[
-        'chemtrails',
-        'chemtrails.neoutils',
-        'chemtrails.signals',
-        'chemtrails.contrib.permissions'
+        'chemtrails'
     ],
     include_package_data=True,
     install_requires=[
