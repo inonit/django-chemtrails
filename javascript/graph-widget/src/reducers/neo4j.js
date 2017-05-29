@@ -216,7 +216,7 @@ function setGraphs(oldState, payload) {
   //add nodes
   newState.metaGraph.forEach((value, key, map) => {
     displayGraph.nodes.push({
-      name: value.label,
+      name: value.model_name,
       label: value.label,
       id: value.id,
       marked: false,
@@ -231,7 +231,7 @@ function setGraphs(oldState, payload) {
     Object.values(value).forEach((property, key, map) => {
       if (typeof property === 'object' && !property[1]) {
         let target = displayGraph.nodes.filter(x => {
-          if (x.name === property[0].to) {
+          if (x.name === property[0].to.toLowerCase()) {
             return x;
           }
         });
