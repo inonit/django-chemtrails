@@ -9,4 +9,4 @@ psycopg2
 requests[security]
 sphinx_rtd_theme
 djangorestframework
-libcypher-parser-python==0.0.2
+libcypher-parser-python>=0.0.3
