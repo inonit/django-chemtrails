@@ -9,7 +9,7 @@ python:
 
 env:
   global:
-    - NEO4J_VERSION="latest"
+    - NEO4J_VERSION="3.0"
     - PIP_DOWNLOAD_CACHE="pip_download_cache"
   matrix:
     - DJANGO_VERSION=">=1.9,<1.10"
