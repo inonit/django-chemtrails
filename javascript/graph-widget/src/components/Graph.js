@@ -25,7 +25,8 @@ class Graph extends Component {
     //  console.log('hei og hade');
   }
   componentDidMount() {
-    this.props.actions.getNewRule(9);
+    // Fetch a spcific rule by id:
+    //  this.props.actions.getNewRule(9);
     if (this.props.links === undefined) {
       return;
     }
