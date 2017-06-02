@@ -42,7 +42,6 @@ setup(
         'nose',
         'coverage',
         'django-autofixture',
-        'django-cors-headers',
         'djangorestframework',
         'psycopg2>=2.6.2'
     ],

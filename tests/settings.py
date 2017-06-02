@@ -7,7 +7,6 @@ SECRET_KEY = 'not-so-secret'
 DEBUG = True
 
 ALLOWED_HOSTS = ['*']
-CORS_ORIGIN_ALLOW_ALL = True
 
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
@@ -25,7 +24,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     # Dependencies
-    'corsheaders',     # Required for chemtrails.contrib.permissions API views.
     'rest_framework',  # Required for easing interactive development.
 
     # For testing
@@ -39,7 +37,6 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -84,8 +81,7 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 AUTHENTICATION_BACKENDS = (
-    'django.contrib.auth.backends.ModelBackend',
-    # 'chemtrails.contrib.permissions.backends.Neo4jPermissionBackend'
+    'django.contrib.auth.backends.ModelBackend'
 )
 
 STATIC_URL = '/static/'
