@@ -143,7 +143,7 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True,
       given, this will be calculated based on passed ``permissions`` strings.
     :param use_groups: If ``True``, include users groups permissions.
       Defaults to ``True``.
-    :param extra_perms: Single permission string, or sequence of permission codenames
+    :param extra_perms: Single permission string, or sequence of permission strings
       that should be used as ``global_perms`` base. These permissions will be 
       treated as if the user possesses them.
     :param any_perm: If ``True``, any permission in sequence is accepted. 
