@@ -5,7 +5,7 @@ from chemtrails.settings import chemtrails_settings as settings
 default_app_config = 'chemtrails.apps.ChemtrailsConfig'
 
 __title__ = 'django-chemtrails'
-__version__ = '0.0.7'
+__version__ = '0.0.8'
 __author__ = 'Rolf Haavard Blindheim'
 __license__ = 'MIT License'
 
