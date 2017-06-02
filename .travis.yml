@@ -1,6 +1,5 @@
 dist: trusty
 sudo: required
-
 language: python
 python:
   - 3.4
@@ -12,7 +11,6 @@ env:
     - NEO4J_VERSION="3.0"
     - PIP_DOWNLOAD_CACHE="pip_download_cache"
   matrix:
-    - DJANGO_VERSION=">=1.9,<1.10"
     - DJANGO_VERSION=">=1.10,<1.11"
     - DJANGO_VERSION=">=1.11,<2.0"
 

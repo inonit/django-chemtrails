@@ -1,12 +1,11 @@
-Django==1.10.5
+Django>=>=1.10,<2.0
 Sphinx==1.5.2
 coverage
 django-autofixture==0.12.1
-django-cors-headers
 neomodel==3.1.0
 nose
 psycopg2
 requests[security]
 sphinx_rtd_theme
 djangorestframework
-libcypher-parser-python>=0.0.3
+libcypher-parser-python>=0.0.4
