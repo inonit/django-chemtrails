@@ -16,14 +16,14 @@ from chemtrails.neoutils.query import get_node_relationship_types
 @admin.register(AccessRule)
 class AccessRuleAdmin(admin.ModelAdmin):
 
-    form = AccessRuleForm
+    # form = AccessRuleForm  # NOTE: Graph editing gui component is postponed
     list_display = ('ctype_target', 'ctype_source', 'requires_staff', 'is_active', 'created')
     list_filter = ('requires_staff', 'is_active', 'ctype_target')
     filter_horizontal = ('permissions',)
     fieldsets = (
          (None, {'fields': ('ctype_source', 'ctype_target', 'permissions',
                             'relation_types', 'requires_staff', 'is_active')}),
-         ('Rule editor', {'fields': ('graph',)}),
+         # ('Rule editor', {'fields': ('graph',)}),
     )
 
     def get_urls(self):
