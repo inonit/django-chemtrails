@@ -356,6 +356,52 @@ class GetObjectsForUserTestCase(TestCase):
                                              ['auth.add_group', 'auth.change_group'], use_groups=False)
         self.assertEqual(set(), set(objects))
 
+    def test_extra_perms_single(self):
+        group = Group.objects.create(name='a group')
+        access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(User),
+                                                ctype_target=utils.get_content_type(Group),
+                                                relation_types=[
+                                                    'GROUPS'
+                                                ])
+        access_rule.permissions.add(Permission.objects.get(content_type__app_label='auth', codename='add_group'))
+        self.user1.groups.add(group)
+
+        objects = utils.get_objects_for_user(self.user1, 'auth.add_group')
+        self.assertEqual(set(), set(objects))
+
+        objects = utils.get_objects_for_user(self.user1, 'auth.add_group', extra_perms='auth.add_group')
+        self.assertEqual({group}, set(objects))
+
+    def test_extra_perms_sequence(self):
+        group = Group.objects.create(name='a group')
+        access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(User),
+                                                ctype_target=utils.get_content_type(Group),
+                                                relation_types=[
+                                                    'GROUPS'
+                                                ])
+        access_rule.permissions.add(*Permission.objects.filter(content_type__app_label='auth',
+                                                               codename__in=['add_group', 'change_group']))
+        self.user1.groups.add(group)
+
+        objects = utils.get_objects_for_user(self.user1, 'auth.add_group')
+        self.assertEqual(set(), set(objects))
+
+        objects = utils.get_objects_for_user(self.user1, 'auth.add_group',
+                                             extra_perms=['auth.add_group', 'auth.change_group'])
+        self.assertEqual({group}, set(objects))
+
+    def test_extra_perms_single_mixed_ctype(self):
+        self.assertRaises(MixedContentTypeError, utils.get_objects_for_user,
+                          self.user1, 'auth.add_user', extra_perms='testapp.change_store')
+
+    def test_extra_perms_sequence_mixed_ctype(self):
+        codenames = [
+            'testapp.change_book',
+            'testapp.change_store'
+        ]
+        self.assertRaises(MixedContentTypeError, utils.get_objects_for_user,
+                          self.user1, 'auth.add_user', extra_perms=codenames)
+
     def test_any_permissions(self):
         groups = Group.objects.bulk_create([Group(name=name) for name in ['group1', 'group2', 'group3']])
         access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(User),

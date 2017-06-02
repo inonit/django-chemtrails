@@ -125,7 +125,8 @@ def get_groups_with_perms(obj, attach_perms=False):
     raise NotImplementedError
 
 
-def get_objects_for_user(user, permissions, klass=None, use_groups=True, any_perm=False, with_superuser=True):
+def get_objects_for_user(user, permissions, klass=None, use_groups=True,
+                         extra_perms=None, any_perm=False, with_superuser=True):
     """
     Returns a queryset of objects for which there can be calculated a path between
     the ``user`` using one or more access rules with *all* permissions present
@@ -142,6 +143,9 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True, any_per
       given, this will be calculated based on passed ``permissions`` strings.
     :param use_groups: If ``True``, include users groups permissions.
       Defaults to ``True``.
+    :param extra_perms: Single permission string, or sequence of permission codenames
+      that should be used as ``global_perms`` base. These permissions will be 
+      treated as if the user possesses them.
     :param any_perm: If ``True``, any permission in sequence is accepted. 
       Defaults to ``False``.
     :param with_superuser: If ``True`` and ``user.is_superuser`` is set, returns
@@ -156,6 +160,12 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True, any_per
     """
     # Make sure all permissions checks out!
     ctype, codenames = check_permissions_app_label(permissions)
+    if extra_perms:
+        extra_ctype, extra_perms = check_permissions_app_label(extra_perms)
+        if extra_ctype != ctype:
+            raise MixedContentTypeError('Calculated content type from keyword argument `extra_perms` '
+                                        '%s does not match %r.' % (extra_ctype, ctype))
+    extra_perms = extra_perms or set()
 
     if ctype is None and klass is not None:
         queryset = _get_queryset(klass)
@@ -184,8 +194,8 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True, any_per
 
     # Next, get all permissions the user has, either directly set through user permissions
     # or if ``use_groups`` are set, derived from a group membership.
-    global_perms = set(get_perms(user, queryset.model) if use_groups
-                       else get_user_perms(user, queryset.model))
+    global_perms = extra_perms | set(get_perms(user, queryset.model) if use_groups
+                                     else get_user_perms(user, queryset.model))
 
     # Check if we requires the user to have *all* permissions or if it is
     # sufficient with any provided.
