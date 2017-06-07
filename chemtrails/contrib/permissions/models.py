@@ -2,7 +2,7 @@
 
 from operator import itemgetter
 
-from django.contrib.postgres.fields import ArrayField
+from django.contrib.postgres.fields import JSONField
 from django.db import models
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
@@ -35,9 +35,10 @@ class AccessRule(models.Model):
     permissions = models.ManyToManyField(Permission, verbose_name=_('access rule permissions'), blank=True,
                                          help_text=_('Required permissions for target node.'),
                                          related_name='accessrule_permissions', related_query_name='accessrule')
-    relation_types = ArrayField(verbose_name=_('relation types'), default=[],
-                                base_field=models.TextField(blank=True),
-                                help_text=_('Required relation types for generating a Cypher path.'))
+    relation_types = JSONField(verbose_name=_('relation types'), default=dict,
+                               help_text=_('Mapping of relation types optionally with a map of properties for '
+                                           'matching the relation type node. '
+                                           'Example: {"USER": {"is_superuser": true}}'))
     is_active = models.BooleanField(default=True, help_text=_('Uncheck to disable evaluation of the rule '
                                                               'in the rule chain.'))
     requires_staff = models.BooleanField(default=False, help_text=_('Requires user which should have '
