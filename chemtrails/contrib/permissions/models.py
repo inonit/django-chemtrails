@@ -2,12 +2,12 @@
 
 from operator import itemgetter
 
-from django.contrib.postgres.fields import JSONField
-from django.db import models
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
+from django.db import models
 from django.utils.translation import ugettext_lazy as _
 
+from chemtrails.contrib.permissions.forms import JSONField
 from chemtrails.neoutils.query import get_node_relationship_types, get_node_permissions, get_relationship_types
 
 
@@ -35,7 +35,7 @@ class AccessRule(models.Model):
     permissions = models.ManyToManyField(Permission, verbose_name=_('access rule permissions'), blank=True,
                                          help_text=_('Required permissions for target node.'),
                                          related_name='accessrule_permissions', related_query_name='accessrule')
-    relation_types = JSONField(verbose_name=_('relation types'), default=dict,
+    relation_types = JSONField(verbose_name=_('relation types'),
                                help_text=_('Mapping of relation types optionally with a map of properties for '
                                            'matching the relation type node. '
                                            'Example: {"USER": {"is_superuser": true}}'))

@@ -7,7 +7,7 @@ from rest_framework import routers
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from chemtrails.contrib.permissions.forms import AccessRuleForm
+# from chemtrails.contrib.permissions.forms import AccessRuleForm
 from chemtrails.contrib.permissions.models import AccessRule
 from chemtrails.contrib.permissions.views import AccessRuleViewSet, MetaGraphView
 from chemtrails.neoutils.query import get_node_relationship_types
