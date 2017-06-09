@@ -11,11 +11,11 @@ from django.utils.translation import ugettext_lazy as _
 from chemtrails.contrib.permissions import forms
 
 
-class JSONField(models.TextField):
+class JSONField(models.Field):
     empty_strings_allowed = False
     description = _('An ordered JSON object')
     default_error_messages = {
-        'invalid': _('Value must be valid JSON.')
+        'invalid': _("'%(value)s' is not a valid JSON string.")
     }
 
     def __init__(self, *args, **kwargs):
@@ -25,53 +25,67 @@ class JSONField(models.TextField):
         """
         self.dump_kwargs = kwargs.pop('dump_kwargs', {
             'cls': DjangoJSONEncoder,
+            'ensure_ascii': False,
             'sort_keys': False,
             'separators': (',', ':')
         })
         self.load_kwargs = kwargs.pop('load_kwargs', {
             'object_pairs_hook': OrderedDict
         })
+        if 'null' not in kwargs:
+            kwargs['default'] = kwargs.get('default', dict)
         super(JSONField, self).__init__(*args, **kwargs)
 
     def formfield(self, **kwargs):
         defaults = {
             'dump_kwargs': self.dump_kwargs,
             'load_kwargs': self.load_kwargs,
-            'form_class': forms.JSONFieldForm
+            'form_class': forms.JSONFormField,
+            'widget': forms.JSONWidget
         }
         return super(JSONField, self).formfield(**defaults)
 
     def from_db_value(self, value, *args, **kwargs):
-        if isinstance(value, str):
-            value = json.loads(value, **self.load_kwargs)
-        return value
-
-    def get_display_value(self, value):
-        defaults = {'indent': 2}
-        defaults.update(self.dump_kwargs)
-        return json.dumps(value, **defaults)
-
-    def get_prep_value(self, value):
-        if value is not None:
+        """
+        Convert the JSON string to an OrderedDict.
+        """
+        if value is None:
+            return None
+        if isinstance(value, (dict, OrderedDict)):
             value = json.dumps(value, **self.dump_kwargs)
         return value
 
+    def get_default(self):
+        default = super(JSONField, self).get_default()
+        if default and isinstance(default, (dict, OrderedDict)):
+            return json.dumps(default, **self.dump_kwargs)
+        return default
+
+    def get_db_prep_value(self, value, connection, prepared=False):
+        return self.get_prep_value(value)
+
+    def get_internal_type(self):
+        return "TextField"
+
+    def get_prep_value(self, value):
+        """
+        Convert the value to a JSON string ready to
+        be stored in the database.
+        """
+        if value is None:
+            if not self.null and self.blank:
+                return ''
+            return None
+        return json.dumps(value, **self.dump_kwargs)
+
     def to_python(self, value):
-        if isinstance(value, str):
-            value = json.loads(value, **self.load_kwargs)
-        return value
+        return json.dumps(json.loads(value, **self.load_kwargs), **self.dump_kwargs)
 
     def validate(self, value, model_instance):
-        super(JSONField, self).validate(value, model_instance)
+        if not self.null and value is None:
+            raise exceptions.ValidationError(self.error_messages['null'])
         try:
-            json.dumps(value, **self.dump_kwargs)
-        except TypeError:
+            self.get_prep_value(value)
+        except (TypeError, ValueError):
             raise exceptions.ValidationError(self.error_messages['invalid'],
                                              code='invalid', params={'value': value})
-
-    def value_to_string(self, obj):
-        return self.value_from_object(obj)
-
-    def value_from_object(self, obj):
-        value = super(JSONField, self).value_from_object(obj)
-        return self.get_display_value(value)

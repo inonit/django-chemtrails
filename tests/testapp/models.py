@@ -80,7 +80,3 @@ class Guild(models.Model):
 
 class JSONModel(models.Model):
     json = JSONField()
-
-
-class OrderedJSONModel(models.Model):
-    json = JSONField(load_kwargs={'object_pairs_hook': OrderedDict})
