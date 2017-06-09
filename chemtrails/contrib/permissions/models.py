@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 
+import json
+
+from collections import OrderedDict
 from operator import itemgetter
 
 from django.contrib.auth.models import Permission
@@ -61,3 +64,13 @@ class AccessRule(models.Model):
             'source': self.ctype_source,
             'target': self.ctype_target
         }
+
+    @property
+    def relation_types_obj(self):
+        """
+        Return the relation types JSON string as an OrderedDict.
+        """
+        if self.relation_types:
+            return json.loads(self.relation_types, object_pairs_hook=OrderedDict)
+        else:
+            return OrderedDict()

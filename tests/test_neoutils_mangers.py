@@ -25,7 +25,7 @@ class PathManagerTestCase(TestCase):
 
     def test_path_manager_build_path_query(self):
         user = get_user_model().objects.latest('pk')
-        query = self.node.paths.add('AUTHORS').add('USER', **{
+        query = self.node.paths.add('AUTHORS').add('USER', target_props={
             'pk': user.pk,
             'username': user.username,
             'is_active': user.is_active

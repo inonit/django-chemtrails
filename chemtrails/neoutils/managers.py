@@ -137,21 +137,22 @@ class PathManager:
 
         return ''.join(statements)
 
-    def add(self, relation_type=None, properties=None, source_props=None, **filters):
+    def add(self, relation_type=None, relation_props=None, source_props=None, target_props=None):
         """
         Adds a relationship matching string, based on relation type.
         
         :param relation_type: The relationship type, ie USER.
         :type relation_type: str
-        :param properties: Optional properties used to instantiate the
+        :param relation_props: Optional properties used to instantiate the
           ``StructuredRel`` relationship class. This is used to gather properties 
           for the generated relationship statement.
-        :type properties: dict
+        :type relation_props: dict
         :param source_props: Property mapping which should be applied for filtering the
           source node.
         :type source_props: dict
-        :param filters: Filters which should be applied to the relations types end node.
-        :type filters: dict
+        :param target_props: Property mapping which should be applied for filtering the
+          target node.
+        :type target_props: dict
         :returns: self
         """
         traversal = self.get_traversal(relation_type)
@@ -164,23 +165,23 @@ class PathManager:
             })
 
         model = traversal.definition['model']
-        properties = properties or {}
+        relation_props = relation_props or {}
 
         # Instantiate a fake relationship model in order
         # to pick attributes for the relationship.
-        fake = model(**properties)
+        fake = model(**relation_props)
         params = {prop: '"%s"' % value if isinstance(value, str) else value
                   for prop, value in model.deflate(fake.__properties__).items()}
-        relation_properties = {key: '{{{0}}}'.format(key) for key in params.keys()}
+        relation_props = {key: '{{{0}}}'.format(key) for key in params.keys()}
 
         self._statements.append({
             'source_class': self.next_class,
             'source_props': source_props or {},
             'target_class': traversal.target_class,
-            'target_props': filters,
+            'target_props': target_props or {},
             'params': params,
             'atom': build_relation_string(lhs='{source}', rhs='{target}',
-                                          props=relation_properties, **traversal.definition)
+                                          props=relation_props, **traversal.definition)
         })
         self.next_class = traversal.target_class
         return self

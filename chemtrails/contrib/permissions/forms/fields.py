@@ -79,6 +79,8 @@ class JSONField(models.Field):
         return json.dumps(value, **self.dump_kwargs)
 
     def to_python(self, value):
+        if isinstance(value, (dict, OrderedDict)):
+            value = json.dumps(value, **self.dump_kwargs)
         return json.dumps(json.loads(value, **self.load_kwargs), **self.dump_kwargs)
 
     def validate(self, value, model_instance):

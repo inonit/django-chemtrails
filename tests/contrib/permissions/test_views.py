@@ -45,7 +45,7 @@ class GraphWidgetAPIViews(APITestCase):
                 'testapp.change_book',
                 'testapp.delete_book'
             ],
-            'relation_types': ['BOOK']
+            'relation_types': {'BOOK': {}}
         }, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 

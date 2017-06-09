@@ -219,11 +219,11 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True,
     queries = []
     for access_rule in rules_queryset:
         manager = source_node.paths
-        for n, relation_type in enumerate(access_rule.relation_types):
-            props = {}
+        for n, (relation_type, target_props) in enumerate(access_rule.relation_types_obj.items()):
+            source_props = {}
             if n == 0 and access_rule.requires_staff:
-                props.update({'is_staff': True})
-            manager = manager.add(relation_type, source_props=props)
+                source_props.update({'is_staff': True})
+            manager = manager.add(relation_type, source_props=source_props, target_props=target_props)
 
         if manager.statement:
             queries.append(manager.get_path())
@@ -297,13 +297,13 @@ class GraphPermissionChecker(object):
         for access_rule in self.get_accessrule_queryset(obj).filter(ctype_target=get_content_type(obj),
                                                                     permissions__codename=perm):
             manager = source_node.paths
-            for n, relation_type in enumerate(access_rule.relation_types, 1):
-                filters = {}
-                if n == len(access_rule.relation_types):
-                    filters.update({'pk': obj.pk})
+            for n, (relation_type, target_props) in enumerate(access_rule.relation_types_obj.items(), 1):
+                source_props = {}
+                if n == len(access_rule.relation_types_obj):
+                    target_props.update({'pk': obj.pk})
 
                 # Recalculate the `MATCH path = (...)` statement on each iteration.
-                manager = manager.add(relation_type, **filters)
+                manager = manager.add(relation_type, source_props=source_props, target_props=target_props)
 
             if manager.statement:
                 queries.append(manager.get_path())
