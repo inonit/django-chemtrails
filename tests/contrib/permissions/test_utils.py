@@ -432,6 +432,7 @@ class GetObjectsForUserTestCase(TestCase):
                                                     'AUTHORS': {},
                                                     'USER': {
                                                         'pk': '{source}.pk',
+                                                        'username': '{source}.username'
                                                     }
                                                 })
         access_rule.permissions.add(perm)
