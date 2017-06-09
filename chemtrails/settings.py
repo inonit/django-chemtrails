@@ -4,8 +4,8 @@ Settings for django-chemtrails are all namespaced in
 the CHEMTRAILS setting. For example:
 CHEMTRAILS = {
     'ENABLED': True,
-    'IGNORE_MODELS: [
-        'migrations.migration,
+    'IGNORE_MODELS': [
+        'migrations.migration',
     ]
 }
 """
