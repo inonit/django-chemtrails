@@ -76,12 +76,10 @@ class JSONField(models.Field):
             if not self.null and self.blank:
                 return ''
             return None
-        return json.dumps(value, **self.dump_kwargs)
+        return self.value_to_string(value)
 
     def to_python(self, value):
-        if isinstance(value, (dict, OrderedDict)):
-            value = json.dumps(value, **self.dump_kwargs)
-        return json.dumps(json.loads(value, **self.load_kwargs), **self.dump_kwargs)
+        return self.value_to_string(value)
 
     def validate(self, value, model_instance):
         if not self.null and value is None:
@@ -91,3 +89,8 @@ class JSONField(models.Field):
         except (TypeError, ValueError):
             raise exceptions.ValidationError(self.error_messages['invalid'],
                                              code='invalid', params={'value': value})
+
+    def value_to_string(self, value):
+        if isinstance(value, (dict, OrderedDict)):
+            value = json.dumps(value, **self.dump_kwargs)
+        return json.dumps(json.loads(value, **self.load_kwargs), **self.dump_kwargs)

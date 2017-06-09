@@ -417,6 +417,30 @@ class GetObjectsForUserTestCase(TestCase):
         objects = utils.get_objects_for_user(self.user1, 'auth.add_group')
         self.assertEqual({Group.objects.get(name='group1')}, set(objects))
 
+    def test_relation_types_definition_source_variable(self):
+        book = BookFixture(Book, generate_m2m={'authors': (2, 2)}).create_one()
+        get_nodeset_for_queryset(Store.objects.filter(pk=book.pk), sync=True)
+
+        user = User.objects.filter(pk__in=book.authors.values('user')).latest('pk')
+        perm = Permission.objects.get(content_type__app_label='auth', codename='change_user')
+
+        access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(User),
+                                                ctype_target=utils.get_content_type(User),
+                                                relation_types={
+                                                    'AUTHOR': {},
+                                                    'BOOK': {},
+                                                    'AUTHORS': {},
+                                                    'USER': {
+                                                        'pk': '{source}.pk',
+                                                    }
+                                                })
+        access_rule.permissions.add(perm)
+        user.user_permissions.add(perm)
+
+        objects = utils.get_objects_for_user(user, 'auth.change_user')
+        self.assertEqual({user}, set(objects))
+        self.assertNotEqual(User.objects.count(), objects.count())
+
 
 class GetObjectsForGroupTestCase(TestCase):
     """

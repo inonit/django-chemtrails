@@ -2,8 +2,10 @@
 
 import re
 import inspect
+
 from neomodel.match import Traversal
 from neomodel.match import OUTGOING, INCOMING, EITHER
+from neomodel.relationship_manager import RelationshipDefinition
 
 
 def build_relation_string(lhs, rhs, ident=None, relation_type=None, direction=None, props=None, **kwargs):
@@ -46,17 +48,48 @@ def build_relation_string(lhs, rhs, ident=None, relation_type=None, direction=No
     return '({0}){1}({2})'.format(lhs, statement, rhs)
 
 
+def build_filter_props(source, klass, props):
+    """
+    Replace variables and expanded fields in filter props.
+    """
+    filters = {}
+    pattern = re.compile(r'(?<={source}.)\w+')
+    for attr, value in props.items():
+        # Check for special variables.
+        # Only supports "{source}" lookup for now.
+        match = pattern.search(value)
+        if match:
+            filters[attr] = getattr(source, match.group())
+
+        # Check if we're filtering on a remote field. Relationship can be
+        # spanned using "__" syntax. Keep digging until the end of spanned
+        # relationships, and replace lookup key.
+
+        # FIXME: This is backwards!
+        # elif '__' in attr:
+        #     remote_klass = klass
+        #     for segment in attr.split('__'):
+        #         prop = getattr(remote_klass, segment)
+        #         if not isinstance(prop, RelationshipDefinition):
+        #             filters[segment] = value
+        #             break
+        #         remote_klass = prop.definition['node_class']
+    return filters
+
+
 class PathManager:
     """
     Class for building traversal paths for node instances
     managed by chemtrails.
     """
     def __init__(self, source):
+        self.source = source
+
         # Keep a list of all calculated matching strings.
         self._statements = []
 
         # Keep track of the next source class.
-        self._next_class = source
+        self.___next_class__ = source
 
     @property
     def traversals(self):
@@ -70,11 +103,11 @@ class PathManager:
 
     @property
     def next_class(self):
-        return self._next_class
+        return self.___next_class__
 
     @next_class.setter
     def next_class(self, klass):
-        self._next_class = klass
+        self.___next_class__ = klass
 
     @property
     def statement(self):
@@ -176,9 +209,9 @@ class PathManager:
 
         self._statements.append({
             'source_class': self.next_class,
-            'source_props': source_props or {},
+            'source_props': build_filter_props(self.source, self.next_class, source_props or {}),
             'target_class': traversal.target_class,
-            'target_props': target_props or {},
+            'target_props': build_filter_props(self.source, traversal.target_class, target_props or {}),
             'params': params,
             'atom': build_relation_string(lhs='{source}', rhs='{target}',
                                           props=relation_props, **traversal.definition)
