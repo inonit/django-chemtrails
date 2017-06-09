@@ -3,12 +3,12 @@
 from collections import OrderedDict
 
 from django.test import TestCase
-from tests.testapp.models import OrderedJSONModel
+from tests.testapp.models import JSONModel
 
 
-class OrderedJSONFieldTestCase(TestCase):
+class JSONFieldTestCase(TestCase):
 
-    model = OrderedJSONModel
+    model = JSONModel
 
     def setUp(self):
         self.dict = {
