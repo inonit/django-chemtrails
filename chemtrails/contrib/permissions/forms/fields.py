@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import json
-from collections import OrderedDict
+from collections import defaultdict, OrderedDict
 
 from django.core import exceptions
 from django.core.serializers.json import DjangoJSONEncoder
@@ -32,8 +32,8 @@ class JSONField(models.Field):
         self.load_kwargs = kwargs.pop('load_kwargs', {
             'object_pairs_hook': OrderedDict
         })
-        if 'null' not in kwargs:
-            kwargs['default'] = kwargs.get('default', dict)
+        if not kwargs.get('null', False):
+            kwargs['default'] = kwargs.get('default', defaultdict(OrderedDict))
         super(JSONField, self).__init__(*args, **kwargs)
 
     def formfield(self, **kwargs):
