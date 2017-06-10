@@ -3,9 +3,9 @@
 import re
 import inspect
 
+from neomodel import Property
 from neomodel.match import Traversal
 from neomodel.match import OUTGOING, INCOMING, EITHER
-from neomodel.relationship_manager import RelationshipDefinition
 
 
 def build_relation_string(lhs, rhs, ident=None, relation_type=None, direction=None, props=None, **kwargs):
@@ -46,35 +46,6 @@ def build_relation_string(lhs, rhs, ident=None, relation_type=None, direction=No
     else:
         statement = statement.format('[%s:%s%s]' % (ident if ident else '', relation_type, relation_props))
     return '({0}){1}({2})'.format(lhs, statement, rhs)
-
-
-def build_filter_props(source, klass, props):
-    """
-    Replace variables and expanded fields in filter props.
-    """
-    filters = {}
-    pattern = re.compile(r'(?<={source}.)\w+')
-    for attr, value in props.items():
-        # Check for special variables.
-        # Only supports "{source}" lookup for now.
-        match = pattern.search(value)
-        if match:
-            filters[attr] = getattr(source, match.group())
-
-        # Check if we're filtering on a remote field. Relationship can be
-        # spanned using "__" syntax. Keep digging until the end of spanned
-        # relationships, and replace lookup key.
-
-        # FIXME: This is backwards!
-        # elif '__' in attr:
-        #     remote_klass = klass
-        #     for segment in attr.split('__'):
-        #         prop = getattr(remote_klass, segment)
-        #         if not isinstance(prop, RelationshipDefinition):
-        #             filters[segment] = value
-        #             break
-        #         remote_klass = prop.definition['node_class']
-    return filters
 
 
 class PathManager:
@@ -209,9 +180,9 @@ class PathManager:
 
         self._statements.append({
             'source_class': self.next_class,
-            'source_props': build_filter_props(self.source, self.next_class, source_props or {}),
+            'source_props': self.resolve_filters(source_props or {}),
             'target_class': traversal.target_class,
-            'target_props': build_filter_props(self.source, traversal.target_class, target_props or {}),
+            'target_props': self.resolve_filters(target_props or {}),
             'params': params,
             'atom': build_relation_string(lhs='{source}', rhs='{target}',
                                           props=relation_props, **traversal.definition)
@@ -241,3 +212,32 @@ class PathManager:
         if not self.statement:
             raise AttributeError('No calculated statements.')
         return 'MATCH {statement} RETURN *;'.format(statement=self.statement)
+
+    def resolve_filters(self, filters):
+        """
+        Check if the filter contains any special variables and resolve them.
+        Currently only supports resolving parameters using "{source}" variable,
+        which will inspect the originating node.
+
+        Ex:
+          filters = {'username': '{source}.username'}
+
+          This will replace the '{source}.pk' value with whatever value is found
+          on the 'username' attribute on the source node.
+
+        :param filters: Mapping with filter to inspect
+        :type filters: dict
+        :returns: Dictionary with resolved values.
+        """
+        pattern = re.compile(r'(?<={source}.)\w+')  # Matches '{source}.attribute'
+        for attr, value in filters.items():
+            match = pattern.search(value)
+            if match:
+                key = match.group()
+                if key not in self.source.defined_properties(aliases=False, rels=False):
+                    raise AttributeError("%(node)r has no valid property named '%(key)s'. "
+                                         "Make sure the '%(value)s' targets a valid attribute." % {
+                                             'node': self.source, 'key': key, 'value': value
+                                         })
+                filters[attr] = getattr(self.source, key)
+        return filters
