@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import re
 from itertools import chain
 
 from django.contrib.auth import get_user_model
@@ -9,7 +10,7 @@ from django.db.models import Q, Count
 from django.shortcuts import _get_queryset
 from django.utils.encoding import force_text
 
-from neo4j.v1 import Path
+from neo4j.v1 import Node, Path
 from neomodel import db
 from rest_framework.compat import is_anonymous
 
@@ -219,27 +220,42 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True,
     queries = []
     for access_rule in rules_queryset:
         manager = source_node.paths
-        for n, (relation_type, target_props) in enumerate(access_rule.relation_types_obj.items()):
+        for n, rule_definition in enumerate(access_rule.relation_types_obj):
+            relation_type, target_props = zip(*rule_definition.items())
+            relation_type, target_props = relation_type[0], target_props[0]  # TODO: This should be validated before save!
+
+            # Replace '{INDEX:n}' relation type placeholders
+            pattern = re.compile(r'(?<={index:)\d(?=})')
+            match = pattern.search(relation_type)
+            if match:
+                index = int(match.group())
+                if len(access_rule.relation_types_obj) - 1 < index:
+                    raise IndexError('Some nice error description here!')
+                relation_type = list(access_rule.relation_types_obj[index].keys())[0]
+
             source_props = {}
             if n == 0 and access_rule.requires_staff:
                 source_props.update({'is_staff': True})
             manager = manager.add(relation_type, source_props=source_props, target_props=target_props)
 
         if manager.statement:
-            queries.append(manager.get_path())
+            queries.append(manager.get_match())
 
     q_values = Q()
+    klass = get_node_class_for_model(queryset.model)
     for query in queries:
         validate_cypher(query, raise_exception=True)
         result, _ = db.cypher_query(query)
         if result:
             values = set()
             for item in flatten(result):
-                if not isinstance(item, Path):
+                if not isinstance(item, Node):
                     continue  # pragma: no cover
                 try:
-                    values.add(item.end.properties['pk'])
-                except KeyError:  # pragma: no cover
+                    if klass.__label__ in item.labels:
+                        node = get_node_class_for_model(queryset.model).inflate(item)
+                        values.add(node.pk)
+                except InflateError:  # pragma: no cover
                     continue
             q_values |= Q(pk__in=values)
 

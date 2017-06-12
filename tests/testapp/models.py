@@ -77,6 +77,6 @@ class Guild(models.Model):
     contact = models.ForeignKey(Author, related_name='guild_contacts')
     members = models.ManyToManyField(Author, verbose_name='members', related_name='guild_set')
 
-
-class JSONModel(models.Model):
-    json = JSONField()
+#
+# class JSONModel(models.Model):
+#     json = JSONField()
