@@ -29,7 +29,7 @@ class GraphWidgetAPIViews(APITestCase):
             ctype_source=ContentType.objects.get_by_natural_key('auth', 'user'),
             ctype_target=ContentType.objects.get_by_natural_key('testapp', 'book'),
             is_active=True,
-            relation_types=['BOOK']
+            relation_types=[{'BOOK': None}]
         )
         access_rule.permissions.add(*list(Permission.objects.filter(codename__in=['add_book', 'change_book'])))
         response = self.client.get(reverse('admin:accessrule-detail', kwargs={'pk': access_rule.pk}))
@@ -45,7 +45,7 @@ class GraphWidgetAPIViews(APITestCase):
                 'testapp.change_book',
                 'testapp.delete_book'
             ],
-            'relation_types': {'BOOK': {}}
+            'relation_types': [{'BOOK': None}]
         }, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 

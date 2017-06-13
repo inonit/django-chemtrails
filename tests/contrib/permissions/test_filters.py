@@ -43,7 +43,7 @@ class ChemoPermissionsFilterTestCase(TestCase):
         self.access_rule = AccessRule.objects.create(ctype_source=get_content_type(User),
                                                      ctype_target=get_content_type(Group),
                                                      is_active=True,
-                                                     relation_types={'GROUPS': {}})
+                                                     relation_types=[{'GROUPS': None}])
         self.view = GroupViewSet
 
         self.patched_settings = modify_settings(

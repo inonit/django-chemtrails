@@ -140,10 +140,10 @@ class GetObjectsForUserTestCase(TestCase):
 
         access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(user),
                                                 ctype_target=utils.get_content_type(Book),
-                                                relation_types={
-                                                    'AUTHOR': {},
-                                                    'BOOK': {}
-                                                })
+                                                relation_types=[
+                                                    {'AUTHOR': None},
+                                                    {'BOOK': None}
+                                                ])
         perm = Permission.objects.get(content_type__app_label='testapp', codename='change_book')
         access_rule.permissions.add(perm)
         user.user_permissions.add(perm)
@@ -206,7 +206,7 @@ class GetObjectsForUserTestCase(TestCase):
     def test_permissions_single(self):
         access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(User),
                                                 ctype_target=utils.get_content_type(Group),
-                                                relation_types={'GROUPS': {}})
+                                                relation_types=[{'GROUPS': None}])
         perm = Permission.objects.get(content_type__app_label='auth', codename='change_group')
         access_rule.permissions.add(perm)
         self.user1.user_permissions.add(perm)
@@ -219,7 +219,7 @@ class GetObjectsForUserTestCase(TestCase):
     def test_klass_as_model(self):
         access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(User),
                                                 ctype_target=utils.get_content_type(Group),
-                                                relation_types={'GROUPS': {}})
+                                                relation_types=[{'GROUPS': None}])
         perm = Permission.objects.get(content_type__app_label='auth', codename='change_group')
         access_rule.permissions.add(perm)
         self.user1.user_permissions.add(perm)
@@ -233,7 +233,7 @@ class GetObjectsForUserTestCase(TestCase):
     def test_klass_as_manager(self):
         access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(User),
                                                 ctype_target=utils.get_content_type(Group),
-                                                relation_types={'GROUPS': {}})
+                                                relation_types=[{'GROUPS': None}])
         perm = Permission.objects.get(content_type__app_label='auth', codename='change_group')
         access_rule.permissions.add(perm)
         self.user1.user_permissions.add(perm)
@@ -247,7 +247,7 @@ class GetObjectsForUserTestCase(TestCase):
     def test_klass_as_queryset(self):
         access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(User),
                                                 ctype_target=utils.get_content_type(Group),
-                                                relation_types={'GROUPS': {}})
+                                                relation_types=[{'GROUPS': None}])
         perm = Permission.objects.get(content_type__app_label='auth', codename='change_group')
         access_rule.permissions.add(perm)
         self.user1.user_permissions.add(perm)
@@ -267,7 +267,7 @@ class GetObjectsForUserTestCase(TestCase):
         groups = Group.objects.bulk_create([Group(name=name) for name in ['group1', 'group2', 'group3']])
         access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(User),
                                                 ctype_target=utils.get_content_type(Group),
-                                                relation_types={'GROUPS': {}})
+                                                relation_types=[{'GROUPS': None}])
         perm = Permission.objects.get(content_type__app_label='auth', codename='change_group')
         access_rule.permissions.add(perm)
         self.user1.user_permissions.add(perm)
@@ -282,7 +282,7 @@ class GetObjectsForUserTestCase(TestCase):
         groups = Group.objects.bulk_create([Group(name=name) for name in ['group1', 'group2', 'group3']])
         access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(User),
                                                 ctype_target=utils.get_content_type(Group),
-                                                relation_types={'GROUPS': {}})
+                                                relation_types=[{'GROUPS': None}])
         add_perm = Permission.objects.get(content_type__app_label='auth', codename='add_group')
         change_perm = Permission.objects.get(content_type__app_label='auth', codename='change_group')
         access_rule.permissions.add(*[add_perm, change_perm])
@@ -299,7 +299,7 @@ class GetObjectsForUserTestCase(TestCase):
         access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(User),
                                                 ctype_target=utils.get_content_type(Group),
                                                 requires_staff=True,
-                                                relation_types={'GROUPS': {}})
+                                                relation_types=[{'GROUPS': None}])
         perms = Permission.objects.filter(content_type__app_label='auth', codename__in=['add_group', 'delete_group'])
         access_rule.permissions.add(*perms)
 
@@ -326,7 +326,7 @@ class GetObjectsForUserTestCase(TestCase):
 
         access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(User),
                                                 ctype_target=utils.get_content_type(Group),
-                                                relation_types={'GROUPS': {}})
+                                                relation_types=[{'GROUPS': None}])
         access_rule.permissions.add(*Permission.objects.filter(content_type__app_label='auth',
                                                                codename__in=['add_group', 'change_group']))
 
@@ -344,7 +344,7 @@ class GetObjectsForUserTestCase(TestCase):
         group = Group.objects.create(name='a group')
         access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(User),
                                                 ctype_target=utils.get_content_type(Group),
-                                                relation_types={'GROUPS': {}})
+                                                relation_types=[{'GROUPS': None}])
         access_rule.permissions.add(Permission.objects.get(content_type__app_label='auth', codename='add_group'))
         self.user1.groups.add(group)
 
@@ -358,7 +358,7 @@ class GetObjectsForUserTestCase(TestCase):
         group = Group.objects.create(name='a group')
         access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(User),
                                                 ctype_target=utils.get_content_type(Group),
-                                                relation_types={'GROUPS': {}})
+                                                relation_types=[{'GROUPS': None}])
         access_rule.permissions.add(*Permission.objects.filter(content_type__app_label='auth',
                                                                codename__in=['add_group', 'change_group']))
         self.user1.groups.add(group)
@@ -386,7 +386,7 @@ class GetObjectsForUserTestCase(TestCase):
         groups = Group.objects.bulk_create([Group(name=name) for name in ['group1', 'group2', 'group3']])
         access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(User),
                                                 ctype_target=utils.get_content_type(Group),
-                                                relation_types={'GROUPS': {}})
+                                                relation_types=[{'GROUPS': None}])
         perms = Permission.objects.filter(content_type__app_label='auth', codename__in=['add_group', 'change_group'])
         access_rule.permissions.add(*perms)
 
@@ -403,11 +403,7 @@ class GetObjectsForUserTestCase(TestCase):
         groups = Group.objects.bulk_create([Group(name=name) for name in ['group1', 'group2']])
         access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(User),
                                                 ctype_target=utils.get_content_type(Group),
-                                                relation_types={
-                                                    'GROUPS': {
-                                                        'name': 'group1'
-                                                    }
-                                                })
+                                                relation_types=[{'GROUPS': {'name': 'group1'}}])
         perm = Permission.objects.get(content_type__app_label='auth', codename='add_group')
         access_rule.permissions.add(perm)
 
@@ -579,7 +575,7 @@ class GraphPermissionCheckerTestCase(TestCase):
         perm = Permission.objects.get(content_type=utils.get_content_type(author), codename='change_author')
         access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(user),
                                                 ctype_target=utils.get_content_type(author),
-                                                relation_types={'AUTHOR': {}})
+                                                relation_types=[{'AUTHOR': None}])
         user.user_permissions.add(perm)
         access_rule.permissions.add(perm)
 
@@ -593,7 +589,7 @@ class GraphPermissionCheckerTestCase(TestCase):
         perm = Permission.objects.get(content_type=utils.get_content_type(user), codename='change_user')
         access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(group),
                                                 ctype_target=utils.get_content_type(user),
-                                                relation_types={'USER_SET': {}})
+                                                relation_types=[{'USER_SET': None}])
         user.groups.add(group)
         group.permissions.add(perm)
         access_rule.permissions.add(perm)

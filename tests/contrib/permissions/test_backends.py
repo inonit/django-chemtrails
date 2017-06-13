@@ -152,7 +152,7 @@ class ChemoPermissionsBackendTestCase(TestCase):
         access_rule = AccessRule.objects.create(
             ctype_source=ContentType.objects.get_for_model(User),
             ctype_target=ContentType.objects.get_for_model(Group),
-            relation_types={'GROUPS': {}}
+            relation_types=[{'GROUPS': None}]
         )
         perm = Permission.objects.get(content_type__app_label='auth', codename='add_group')
         group.permissions.add(perm)
@@ -169,7 +169,7 @@ class ChemoPermissionsBackendTestCase(TestCase):
         access_rule = AccessRule.objects.create(
             ctype_source=ContentType.objects.get_for_model(author.user),
             ctype_target=ContentType.objects.get_for_model(author),
-            relation_types={'AUTHOR': {}}
+            relation_types=[{'AUTHOR': None}]
         )
         access_rule.permissions.add(permission)
         self.assertTrue(author.user.has_perm('testapp.change_author', author))
@@ -188,7 +188,7 @@ class ChemoPermissionsBackendTestCase(TestCase):
         access_rule = AccessRule.objects.create(
             ctype_source=ContentType.objects.get_for_model(user),
             ctype_target=ContentType.objects.get_for_model(Store),
-            relation_types={'AUTHOR': {}, 'BOOK': {}, 'STORE': {}}
+            relation_types=[{'AUTHOR': None}, {'BOOK': None}, {'STORE': None}]
         )
         access_rule.permissions.add(*list(permissions.exclude(codename='delete_store')))
 
