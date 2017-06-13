@@ -309,7 +309,7 @@ class GraphPermissionChecker(object):
             return obj in queryset
         elif self.group:
             # TODO: Implement `get_objects_for_group`!
-            queryset = get_objects_for_group(self.user, perm, klass=obj._meta.default_manager.filter(pk=obj.pk))
+            queryset = get_objects_for_group(self.group, perm, klass=obj._meta.default_manager.filter(pk=obj.pk))
             return obj in queryset
 
     @staticmethod
