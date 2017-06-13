@@ -101,13 +101,13 @@ class PathManager:
                 )
                 return '{0}: {1}'.format(ident, label)
 
-        # Matches ie. (source1: UserNode) as long as it's followed
+        # Matches ie. (source1: UserNode {...}) as long as it's followed
         # by a "-[" which indicates the beginning of a relationship.
-        pattern = re.compile(r'^(\(source\d+:.\w+\)(?=-\[))')
+        pattern = re.compile(r'^(\(source\d+:.\w+(.{\w+:.[A-Za-z0-9\'"_]+})?\)(?=-\[))')
 
         statements = []
         for n, config in enumerate(self._statements):
-            # Replace previous target node with currently provided '{index:n}'
+            # Replace previous target node with currently provided '{!index:n}'
             # target node.
             # NOTE: This is pretty dirty... =/
             target_index = config.get('target_index', None)

@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 
+from django import forms
 from django.conf.urls import url, include
 from django.contrib import admin
+from django.contrib.postgres.fields import ArrayField
 
 from rest_framework import routers
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-# from chemtrails.contrib.permissions.forms import AccessRuleForm
 from chemtrails.contrib.permissions.models import AccessRule
 from chemtrails.contrib.permissions.views import AccessRuleViewSet, MetaGraphView
 from chemtrails.neoutils.query import get_node_relationship_types
@@ -16,7 +17,6 @@ from chemtrails.neoutils.query import get_node_relationship_types
 @admin.register(AccessRule)
 class AccessRuleAdmin(admin.ModelAdmin):
 
-    # form = AccessRuleForm  # NOTE: Graph editing gui component is postponed
     list_display = ('ctype_target', 'ctype_source', 'requires_staff', 'is_active', 'created')
     list_filter = ('requires_staff', 'is_active', 'ctype_target')
     filter_horizontal = ('permissions',)
@@ -25,6 +25,9 @@ class AccessRuleAdmin(admin.ModelAdmin):
                             'relation_types', 'requires_staff', 'is_active')}),
          # ('Rule editor', {'fields': ('graph',)}),
     )
+    formfield_overrides = {
+        ArrayField: {'widget': forms.Textarea}
+    }
 
     def get_urls(self):
 
