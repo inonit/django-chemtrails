@@ -218,14 +218,14 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True,
 
     # Calculate a PATH query for each rule
     queries = []
+    pattern = re.compile(r'(?<={index:)\d(?=})')
     for access_rule in rules_queryset:
         manager = source_node.paths
         for n, rule_definition in enumerate(access_rule.relation_types_obj):
             relation_type, target_props = zip(*rule_definition.items())
             relation_type, target_props = relation_type[0], target_props[0]  # TODO: This should be validated before save!
 
-            # Replace '{INDEX:n}' relation type placeholders
-            pattern = re.compile(r'(?<={index:)\d(?=})')
+            # # Replace '{index:n}' relation type placeholders
             match = pattern.search(relation_type)
             if match:
                 index = int(match.group())

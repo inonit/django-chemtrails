@@ -103,19 +103,36 @@ class PathManager:
 
         # Matches ie. (source1: UserNode) as long as it's followed
         # by a "-[" which indicates the beginning of a relationship.
-        regex = r'^(\(source\d+:.\w+\)(?=-\[))'
+        pattern = re.compile(r'^(\(source\d+:.\w+\)(?=-\[))')
 
         statements = []
         for n, config in enumerate(self._statements):
-            # Replace placeholders with actual values.
-            defaults = config['params'].copy()
+            # Replace previous target node with currently provided '{index:n}'
+            # target node.
+            # NOTE: This is pretty dirty... =/
+            target_index = config.get('target_index', None)
+            if target_index is not None:
+                p = re.compile(r'(?<=\]->)(\(target\d+:.\w+\))')
+                match = p.search(statements[target_index])
+                if match:
+                    value = match.group()
+                    match = p.search(statements[n - 1])
+                    if match:
+                        statements[n - 1] = p.sub(value, statements[n - 1])
+                        continue
 
-            source_props = config['source_props']
+            # Replace placeholders with actual values.
+            defaults = config['relation_props'].copy()
+            atom = build_relation_string(lhs='{source}', rhs='{target}',
+                                         props={key: '{{{0}}}'.format(key) for key in defaults.keys()},
+                                         **config['traversal'].definition)
+
+            source_props = self.resolve_filters(config['source_props'])
             if not inspect.isclass(config['source_class']):
                 # If we have a node instance, always match its primary key!
                 source_props['pk'] = config['source_class'].pk
 
-            target_props = config['target_props']
+            target_props = self.resolve_filters(config['target_props'])
 
             defaults.update({
                 'source': 'source{0}'.format(format_node(
@@ -124,20 +141,21 @@ class PathManager:
                     **source_props
                 )),
                 'target': 'target{0}'.format(format_node(
-                    ident=n,
+                    ident=target_index if target_index is not None else n,
                     label=config['target_class'].__label__,
                     # Add any user specified filters to target node.
                     **target_props
                 ))
             })
-            relation_str = config['atom'].format(**defaults)
+
+            relation_str = atom.format(**defaults)
             if n == 0:
                 statements.append(relation_str)
                 continue
 
             # Remove the source node definition from string.
             # It's already specified in the previous element.
-            statements.append(re.sub(regex, '', relation_str))
+            statements.append(pattern.sub('', relation_str))
 
         return ''.join(statements)
 
@@ -160,13 +178,24 @@ class PathManager:
         :returns: self
         """
         traversal = self.get_traversal(relation_type)
+        defaults = {}
         if traversal is None:
-            if not relation_type:
+            pattern = re.compile(r'(?<={!index:)\d(?=})')
+            match = pattern.search(relation_type)
+            if match:
+                index = int(match.group())
+                if len(self._statements) - 1 < index:
+                    raise IndexError('Some nice error')
+                defaults['target_index'] = index
+                traversal = self._statements[index]['traversal']
+                self.next_class = self._statements[index]['source_class']
+            elif not relation_type:
                 raise Exception('Cannot find relationship with empty relation type.')
-            raise Exception('%(klass)r has no relation type %(relation_type)s' % {
-                'klass': self.next_class,
-                'relation_type': relation_type
-            })
+            elif not traversal:
+                raise Exception('%(klass)r has no relation type %(relation_type)s' % {
+                    'klass': self.next_class,
+                    'relation_type': relation_type
+                })
 
         model = traversal.definition['model']
         relation_props = relation_props or {}
@@ -174,19 +203,18 @@ class PathManager:
         # Instantiate a fake relationship model in order
         # to pick attributes for the relationship.
         fake = model(**relation_props)
-        params = {prop: '"%s"' % value if isinstance(value, str) else value
-                  for prop, value in model.deflate(fake.__properties__).items()}
-        relation_props = {key: '{{{0}}}'.format(key) for key in params.keys()}
+        relation_props = {prop: '"%s"' % value if isinstance(value, str) else value
+                          for prop, value in model.deflate(fake.__properties__).items()}
 
-        self._statements.append({
+        defaults.update({
             'source_class': self.next_class,
-            'source_props': self.resolve_filters(source_props or {}),
+            'source_props': source_props or {},
             'target_class': traversal.target_class,
-            'target_props': self.resolve_filters(target_props or {}),
-            'params': params,
-            'atom': build_relation_string(lhs='{source}', rhs='{target}',
-                                          props=relation_props, **traversal.definition)
+            'target_props': target_props or {},
+            'relation_props': relation_props,
+            'traversal': traversal,
         })
+        self._statements.append(defaults)
         self.next_class = traversal.target_class
         return self
 
@@ -231,13 +259,18 @@ class PathManager:
         """
         pattern = re.compile(r'(?<={source}.)\w+')  # Matches '{source}.attribute'
         for attr, value in filters.items():
-            match = pattern.search(value)
-            if match:
-                key = match.group()
-                if key not in self.source.defined_properties(aliases=False, rels=False):
-                    raise AttributeError("%(node)r has no valid property named '%(key)s'. "
-                                         "Make sure the '%(value)s' targets a valid attribute." % {
-                                             'node': self.source, 'key': key, 'value': value
-                                         })
-                filters[attr] = getattr(self.source, key)
+            try:
+                match = pattern.search(value)
+                if match:
+                    key = match.group()
+                    if key not in self.source.defined_properties(aliases=False, rels=False):
+                        raise AttributeError("%(node)r has no valid property named '%(key)s'. "
+                                             "Make sure the '%(value)s' targets a valid attribute." % {
+                                                 'node': self.source, 'key': key, 'value': value
+                                             })
+                    filters[attr] = getattr(self.source, key)
+            except TypeError:
+                # This can happen if trying to re-process an already processed filter.
+                continue
+
         return filters

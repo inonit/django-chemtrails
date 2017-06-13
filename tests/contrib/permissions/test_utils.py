@@ -455,10 +455,7 @@ class GetObjectsForUserTestCase(TestCase):
                                                     {'AUTHOR': None},
                                                     {'BOOK': None},
                                                     {'AUTHORS': None},
-                                                    {'USER': {
-                                                        'pk': '{source}.pk'
-                                                    }},
-                                                    {'{index:0}': None}
+                                                    {'{!index:0}': None}
                                                 ])
         access_rule.permissions.add(perm)
         user.user_permissions.add(perm)
