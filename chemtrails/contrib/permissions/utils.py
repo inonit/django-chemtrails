@@ -300,49 +300,17 @@ class GraphPermissionChecker(object):
         """
         Checks if user/group is authorized to access given object.
         """
-        source_node = (get_node_class_for_model(self.user or self.group)
-                       .nodes.get_or_none(**{'pk': getattr(self.user, 'pk', None) or self.group.pk}))
         target_node = get_node_class_for_model(obj).nodes.get_or_none(**{'pk': obj.pk})
-
-        if not source_node or not target_node:
+        if not target_node:
             return False
 
-        # For each rule assigned to the content type of the given object,
-        # construct a `MATCH path = (...)` cypher query.
-        queries = []
-        for access_rule in self.get_accessrule_queryset(obj).filter(ctype_target=get_content_type(obj),
-                                                                    permissions__codename=perm):
-            manager = source_node.paths
-            for n, (relation_type, target_props) in enumerate(access_rule.relation_types_obj.items(), 1):
-                source_props = {}
-                if n == len(access_rule.relation_types_obj):
-                    target_props.update({'pk': obj.pk})
-
-                # Recalculate the `MATCH path = (...)` statement on each iteration.
-                manager = manager.add(relation_type, source_props=source_props, target_props=target_props)
-
-            if manager.statement:
-                queries.append(manager.get_path())
-
-        # Execute all constructed path queries and return True on the first match.
-        for query in queries:
-            validate_cypher(query, raise_exception=True)
-            result, _ = db.cypher_query(query)
-            if result:
-                for item in flatten(result):
-                    if not isinstance(item, Path):
-                        continue
-
-                    # Inflate both the source node and target node and make sure
-                    # they match.
-                    try:
-                        start_node = get_node_class_for_model(self.user or self.group).inflate(item.start)
-                        end_node = get_node_class_for_model(obj).inflate(item.end)
-                        if source_node == start_node and target_node == end_node:
-                            return True
-                    except InflateError:
-                        continue
-        return False
+        if self.user:
+            queryset = get_objects_for_user(self.user, perm, klass=obj._meta.default_manager.filter(pk=obj.pk))
+            return obj in queryset
+        elif self.group:
+            # TODO: Implement `get_objects_for_group`!
+            queryset = get_objects_for_group(self.user, perm, klass=obj._meta.default_manager.filter(pk=obj.pk))
+            return obj in queryset
 
     @staticmethod
     def get_local_cache_key(obj):
