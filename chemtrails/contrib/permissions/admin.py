@@ -20,17 +20,19 @@ from chemtrails.neoutils.query import get_node_relationship_types
 @admin.register(AccessRule)
 class AccessRuleAdmin(admin.ModelAdmin):
     actions = ('toggle_active',)
-    list_display = ('get_short_description', 'ctype_target', 'ctype_source', 'requires_staff', 'is_active', 'created')
+    list_display = ('get_short_description', 'ctype_target', 'ctype_source', 'requires_staff', 'is_active', 'updated')
     list_filter = ('requires_staff', 'is_active', 'ctype_target')
     filter_horizontal = ('permissions',)
     fieldsets = (
-         (None, {'fields': ('ctype_source', 'ctype_target', 'description', 'permissions',
-                            'relation_types', 'requires_staff', 'is_active')}),
-         # ('Rule editor', {'fields': ('graph',)}),
+        (None, {'fields': ('ctype_source', 'ctype_target', 'description', 'permissions',
+                           'relation_types', 'requires_staff', 'is_active')}),
+        ('Dates', {'fields': ('created', 'updated')})
+        # ('Rule editor', {'fields': ('graph',)}),
     )
     formfield_overrides = {
         ArrayField: {'widget': forms.Textarea}
     }
+    readonly_fields = ('created', 'updated')
 
     def toggle_active(self, request, queryset):
         """
