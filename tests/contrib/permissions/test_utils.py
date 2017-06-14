@@ -443,21 +443,21 @@ class GetObjectsForUserTestCase(TestCase):
         get_nodeset_for_queryset(Store.objects.filter(pk=book.pk), sync=True)
 
         user = User.objects.filter(pk__in=book.authors.values('user')).latest('pk')
-        perm = Permission.objects.get(content_type__app_label='testapp', codename='change_author')
+        perm = Permission.objects.get(content_type__app_label='auth', codename='change_user')
 
         access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(User),
-                                                ctype_target=utils.get_content_type(Author),
+                                                ctype_target=utils.get_content_type(User),
                                                 relation_types=[
                                                     {'AUTHOR': None},
                                                     {'BOOK': None},
-                                                    {'AUTHORS': None},
-                                                    {'{!index:0}': None}
+                                                    {'{0:AUTHORS}': None},
+                                                    {'USER': None}
                                                 ])
         access_rule.permissions.add(perm)
         user.user_permissions.add(perm)
 
-        objects = utils.get_objects_for_user(user, 'testapp.change_author')
-        self.assertEqual({user.author}, set(objects))
+        objects = utils.get_objects_for_user(user, 'auth.change_user')
+        self.assertEqual({user}, set(objects))
         self.assertNotEqual(User.objects.count(), objects.count())
 
 

@@ -110,16 +110,16 @@ class PathManager:
             # Replace previous target node with currently provided '{!index:n}'
             # target node.
             # NOTE: This is pretty dirty... =/
-            target_index = config.get('target_index', None)
-            if target_index is not None:
-                p = re.compile(r'(?<=\]->)(\(target\d+:.\w+\))')
-                match = p.search(statements[target_index])
-                if match:
-                    value = match.group()
-                    match = p.search(statements[n - 1])
-                    if match:
-                        statements[n - 1] = p.sub(value, statements[n - 1])
-                        continue
+            # target_index = config.get('target_index', None)
+            # if target_index is not None:
+            #     p = re.compile(r'(?<=\]->)(\(target\d+:.\w+\))')
+            #     match = p.search(statements[target_index])
+            #     if match:
+            #         value = match.group()
+            #         match = p.search(statements[n - 1])
+            #         if match:
+            #             statements[n - 1] = p.sub(value, statements[n - 1])
+            #             # continue
 
             # Replace placeholders with actual values.
             defaults = config['relation_props'].copy()
@@ -141,7 +141,7 @@ class PathManager:
                     **source_props
                 )),
                 'target': 'target{0}'.format(format_node(
-                    ident=target_index if target_index is not None else n,
+                    ident=config.get('target_index', n),
                     label=config['target_class'].__label__,
                     # Add any user specified filters to target node.
                     **target_props
@@ -177,21 +177,27 @@ class PathManager:
         :type target_props: dict
         :returns: self
         """
-        traversal = self.get_traversal(relation_type)
         defaults = {}
+        traversal = self.get_traversal(relation_type)
         if traversal is None:
-            pattern = re.compile(r'(?<={!index:)\d(?=})')
+            pattern = re.compile(r'(?<=^{)(\d:\w+)(?=})')
             match = pattern.search(relation_type)
             if match:
-                index = int(match.group())
+                index, relation_type = match.group().split(':')
+                index = int(index)
+                traversal = self.get_traversal(relation_type)
                 if len(self._statements) - 1 < index:
                     raise IndexError('Some nice error')
                 defaults['target_index'] = index
-                traversal = self._statements[index]['traversal']
-                self.next_class = self._statements[index]['source_class']
+                # target_class = self._statements[index]['traversal'].target_class
+                # for t in filter(lambda prop: isinstance(prop, Traversal),
+                #                 target_class.nodes.__dict__.values()):
+                #     if t.definition['relation_type'] == relation_type:
+                #         traversal = t
+                #         break
             elif not relation_type:
                 raise Exception('Cannot find relationship with empty relation type.')
-            elif not traversal:
+            if not traversal:
                 raise Exception('%(klass)r has no relation type %(relation_type)s' % {
                     'klass': self.next_class,
                     'relation_type': relation_type

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import re
+import logging
 from itertools import chain
 
 from django.contrib.auth import get_user_model
@@ -21,6 +21,7 @@ from chemtrails.contrib.permissions.models import AccessRule
 from chemtrails.utils import flatten
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 def get_identity(identity):
@@ -218,20 +219,11 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True,
 
     # Calculate a PATH query for each rule
     queries = []
-    pattern = re.compile(r'(?<={index:)\d(?=})')
     for access_rule in rules_queryset:
         manager = source_node.paths
         for n, rule_definition in enumerate(access_rule.relation_types_obj):
             relation_type, target_props = zip(*rule_definition.items())
             relation_type, target_props = relation_type[0], target_props[0]  # TODO: This should be validated before save!
-
-            # # Replace '{index:n}' relation type placeholders
-            match = pattern.search(relation_type)
-            if match:
-                index = int(match.group())
-                if len(access_rule.relation_types_obj) - 1 < index:
-                    raise IndexError('Some nice error description here!')
-                relation_type = list(access_rule.relation_types_obj[index].keys())[0]
 
             source_props = {}
             if n == 0 and access_rule.requires_staff:
@@ -246,6 +238,7 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True,
     for query in queries:
         validate_cypher(query, raise_exception=True)
         result, _ = db.cypher_query(query)
+        logger.debug(query)
         if result:
             values = set()
             for item in flatten(result):

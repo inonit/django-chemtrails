@@ -5,7 +5,7 @@ import json
 from django import forms
 from django.utils.translation import ugettext_lazy as _
 from chemtrails.contrib.permissions.forms.widgets import GraphWidget, JSONWidget
-from chemtrails.contrib.permissions.models import AccessRule
+# from chemtrails.contrib.permissions.models import AccessRule
 
 
 # class GraphField(forms.Field):
