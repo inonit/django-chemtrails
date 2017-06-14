@@ -6,6 +6,7 @@ from django.contrib import admin
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
+from django.utils.text import Truncator
 
 from rest_framework import routers
 from rest_framework.decorators import api_view
@@ -19,7 +20,7 @@ from chemtrails.neoutils.query import get_node_relationship_types
 @admin.register(AccessRule)
 class AccessRuleAdmin(admin.ModelAdmin):
     actions = ('toggle_active',)
-    list_display = ('ctype_target', 'ctype_source', 'requires_staff', 'is_active', 'created')
+    list_display = ('get_short_description', 'ctype_target', 'ctype_source', 'requires_staff', 'is_active', 'created')
     list_filter = ('requires_staff', 'is_active', 'ctype_target')
     filter_horizontal = ('permissions',)
     fieldsets = (
@@ -43,6 +44,9 @@ class AccessRuleAdmin(admin.ModelAdmin):
                                      'access rules.'.format(queryset.filter(is_active=True).count(),
                                                             queryset.filter(is_active=False).count())))
     toggle_active.short_description = _('Toggle active or inactive access rules')
+
+    def get_short_description(self, obj):
+        return Truncator(obj.description).chars(55)
 
     def get_urls(self):
 
