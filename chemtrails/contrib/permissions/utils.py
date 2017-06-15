@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import logging
 from itertools import chain
 
 from django.contrib.auth import get_user_model
@@ -10,7 +9,7 @@ from django.db.models import Q, Count
 from django.shortcuts import _get_queryset
 from django.utils.encoding import force_text
 
-from neo4j.v1 import Node, Path
+from neo4j.v1 import Node
 from neomodel import db
 from rest_framework.compat import is_anonymous
 
@@ -21,7 +20,6 @@ from chemtrails.contrib.permissions.models import AccessRule
 from chemtrails.utils import flatten
 
 User = get_user_model()
-logger = logging.getLogger(__name__)
 
 
 def get_identity(identity):
@@ -238,7 +236,6 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True,
     for query in queries:
         validate_cypher(query, raise_exception=True)
         result, _ = db.cypher_query(query)
-        logger.debug(query)
         if result:
             values = set()
             for item in flatten(result):
