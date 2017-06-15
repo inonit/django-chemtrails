@@ -35,7 +35,7 @@ setup(
     install_requires=[
         'Django>=1.10,<2.0',
         'libcypher-parser-python>=0.0.4',
-        'neomodel==3.1.0',
+        'neomodel>=3.2.5',
         'requests[security]'
     ],
     tests_require=[

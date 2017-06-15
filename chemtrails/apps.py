@@ -35,3 +35,7 @@ class ChemtrailsConfig(AppConfig):
                                       os.environ.get('NEO4J_BOLT_URL', config.DATABASE_URL))
         config.FORCE_TIMEZONE = getattr(settings, 'NEO4J_FORCE_TIMEZONE',
                                         os.environ.get('NEO4J_FORCE_TIMEZONE', False))
+        config.ENCRYPTED_CONNECTION = getattr(settings, 'NEO4J_ENCRYPTED_CONNECTION',
+                                              os.environ.get('NEO4J_ENCRYPTED_CONNECTION', True))
+        config.MAX_POOL_SIZE = getattr(settings, 'NEO4J_MAX_POOL_SIZE',
+                                       os.environ.get('NEO4J_MAX_POOL_SIZE', True))

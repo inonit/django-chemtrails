@@ -2,7 +2,7 @@ Django>=>=1.10,<2.0
 Sphinx==1.5.2
 coverage
 django-autofixture==0.12.1
-neomodel==3.1.0
+neomodel>=3.2.5
 nose
 psycopg2
 requests[security]
