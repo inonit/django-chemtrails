@@ -23,7 +23,12 @@ from chemtrails.neoutils.query import validate_cypher
 
 class AccessRuleForm(forms.ModelForm):
 
-    cypher_statement = forms.CharField(widget=CypherWidget, required=False)
+    cypher_statement = forms.CharField(widget=CypherWidget, required=False,
+                                       help_text=_('Preview the generated cypher statement. Any changes done in '
+                                                   'this view will <b>not</b> be saved. <br />Note that this '
+                                                   'is generated using a mock source node, which means that filter '
+                                                   'parameters will be replaced with real values on evaluation.'
+                                                   ''))
 
     class Meta:
         model = AccessRule
