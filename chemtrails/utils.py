@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 
+import ast
 import functools
 import logging
+import os
 import time
 from collections import Sequence
 
@@ -44,3 +46,21 @@ def timeit(func):
             f.__name__, '%.5f' % (time.time() - timestamp)
         ))
     return f
+
+
+def get_environment_variable(name, fallback=None):
+    """
+    Get environment variable and try to cast it to proper python type.
+    :param name: Environment variable name to look for.
+    :param fallback: Default fallback value if ``name`` is not found.
+    :returns: Environment variable value if found, else None.
+    """
+    value = os.environ.get(name, fallback)
+    try:
+        if value in ('true', 'TRUE', 'false', 'FALSE'):
+            value = value.capitalize()
+        value = ast.literal_eval(value)
+    except ValueError:
+        pass
+    return value
+

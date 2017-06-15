@@ -7,6 +7,7 @@ from django.conf import settings
 from django.db.models.signals import m2m_changed, post_migrate, post_save, pre_delete
 
 from neomodel import config
+from chemtrails.utils import get_environment_variable
 
 config.AUTO_INSTALL_LABELS = False
 
@@ -34,8 +35,8 @@ class ChemtrailsConfig(AppConfig):
         config.DATABASE_URL = getattr(settings, 'NEO4J_BOLT_URL',
                                       os.environ.get('NEO4J_BOLT_URL', config.DATABASE_URL))
         config.FORCE_TIMEZONE = getattr(settings, 'NEO4J_FORCE_TIMEZONE',
-                                        os.environ.get('NEO4J_FORCE_TIMEZONE', False))
+                                        get_environment_variable('NEO4J_FORCE_TIMEZONE', False))
         config.ENCRYPTED_CONNECTION = getattr(settings, 'NEO4J_ENCRYPTED_CONNECTION',
-                                              os.environ.get('NEO4J_ENCRYPTED_CONNECTION', True))
+                                              get_environment_variable('NEO4J_ENCRYPTED_CONNECTION', True))
         config.MAX_POOL_SIZE = getattr(settings, 'NEO4J_MAX_POOL_SIZE',
-                                       os.environ.get('NEO4J_MAX_POOL_SIZE', True))
+                                       get_environment_variable('NEO4J_MAX_POOL_SIZE', 50))
