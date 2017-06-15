@@ -15,7 +15,7 @@ class QueryFunctionsTestCase(TestCase):
         expected = ['ACCESSRULE', 'ACCESSRULE_CTYPE_SOURCE_SET', 'ACCESSRULE_CTYPE_TARGET_SET', 'ACCESSRULE_PERMISSIONS',
                     'AUTHOR', 'AUTHORS', 'BESTSELLER', 'BESTSELLER_STORES', 'BOOK', 'BOOKS', 'CONTACT', 'CONTENT_TYPE',
                     'CONTENT_TYPE_SET_FOR_TAG', 'CTYPE_SOURCE', 'CTYPE_TARGET', 'GROUP', 'GROUPS', 'GUILD',
-                    'GUILDS', 'GUILD_CONTACTS', 'GUILD_SET', 'LOGENTRY', 'MEMBERS',
+                    'GUILDS', 'GUILD_CONTACTS', 'GUILD_SET', 'MEMBERS',
                     'PERMISSION', 'PERMISSIONS', 'PUBLISHER', 'STORE', 'TAGS', 'USER', 'USER_PERMISSIONS', 'USER_SET']
         self.assertEqual(expected, query.get_relationship_types())
 

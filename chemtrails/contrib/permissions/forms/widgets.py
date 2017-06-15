@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import json
+from collections import OrderedDict
 
 from django import forms
 from django.template.loader import render_to_string
@@ -38,3 +39,16 @@ class GraphWidget(forms.Widget):
         return mark_safe(
             render_to_string(self.template, context=context)
         )
+
+
+class JSONWidget(forms.Textarea):
+    """
+    A simple text widget for displaying JSON strings.
+    """
+    def render(self, name, value, attrs=None):
+        if not value:
+            value = ''
+        if value and isinstance(value, str):
+            value = json.dumps(json.loads(value, object_pairs_hook=OrderedDict),
+                               ensure_ascii=False, indent=2, sort_keys=False, separators=(',', ':'))
+        return super(JSONWidget, self).render(name, value, attrs)

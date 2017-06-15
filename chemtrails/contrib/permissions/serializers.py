@@ -177,6 +177,7 @@ class AccessRuleSerializer(serializers.ModelSerializer):
     ctype_source = ContentTypeIdentityField(queryset=ContentType.objects.all(), required=True)
     ctype_target = ContentTypeIdentityField(queryset=ContentType.objects.all(), required=True)
     permissions = PermissionIdentityField(queryset=Permission.objects.all(), many=True)
+    relation_types = serializers.ListField(child=serializers.JSONField())
 
     class Meta:
         model = AccessRule

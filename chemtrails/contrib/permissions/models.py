@@ -1,13 +1,17 @@
 # -*- coding: utf-8 -*-
 
+import json
+
+from collections import OrderedDict
 from operator import itemgetter
 
-from django.contrib.postgres.fields import ArrayField
-from django.db import models
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.postgres.fields import ArrayField
+from django.db import models
 from django.utils.translation import ugettext_lazy as _
 
+from chemtrails.contrib.permissions.forms import JSONField
 from chemtrails.neoutils.query import get_node_relationship_types, get_node_permissions, get_relationship_types
 
 
@@ -35,9 +39,10 @@ class AccessRule(models.Model):
     permissions = models.ManyToManyField(Permission, verbose_name=_('access rule permissions'), blank=True,
                                          help_text=_('Required permissions for target node.'),
                                          related_name='accessrule_permissions', related_query_name='accessrule')
-    relation_types = ArrayField(verbose_name=_('relation types'), default=[],
-                                base_field=models.TextField(blank=True),
-                                help_text=_('Required relation types for generating a Cypher path.'))
+    relation_types = ArrayField(verbose_name=_('relation types'), base_field=JSONField(), default=list,
+                                help_text=_('List of relation type rule definitions, optionally with a map '
+                                            'of properties for matching the relation type node. '
+                                            'Example: {"USER": {"is_superuser": true}}, {"GROUP": null}'))
     is_active = models.BooleanField(default=True, help_text=_('Uncheck to disable evaluation of the rule '
                                                               'in the rule chain.'))
     requires_staff = models.BooleanField(default=False, help_text=_('Requires user which should have '
@@ -60,3 +65,13 @@ class AccessRule(models.Model):
             'source': self.ctype_source,
             'target': self.ctype_target
         }
+
+    @property
+    def relation_types_obj(self):
+        """
+        Return the relation types JSON string as an OrderedDict.
+        """
+        if self.relation_types:
+            return [json.loads(rule, object_pairs_hook=OrderedDict) for rule in self.relation_types]
+        else:
+            return OrderedDict()

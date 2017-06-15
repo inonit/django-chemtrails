@@ -2,6 +2,8 @@
 
 import re
 import inspect
+
+from neomodel import Property
 from neomodel.match import Traversal
 from neomodel.match import OUTGOING, INCOMING, EITHER
 
@@ -52,11 +54,13 @@ class PathManager:
     managed by chemtrails.
     """
     def __init__(self, source):
+        self.source = source
+
         # Keep a list of all calculated matching strings.
         self._statements = []
 
         # Keep track of the next source class.
-        self._next_class = source
+        self.___next_class__ = source
 
     @property
     def traversals(self):
@@ -70,11 +74,11 @@ class PathManager:
 
     @property
     def next_class(self):
-        return self._next_class
+        return self.___next_class__
 
     @next_class.setter
     def next_class(self, klass):
-        self._next_class = klass
+        self.___next_class__ = klass
 
     @property
     def statement(self):
@@ -97,21 +101,38 @@ class PathManager:
                 )
                 return '{0}: {1}'.format(ident, label)
 
-        # Matches ie. (source1: UserNode) as long as it's followed
+        # Matches ie. (source1: UserNode {...}) as long as it's followed
         # by a "-[" which indicates the beginning of a relationship.
-        regex = r'^(\(source\d+:.\w+\)(?=-\[))'
+        pattern = re.compile(r'^(\(source\d+:.\w+(.{\w+:.[A-Za-z0-9\'"_]+})?\)(?=-\[))')
 
         statements = []
         for n, config in enumerate(self._statements):
-            # Replace placeholders with actual values.
-            defaults = config['params'].copy()
+            # Replace previous target node with currently provided '{!index:n}'
+            # target node.
+            # NOTE: This is pretty dirty... =/
+            # target_index = config.get('target_index', None)
+            # if target_index is not None:
+            #     p = re.compile(r'(?<=\]->)(\(target\d+:.\w+\))')
+            #     match = p.search(statements[target_index])
+            #     if match:
+            #         value = match.group()
+            #         match = p.search(statements[n - 1])
+            #         if match:
+            #             statements[n - 1] = p.sub(value, statements[n - 1])
+            #             # continue
 
-            source_props = config['source_props']
+            # Replace placeholders with actual values.
+            defaults = config['relation_props'].copy()
+            atom = build_relation_string(lhs='{source}', rhs='{target}',
+                                         props={key: '{{{0}}}'.format(key) for key in defaults.keys()},
+                                         **config['traversal'].definition)
+
+            source_props = self.resolve_filters(config['source_props'])
             if not inspect.isclass(config['source_class']):
                 # If we have a node instance, always match its primary key!
                 source_props['pk'] = config['source_class'].pk
 
-            target_props = config['target_props']
+            target_props = self.resolve_filters(config['target_props'])
 
             defaults.update({
                 'source': 'source{0}'.format(format_node(
@@ -120,68 +141,86 @@ class PathManager:
                     **source_props
                 )),
                 'target': 'target{0}'.format(format_node(
-                    ident=n,
+                    ident=config.get('target_index', n),
                     label=config['target_class'].__label__,
                     # Add any user specified filters to target node.
                     **target_props
                 ))
             })
-            relation_str = config['atom'].format(**defaults)
+
+            relation_str = atom.format(**defaults)
             if n == 0:
                 statements.append(relation_str)
                 continue
 
             # Remove the source node definition from string.
             # It's already specified in the previous element.
-            statements.append(re.sub(regex, '', relation_str))
+            statements.append(pattern.sub('', relation_str))
 
         return ''.join(statements)
 
-    def add(self, relation_type=None, properties=None, source_props=None, **filters):
+    def add(self, relation_type=None, relation_props=None, source_props=None, target_props=None):
         """
         Adds a relationship matching string, based on relation type.
         
         :param relation_type: The relationship type, ie USER.
         :type relation_type: str
-        :param properties: Optional properties used to instantiate the
+        :param relation_props: Optional properties used to instantiate the
           ``StructuredRel`` relationship class. This is used to gather properties 
           for the generated relationship statement.
-        :type properties: dict
+        :type relation_props: dict
         :param source_props: Property mapping which should be applied for filtering the
           source node.
         :type source_props: dict
-        :param filters: Filters which should be applied to the relations types end node.
-        :type filters: dict
+        :param target_props: Property mapping which should be applied for filtering the
+          target node.
+        :type target_props: dict
         :returns: self
         """
+        defaults = {}
         traversal = self.get_traversal(relation_type)
         if traversal is None:
-            if not relation_type:
+            pattern = re.compile(r'(?<=^{)(\d:\w+)(?=})')
+            match = pattern.search(relation_type)
+            if match:
+                index, relation_type = match.group().split(':')
+                index = int(index)
+                traversal = self.get_traversal(relation_type)
+                if len(self._statements) - 1 < index:
+                    raise IndexError('Some nice error')
+                defaults['target_index'] = index
+                # target_class = self._statements[index]['traversal'].target_class
+                # for t in filter(lambda prop: isinstance(prop, Traversal),
+                #                 target_class.nodes.__dict__.values()):
+                #     if t.definition['relation_type'] == relation_type:
+                #         traversal = t
+                #         break
+            elif not relation_type:
                 raise Exception('Cannot find relationship with empty relation type.')
-            raise Exception('%(klass)r has no relation type %(relation_type)s' % {
-                'klass': self.next_class,
-                'relation_type': relation_type
-            })
+            if not traversal:
+                raise Exception('%(klass)r has no relation type %(relation_type)s' % {
+                    'klass': self.next_class,
+                    'relation_type': relation_type
+                })
 
         model = traversal.definition['model']
-        properties = properties or {}
+        relation_props = relation_props or {}
 
         # Instantiate a fake relationship model in order
         # to pick attributes for the relationship.
-        fake = model(**properties)
-        params = {prop: '"%s"' % value if isinstance(value, str) else value
-                  for prop, value in model.deflate(fake.__properties__).items()}
-        relation_properties = {key: '{{{0}}}'.format(key) for key in params.keys()}
+        fake = model(**relation_props)
+        relation_props = {prop: '"%s"' % value if isinstance(value, str) else value
+                          for prop, value in model.deflate(fake.__properties__).items()}
 
-        self._statements.append({
+        defaults.update({
             'source_class': self.next_class,
             'source_props': source_props or {},
             'target_class': traversal.target_class,
-            'target_props': filters,
-            'params': params,
-            'atom': build_relation_string(lhs='{source}', rhs='{target}',
-                                          props=relation_properties, **traversal.definition)
+            'target_props': target_props or {},
+            'relation_props': relation_props,
+            'traversal': traversal,
         })
+        self._statements.append(defaults)
         self.next_class = traversal.target_class
         return self
 
@@ -207,3 +246,37 @@ class PathManager:
         if not self.statement:
             raise AttributeError('No calculated statements.')
         return 'MATCH {statement} RETURN *;'.format(statement=self.statement)
+
+    def resolve_filters(self, filters):
+        """
+        Check if the filter contains any special variables and resolve them.
+        Currently only supports resolving parameters using "{source}" variable,
+        which will inspect the originating node.
+
+        Ex:
+          filters = {'username': '{source}.username'}
+
+          This will replace the '{source}.pk' value with whatever value is found
+          on the 'username' attribute on the source node.
+
+        :param filters: Mapping with filter to inspect
+        :type filters: dict
+        :returns: Dictionary with resolved values.
+        """
+        pattern = re.compile(r'(?<={source}.)\w+')  # Matches '{source}.attribute'
+        for attr, value in filters.items():
+            try:
+                match = pattern.search(value)
+                if match:
+                    key = match.group()
+                    if key not in self.source.defined_properties(aliases=False, rels=False):
+                        raise AttributeError("%(node)r has no valid property named '%(key)s'. "
+                                             "Make sure the '%(value)s' targets a valid attribute." % {
+                                                 'node': self.source, 'key': key, 'value': value
+                                             })
+                    filters[attr] = getattr(self.source, key)
+            except TypeError:
+                # This can happen if trying to re-process an already processed filter.
+                continue
+
+        return filters

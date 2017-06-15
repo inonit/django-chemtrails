@@ -57,7 +57,7 @@ field_property_map = {
     models.UUIDField: StringProperty,
 
     # PostgreSQL special fields
-    ArrayField: ArrayProperty,
+    # ArrayField: ArrayProperty,
     HStoreField: JSONProperty,
     JSONField: JSONProperty
 }
