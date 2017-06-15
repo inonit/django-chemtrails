@@ -595,4 +595,5 @@ class GraphPermissionCheckerTestCase(TestCase):
         access_rule.permissions.add(perm)
 
         checker = utils.GraphPermissionChecker(group)
-        self.assertTrue(checker.has_perm(perm.codename, user))
+        # self.assertTrue(checker.has_perm(perm.codename, user))
+        self.assertRaises(NotImplementedError, checker.has_perm, perm.codename, user)

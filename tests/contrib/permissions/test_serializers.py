@@ -19,6 +19,10 @@ class AccessRuleSerializerTestCase(TestCase):
             'permissions': [
                 'testapp.add_book',
                 'testapp.change_book'
+            ],
+            'relation_types': [
+                {'AUTHOR': None},
+                {'BOOK': None}
             ]
         })
         self.assertTrue(serializer.is_valid())
