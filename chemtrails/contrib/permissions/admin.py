@@ -65,7 +65,10 @@ class AccessRuleForm(forms.ModelForm):
 
         try:
             if query:
-                validate_cypher(query, raise_exception=True, exc_class=ValidationError)
+                return query
+                # FIXME: Bug in libcypher-parser-python
+                # https://github.com/inonit/libcypher-parser-python/issues/1
+                # validate_cypher(query, raise_exception=True, exc_class=ValidationError)
         except ValidationError as e:
             return error_message % {'error': e}
         return query

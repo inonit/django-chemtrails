@@ -234,7 +234,8 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True,
     q_values = Q()
     klass = get_node_class_for_model(queryset.model)
     for query in queries:
-        validate_cypher(query, raise_exception=True)
+        # FIXME: https://github.com/inonit/libcypher-parser-python/issues/1
+        # validate_cypher(query, raise_exception=True)
         result, _ = db.cypher_query(query)
         if result:
             values = set()
