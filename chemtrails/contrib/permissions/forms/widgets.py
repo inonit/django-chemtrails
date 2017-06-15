@@ -52,3 +52,19 @@ class JSONWidget(forms.Textarea):
             value = json.dumps(json.loads(value, object_pairs_hook=OrderedDict),
                                ensure_ascii=False, indent=2, sort_keys=False, separators=(',', ':'))
         return super(JSONWidget, self).render(name, value, attrs)
+
+
+class CypherWidget(forms.Textarea):
+    class Media:
+        js = (
+            'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.26.0/codemirror.min.js',
+            'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.26.0/mode/cypher/cypher.min.js',
+            'chemtrails/contrib/permissions/js/cypher-widget.js'
+        )
+        css = {
+            'all': (
+                'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.26.0/codemirror.min.css',
+                'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.26.0/theme/neo.min.css'
+            )
+        }
+
