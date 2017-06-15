@@ -39,11 +39,10 @@ class AccessRule(models.Model):
     permissions = models.ManyToManyField(Permission, verbose_name=_('access rule permissions'), blank=True,
                                          help_text=_('Required permissions for target node.'),
                                          related_name='accessrule_permissions', related_query_name='accessrule')
-    # relation_types = JSONField(verbose_name=_('relation types'),
-    #                            help_text=_('Mapping of relation types optionally with a map of properties for '
-    #                                        'matching the relation type node. '
-    #                                        'Example: {"USER": {"is_superuser": true}}'))
-    relation_types = ArrayField(base_field=JSONField(), default=list)
+    relation_types = ArrayField(verbose_name=_('relation types'), base_field=JSONField(), default=list,
+                                help_text=_('List of relation type rule definitions, optionally with a map '
+                                            'of properties for matching the relation type node. '
+                                            'Example: {"USER": {"is_superuser": true}}, {"GROUP": null}'))
     is_active = models.BooleanField(default=True, help_text=_('Uncheck to disable evaluation of the rule '
                                                               'in the rule chain.'))
     requires_staff = models.BooleanField(default=False, help_text=_('Requires user which should have '
