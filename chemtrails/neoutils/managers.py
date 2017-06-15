@@ -196,9 +196,9 @@ class PathManager:
                 #         traversal = t
                 #         break
             elif not relation_type:
-                raise Exception('Cannot find relationship with empty relation type.')
+                raise ValueError('Cannot find relationship with empty relation type.')
             if not traversal:
-                raise Exception('%(klass)r has no relation type %(relation_type)s' % {
+                raise AttributeError('%(klass)r has no relation type %(relation_type)s' % {
                     'klass': self.next_class,
                     'relation_type': relation_type
                 })
