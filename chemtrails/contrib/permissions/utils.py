@@ -9,7 +9,7 @@ from django.db.models import Q, Count
 from django.shortcuts import _get_queryset
 from django.utils.encoding import force_text
 
-from neo4j.v1 import Node
+from neo4j.v1 import Node, Path
 from neomodel import db
 from rest_framework.compat import is_anonymous
 
@@ -229,7 +229,7 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True,
             manager = manager.add(relation_type, source_props=source_props, target_props=target_props)
 
         if manager.statement:
-            queries.append(manager.get_match())
+            queries.append(manager.get_path())
 
     q_values = Q()
     klass = get_node_class_for_model(queryset.model)
@@ -240,13 +240,14 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True,
         if result:
             values = set()
             for item in flatten(result):
-                if not isinstance(item, Node):
+                if not isinstance(item, Path):
                     continue  # pragma: no cover
                 try:
-                    if klass.__label__ in item.labels:
-                        node = get_node_class_for_model(queryset.model).inflate(item)
-                        values.add(node.pk)
-                except InflateError:  # pragma: no cover
+                    start, end = (get_node_class_for_model(user).inflate(item.start),
+                                  klass.inflate(item.end))
+                    if start == source_node and isinstance(end, klass):
+                        values.add(item.end.properties['pk'])
+                except (KeyError, InflateError):  # pragma: no cover
                     continue
             q_values |= Q(pk__in=values)
 

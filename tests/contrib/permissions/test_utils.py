@@ -211,8 +211,14 @@ class GetObjectsForUserTestCase(TestCase):
         access_rule.permissions.add(perm)
         self.user1.user_permissions.add(perm)
 
+        self.user1.groups.add(self.group)
+
         self.assertEqual(
-            set(utils.get_objects_for_user(self.user1, 'auth.change_group')),
+            set(self.user1.groups.all()),
+            set(utils.get_objects_for_user(self.user1, 'auth.change_group'))
+        )
+        self.assertEqual(
+            set(self.user1.groups.all()),
             set(utils.get_objects_for_user(self.user1, ['auth.change_group']))
         )
 
