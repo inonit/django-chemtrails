@@ -61,7 +61,7 @@ class AccessRuleForm(forms.ModelForm):
                 return error_message % {'error': e}
 
         if manager.statement:
-            query = manager.get_match()
+            query = manager.get_path()
 
         try:
             if query:
