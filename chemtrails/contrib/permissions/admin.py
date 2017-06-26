@@ -78,9 +78,10 @@ class AccessRuleForm(forms.ModelForm):
 class AccessRuleAdmin(admin.ModelAdmin):
     form = AccessRuleForm
     actions = ('toggle_active',)
-    list_display = ('get_short_description', 'ctype_target', 'ctype_source',
+    list_display = ('short_description', 'ctype_target', 'ctype_source',
                     'requires_staff', 'is_active', 'updated')
     list_filter = ('requires_staff', 'is_active', 'ctype_target')
+    search_fields = ('description',)
     filter_horizontal = ('permissions',)
     fieldsets = (
         (None, {'fields': ('ctype_source', 'ctype_target', 'description', 'permissions',
@@ -92,6 +93,12 @@ class AccessRuleAdmin(admin.ModelAdmin):
         ArrayField: {'widget': forms.Textarea}
     }
     readonly_fields = ('created', 'updated')
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        formfield = super(AccessRuleAdmin, self).formfield_for_foreignkey(db_field, request, **kwargs)
+        if db_field.name in ('ctype_source', 'ctype_target'):
+            formfield.queryset = formfield.queryset.order_by('model')
+        return formfield
 
     def toggle_active(self, request, queryset):
         """
@@ -106,8 +113,8 @@ class AccessRuleAdmin(admin.ModelAdmin):
                                                             queryset.filter(is_active=False).count())))
     toggle_active.short_description = _('Toggle active or inactive access rules')
 
-    def get_short_description(self, obj):
-        return Truncator(obj.description).chars(55)
+    def short_description(self, obj):
+        return Truncator(obj.description).chars(65)
 
     def get_urls(self):
 
