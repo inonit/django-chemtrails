@@ -93,4 +93,5 @@ class JSONField(models.Field):
     def value_to_string(self, value):
         if isinstance(value, (dict, OrderedDict)):
             value = json.dumps(value, **self.dump_kwargs)
-        return json.dumps(json.loads(value, **self.load_kwargs), **self.dump_kwargs)
+            return json.dumps(json.loads(value, **self.load_kwargs), **self.dump_kwargs)
+        return super(JSONField, self).value_to_string(value)

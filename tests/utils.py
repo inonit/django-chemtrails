@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from unittest.util import safe_repr
 
 from django.test import TestCase
 
@@ -36,3 +37,20 @@ class ChemtrailsTestCase(TestCase):
     def tearDown(self):
         super(ChemtrailsTestCase, self).tearDown()
         clear_neo4j_model_nodes()
+
+
+class TestCaseMixins:
+    """
+    Mixin for various extensions for the test cases.
+    """
+
+    def assertIsJSON(self, expr, msg=None):
+        import json
+
+        try:
+            json.loads(expr)
+        except ValueError:
+            msg = self._formatMessage(msg, '%s is not a valid JSON string' % safe_repr(expr))
+            raise self.failureException(msg)
+
+

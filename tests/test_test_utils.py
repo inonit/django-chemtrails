@@ -5,12 +5,12 @@ from django.test import TestCase
 from neomodel import StructuredNode
 from chemtrails.neoutils import get_node_for_object, get_node_class_for_model
 
-from tests.utils import flush_nodes
+from tests.utils import TestCaseMixins, flush_nodes
 from tests.testapp.autofixtures import BookFixture
 from tests.testapp.models import Book
 
 
-class FlushNodesTestCase(TestCase):
+class FlushNodesTestCase(TestCase, TestCaseMixins):
     """
     Make sure the flush_nodes context decorator is working.
     """
@@ -45,3 +45,6 @@ class FlushNodesTestCase(TestCase):
         klass = get_node_class_for_model(Book)
         self.assertEqual(len(klass.nodes.all()), 0)
 
+    def test_assert_is_json_mixin(self):
+        self.assertTrue(hasattr(self, 'assertIsJSON'))
+        self.assertIsJSON('[{"foo": "bar"}]')
