@@ -483,7 +483,9 @@ class ModelNodeMixin(ModelNodeMixinBase):
             for name, obj in rels.items():
 
                 relation_type = obj.definition['relation_type']
-                obj_attr = getattr(self._instance, name)
+                obj_attr = getattr(self._instance, name, None)
+                if not obj_attr:
+                    continue
 
                 if isinstance(obj_attr, models.Model):
 
