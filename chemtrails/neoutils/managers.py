@@ -187,7 +187,7 @@ class PathManager:
                 index = int(index)
                 traversal = self.get_traversal(relation_type)
                 if len(self._statements) - 1 < index:
-                    raise IndexError('Some nice error')
+                    raise IndexError('target index out of range')
                 defaults['target_index'] = index
                 # target_class = self._statements[index]['traversal'].target_class
                 # for t in filter(lambda prop: isinstance(prop, Traversal),
@@ -197,7 +197,7 @@ class PathManager:
                 #         break
             elif not relation_type:
                 raise ValueError('Cannot find relationship with empty relation type.')
-            if not traversal:
+            if traversal is None:
                 raise AttributeError('%(klass)r has no relation type %(relation_type)s' % {
                     'klass': self.next_class,
                     'relation_type': relation_type
