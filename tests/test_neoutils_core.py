@@ -426,12 +426,42 @@ class GraphMapperTestCase(TestCase):
         pass
 
     def test_ignored_model_sync(self):
-        # Make sure ignored models are not synced
-        pass
+        default = settings.IGNORE_MODELS
+        try:
+            settings.IGNORE_MODELS = ['auth.group']
+            group = Group.objects.create(name='group')
 
+            get_node_for_object(group).sync()
+            klass = get_node_class_for_model(Group)
+            try:
+                klass.nodes.get(pk=group.pk)
+                self.fail('Did not fail when trying to look up an ignored node class.')
+            except klass.DoesNotExist as e:
+                self.assertEqual(str(e), "{'pk': %d}" % group.pk)
+
+        finally:
+            settings.IGNORE_MODELS = default
+
+    @flush_nodes()
     def test_related_ignore_model_sync(self):
-        # Make sure an ignored related model is not synced
-        pass
+        default = settings.IGNORE_MODELS
+        try:
+            settings.IGNORE_MODELS = ['auth.group']
+            user = User.objects.create_user(username='testuser', password='test123.')
+            group = Group.objects.create(name='group')
+            user.groups.add(group)
+
+            get_node_for_object(user).sync()
+
+            klass = get_node_class_for_model(Group)
+            try:
+                klass.nodes.get(pk=group.pk)
+                self.fail('Did not fail when trying to look up an ignored node class.')
+            except klass.DoesNotExist as e:
+                self.assertEqual(str(e), "{'pk': %d}" % group.pk)
+
+        finally:
+            settings.IGNORE_MODELS = default
 
     @flush_nodes()
     def test_recursive_connect(self):
