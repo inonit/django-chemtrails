@@ -3,6 +3,7 @@
 from django import forms
 from django.conf.urls import url, include
 from django.contrib import admin
+from django.contrib.admin import SimpleListFilter
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -74,13 +75,27 @@ class AccessRuleForm(forms.ModelForm):
         return query
 
 
+class TargetContentTypeFilter(SimpleListFilter):
+    title = _('target content type')
+    parameter_name = 'ctype_target__model'
+
+    def lookups(self, request, model_admin):
+        queryset = model_admin.get_queryset(request)
+        return [(value, value) for value in queryset.values_list(self.parameter_name, flat=True)
+                .distinct().order_by(self.parameter_name)]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(models.Q(**{'%s__exact' % self.parameter_name: self.value()}))
+
+
 @admin.register(AccessRule)
 class AccessRuleAdmin(admin.ModelAdmin):
     form = AccessRuleForm
     actions = ('toggle_active',)
     list_display = ('short_description', 'ctype_target', 'ctype_source',
                     'requires_staff', 'is_active', 'updated')
-    list_filter = ('requires_staff', 'is_active', 'ctype_target')
+    list_filter = ('requires_staff', 'is_active', TargetContentTypeFilter)
     search_fields = ('description',)
     filter_horizontal = ('permissions',)
     fieldsets = (
@@ -96,6 +111,8 @@ class AccessRuleAdmin(admin.ModelAdmin):
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         formfield = super(AccessRuleAdmin, self).formfield_for_foreignkey(db_field, request, **kwargs)
+
+        # Order `ctype_source` and `ctype_target` by model name
         if db_field.name in ('ctype_source', 'ctype_target'):
             formfield.queryset = formfield.queryset.order_by('model')
         return formfield
