@@ -79,7 +79,7 @@ class JSONField(models.Field):
         return self.value_to_string(value)
 
     def to_python(self, value):
-        return self.value_to_string(value)
+        return json.loads(value, **self.load_kwargs)
 
     def validate(self, value, model_instance):
         if not self.null and value is None:
@@ -91,7 +91,10 @@ class JSONField(models.Field):
                                              code='invalid', params={'value': value})
 
     def value_to_string(self, value):
+        try:
+            value = self.value_from_object(value)
+        except AttributeError:
+            pass
         if isinstance(value, (dict, OrderedDict)):
             value = json.dumps(value, **self.dump_kwargs)
-            return json.dumps(json.loads(value, **self.load_kwargs), **self.dump_kwargs)
-        return super(JSONField, self).value_to_string(value)
+        return json.dumps(json.loads(value, **self.load_kwargs), **self.dump_kwargs)
