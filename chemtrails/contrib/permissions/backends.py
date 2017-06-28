@@ -3,9 +3,13 @@
 from django.contrib.auth.backends import ModelBackend
 from django.db import models
 
-from rest_framework.compat import is_authenticated
+from rest_framework.compat import is_anonymous
 
 from chemtrails.contrib.permissions.utils import GraphPermissionChecker, check_permissions_app_label
+
+
+def check_user_support(user_obj):
+    return not is_anonymous(user_obj) and user_obj.is_active
 
 
 class ChemoPermissionsBackend(ModelBackend):
@@ -32,7 +36,7 @@ class ChemoPermissionsBackend(ModelBackend):
         if not isinstance(obj, models.Model):
             return False
 
-        if not is_authenticated(user_obj):
+        if not check_user_support(user_obj):
             return False
 
         if '.' in perm:
@@ -45,7 +49,7 @@ class ChemoPermissionsBackend(ModelBackend):
         """
         Returns a list of permission strings that the given ``user_obj`` has for ``obj``.
         """
-        if not isinstance(obj, models.Model) or not is_authenticated(user_obj):
+        if not isinstance(obj, models.Model) or not check_user_support(user_obj):
             return set()
 
         checker = GraphPermissionChecker(user_obj)
