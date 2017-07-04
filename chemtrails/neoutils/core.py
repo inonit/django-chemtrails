@@ -642,8 +642,15 @@ class ModelNodeMixin(ModelNodeMixinBase):
                                 continue
                             if (remote_field.default == p.source_class._get_remote_field_name(f)
                                     and target_field.default == str(getattr(f, 'target_field', '')).lower()):
-                                p.connect(self)
-                                self._log_relationship_definition('Connected', self, p)
+
+                                # Make sure the related field is connected to the correct node instance
+                                source = getattr(node.get_object(node.pk), p.name, None)
+                                instance = self.get_object(self.pk)
+                                if ((isinstance(source, Manager) and instance in source.all())
+                                    or (isinstance(source, models.Model)
+                                        and getattr(source, p.name, None) == instance)):
+                                    p.connect(self)
+                                    self._log_relationship_definition('Connected', self, p)
 
         def disconnect(node, prop):
             """
@@ -678,6 +685,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
         if not instance:
             return
 
+        logger.info('Mapping relationships for object %(instance)r' % {'instance': instance})
         for attr, relation in self.defined_properties(aliases=False, properties=False).items():
             prop = getattr(self, attr)
             klass = relation.definition['node_class']
