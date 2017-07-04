@@ -21,8 +21,11 @@ from chemtrails.utils import flatten
 
 from tests.utils import flush_nodes
 from tests.testapp.autofixtures import (
-    Author,
-    Book, BookFixture, Publisher, PublisherFixture, Store, StoreFixture, Tag
+    Author, AuthorFixture,
+    Book, BookFixture,
+    Publisher, PublisherFixture,
+    Store, StoreFixture,
+    Tag
 )
 
 
@@ -184,6 +187,16 @@ class ModelNodeTestCase(TestCase):
 
         node.sync()
         self.assertEqual(group.name, node.name)
+
+    @flush_nodes()
+    def test_inflate_node_class_raises_inflate_error(self):
+        # Make sure the InflateError is raised if trying
+        # to inflate nodes with wrong model
+        author = AuthorFixture(Author).create_one()
+        deflated, _ = list(flatten(db.cypher_query('MATCH (u: UserNode {pk: %d}) RETURN u;' % author.user.pk)))
+
+        node_class = get_node_class_for_model(Author)
+        self.assertRaises(InflateError, node_class.inflate, deflated)
 
 
 class MetaNodeTestCase(TestCase):
