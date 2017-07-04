@@ -232,7 +232,7 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True,
             queries.append(manager.get_path())
 
     q_values = Q()
-    klass = get_node_class_for_model(queryset.model)
+    node_class = get_node_class_for_model(queryset.model)
     for query in queries:
         # FIXME: https://github.com/inonit/libcypher-parser-python/issues/1
         # validate_cypher(query, raise_exception=True)
@@ -244,8 +244,8 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True,
                     continue  # pragma: no cover
                 try:
                     start, end = (get_node_class_for_model(user).inflate(item.start),
-                                  klass.inflate(item.end))
-                    if start == source_node and isinstance(end, klass):
+                                  node_class.inflate(item.end))
+                    if start == source_node and isinstance(end, node_class):
                         values.add(item.end.properties['pk'])
                 except (KeyError, InflateError):  # pragma: no cover
                     continue
