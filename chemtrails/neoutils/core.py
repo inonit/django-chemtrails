@@ -285,7 +285,8 @@ class ModelNodeMixinBase:
             model=get_model_string(field.model),
             field=(field.related_name or '%s_set' % field.name
                    if not isinstance(field, (models.OneToOneRel, GenericRelation)) else field.name)) if reverse_field
-                   else field.remote_field.field if not isinstance(field, GenericForeignKey) else field.name).lower()
+                   else field.remote_field.field if not isinstance(field, GenericForeignKey)
+                   else str(field)).lower()
 
     @staticmethod
     def get_property_class_for_field(klass):
@@ -462,6 +463,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
                 relationship = self.defined_properties(aliases=False, properties=False).get(field.name, None)
                 if isinstance(getattr(self._instance, field.name, None), models.Model) and relationship:
                     node_class = get_node_class_for_model(getattr(self._instance, field.name))
+                    relationship.definition['model'].target_field.default = str(node_class._pk_field).lower()
                     relationship.definition['node_class'] = node_class
 
     def __repr__(self):
@@ -667,9 +669,10 @@ class ModelNodeMixin(ModelNodeMixinBase):
                 prop.connect(node)
                 self._log_relationship_definition('Connected', node, prop)
                 for p, r in node.defined_properties(aliases=False, properties=False).items():
+                    # Iterate all relationship properties for node and connect the
+                    # "reverse" side of the relationship back.
                     p = getattr(node, p)
                     if issubclass(p.definition['node_class'], self.__class__):
-                        # Make sure we only connects the "reverse" relation of ``prop``.
                         remote_field = p.definition['model'].remote_field
                         target_field = p.definition['model'].target_field
 
@@ -681,8 +684,6 @@ class ModelNodeMixin(ModelNodeMixinBase):
                                 continue
                             if (remote_field.default == p.source_class._get_remote_field_name(f)
                                     and target_field.default == str(getattr(f, 'target_field', '')).lower()):
-
-                                # Make sure the related field is connected to the correct node instance
                                 source = getattr(node.get_object(node.pk), p.name, None)
                                 instance = self.get_object(self.pk)
                                 if ((isinstance(source, Manager) and instance in source.all())
@@ -700,7 +701,8 @@ class ModelNodeMixin(ModelNodeMixinBase):
             for p, r in node.defined_properties(aliases=False, properties=False).items():
                 p = getattr(node, p)
                 if issubclass(p.definition['node_class'], self.__class__):
-                    # Make sure we only disconnects the "reverse" relation of ``prop``.
+                    # Iterate all relationship properties for node and disconnect the
+                    # "reverse" side of the relationship.
                     remote_field = p.definition['model'].remote_field
                     target_field = p.definition['model'].target_field
 
