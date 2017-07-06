@@ -11,7 +11,7 @@ from django.db.models import Manager
 from django.contrib.contenttypes.fields import GenericRelation, GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ImproperlyConfigured, ValidationError, ObjectDoesNotExist
-from django.contrib.postgres.fields import ArrayField, HStoreField, JSONField, RangeField
+from django.contrib.postgres.fields import HStoreField, JSONField, RangeField
 from django.utils.translation import ungettext
 
 from neomodel import *
@@ -27,7 +27,7 @@ field_property_map = {
     models.ManyToOneRel: RelationshipTo,
     models.OneToOneRel: RelationshipTo,
     models.ManyToManyRel: RelationshipTo,
-    # GenericForeignKey: RelationshipTo,  # TODO: Implement
+    GenericForeignKey: RelationshipTo,
     GenericRelation: RelationshipTo,
 
     models.AutoField: IntegerProperty,
@@ -57,7 +57,6 @@ field_property_map = {
     models.UUIDField: StringProperty,
 
     # PostgreSQL special fields
-    # ArrayField: ArrayProperty,
     HStoreField: JSONProperty,
     JSONField: JSONProperty
 }
@@ -285,8 +284,8 @@ class ModelNodeMixinBase:
         return str('{model}.{field}'.format(
             model=get_model_string(field.model),
             field=(field.related_name or '%s_set' % field.name
-                   if not isinstance(field, (models.OneToOneRel, GenericRelation)) else field.name))
-                   if reverse_field else field.remote_field.field).lower()
+                   if not isinstance(field, (models.OneToOneRel, GenericRelation)) else field.name)) if reverse_field
+                   else field.remote_field.field if not isinstance(field, GenericForeignKey) else field.name).lower()
 
     @staticmethod
     def get_property_class_for_field(klass):
@@ -321,6 +320,7 @@ class ModelNodeMixinBase:
                 not field.auto_created or field.concrete
                 or field.one_to_one
                 or (field.many_to_one and field.related_model)
+                or isinstance(field, GenericForeignKey)
             )
         ]
 
@@ -380,16 +380,17 @@ class ModelNodeMixinBase:
         prop = cls.get_property_class_for_field(field.__class__)
         relationship_type = cls.get_relationship_type(field)
 
+        related_model = field.model if isinstance(field, GenericForeignKey) else field.related_model
         if meta_node:
-            klass = (__meta_cache__[field.related_model]
-                     if field.related_model in __meta_cache__
-                     else get_meta_node_class_for_model(field.related_model))
+            klass = (__meta_cache__[related_model]
+                     if related_model in __meta_cache__
+                     else get_meta_node_class_for_model(related_model))
             return (prop(cls_name=klass, rel_type=relationship_type, model=DynamicRelation)
                     if not klass._is_ignored else None)
         else:
-            klass = (__node_cache__[field.related_model]
-                     if reverse_field and field.related_model in __node_cache__
-                     else get_node_class_for_model(field.related_model))
+            klass = (__node_cache__[related_model]
+                     if reverse_field and related_model in __node_cache__
+                     else get_node_class_for_model(related_model))
             return (prop(cls_name=klass, rel_type=relationship_type, model=DynamicRelation)
                     if not klass._is_ignored else None)
 
@@ -446,6 +447,22 @@ class ModelNodeMixin(ModelNodeMixinBase):
             if not self._instance:
                 # If instantiated without an instance, try to look it up.
                 self._instance = self.get_object(self.pk)
+
+        if self._instance:
+            # For GenericForeignKey fields, we have no way of knowing what kind of
+            # what object it is related to during class creation, thus the relationship
+            # definition is set to refer itself.
+            # When initializing we have access to the underlying django object instance and
+            # can inspect it, so we need to switch out the relationship definition
+            # node class in order to connect to the correct node.
+            from chemtrails.neoutils import get_node_class_for_model
+            generic_fks = filter(lambda f: isinstance(f, GenericForeignKey),
+                                 self.get_forward_relation_fields())
+            for field in generic_fks:
+                relationship = self.defined_properties(aliases=False, properties=False).get(field.name, None)
+                if isinstance(getattr(self._instance, field.name, None), models.Model) and relationship:
+                    node_class = get_node_class_for_model(getattr(self._instance, field.name))
+                    relationship.definition['node_class'] = node_class
 
     def __repr__(self):
         return '<{label}: {id}>'.format(label=self.__class__.__label__, id=self.id if self._is_bound else None)
