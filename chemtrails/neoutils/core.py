@@ -322,21 +322,16 @@ class ModelNodeMixinBase:
         Returns the cardinality for ``field``.
         """
         cardinalities = {
-            models.ForeignKey: (ZeroOrOne, One),
-            models.ManyToOneRel: (ZeroOrMore, OneOrMore),
-            models.OneToOneField: (ZeroOrOne, One),
-            models.OneToOneRel: (ZeroOrOne, One),
-            models.ManyToManyField: (ZeroOrMore, ZeroOrMore),  # Null has no effect on m2m fields
-            models.ManyToManyRel: (ZeroOrMore, ZeroOrMore),
-            GenericForeignKey: (ZeroOrOne, One),
-            GenericRelation: (ZeroOrOne, One)
+            models.ForeignKey: ZeroOrOne,
+            models.ManyToOneRel: ZeroOrMore,
+            models.OneToOneField: ZeroOrOne,
+            models.OneToOneRel: ZeroOrOne,
+            models.ManyToManyField: ZeroOrMore,
+            models.ManyToManyRel: ZeroOrMore,
+            GenericForeignKey: ZeroOrOne,
+            GenericRelation: ZeroOrMore
         }
-        nullable, not_nullable = cardinalities[field.__class__]
-        if not hasattr(field, 'null') or field.null:
-            # Defaults to nullable field for safety
-            return nullable
-        else:
-            return not_nullable
+        return cardinalities[field.__class__]
 
     @classmethod
     def get_forward_relation_fields(cls):
