@@ -131,8 +131,8 @@ class ModelNodeMeta(NodeBase):
         # Add some default fields
         cls.type = StringProperty(default='ModelNode')
         cls.pk = cls.get_property_class_for_field(cls._pk_field.__class__)(unique_index=True)
-        cls.app_label = StringProperty(default=cls.Meta.app_label)
-        cls.model_name = StringProperty(default=cls.Meta.model._meta.model_name)
+        cls._app_label = StringProperty(default=cls.Meta.model._meta.app_label)
+        cls._model_name = StringProperty(default=cls.Meta.model._meta.model_name)
 
         forward_relations = cls.get_forward_relation_fields()
         reverse_relations = cls.get_reverse_relation_fields()
@@ -323,7 +323,7 @@ class ModelNodeMixinBase:
         """
         cardinalities = {
             models.ForeignKey: (ZeroOrOne, One),
-            models.ManyToOneRel: (ZeroOrOne, One),
+            models.ManyToOneRel: (ZeroOrMore, OneOrMore),
             models.OneToOneField: (ZeroOrOne, One),
             models.OneToOneRel: (ZeroOrOne, One),
             models.ManyToManyField: (ZeroOrMore, ZeroOrMore),  # Null has no effect on m2m fields
@@ -645,7 +645,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
         """
         try:
             return self._instance or ContentType.objects.get(
-                app_label=self.app_label, model=self.model_name).get_object_for_this_type(
+                app_label=self._app_label, model=self._model_name).get_object_for_this_type(
                 pk=pk or getattr(self, 'pk', None))
         except ObjectDoesNotExist:
             return None
@@ -877,8 +877,8 @@ class MetaNodeMeta(NodeBase):
         # Add some default fields
         cls.type = StringProperty(default='MetaNode')
         cls.label = StringProperty(default=cls.Meta.model._meta.label, unique_index=True)
-        cls.app_label = StringProperty(default=cls.Meta.model._meta.app_label)
-        cls.model_name = StringProperty(default=cls.Meta.model._meta.model_name)
+        cls._app_label = StringProperty(default=cls.Meta.model._meta.app_label)
+        cls._model_name = StringProperty(default=cls.Meta.model._meta.model_name)
         cls.model_permissions = ArrayProperty(default=cls.get_model_permissions(cls.Meta.model))
         cls.is_intermediary = BooleanProperty(default=not ContentType.objects.filter(
             app_label=cls.Meta.model._meta.app_label, model=cls.Meta.model._meta.model_name).exists())
@@ -1019,8 +1019,8 @@ class MetaNodeMixin(ModelNodeMixin):
 
         if update_existing:
             if not self._is_bound:
-                node = cls.nodes.get_or_none(**{'app_label': self.app_label,
-                                                'model_name': self.model_name})
+                node = cls.nodes.get_or_none(**{'_app_label': self._app_label,
+                                                '_model_name': self._model_name})
                 if node:
                     self.id = node.id
 
