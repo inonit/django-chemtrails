@@ -421,27 +421,25 @@ class ModelNodeMixinBase:
             return (prop(cls_name=klass, rel_type=relationship_type, model=DynamicRelation,
                          cardinality=cls.get_cardinality_for_field(field)) if not klass._is_ignored else None)
 
-    # FIXME: WIP Critical bug
-    # https://github.com/inonit/django-chemtrails/issues/44
-    # @classmethod
-    # def inflate(cls, node):
-    #     n = super(ModelNodeMixinBase, cls).inflate(node)
-    #     kwargs = {
-    #         'cls': cls,
-    #         'obj': node,
-    #         'msg': ('Can not inflate node with properties %(props)s '
-    #                 'to node class %(class)r.' % {
-    #                     'props': ', '.join(['='.join([k, str(v)]) for k, v in node.properties.items()]),
-    #                     'class': cls
-    #                 })
-    #     }
-    #     if not n.app_label == cls.Meta.model._meta.app_label:
-    #         kwargs.update({'key': 'app_label', 'msg': kwargs['msg'] + ' Property mismatch: app_label.'})
-    #         raise InflateError(**kwargs)
-    #     elif not n.model_name == cls.Meta.model._meta.model_name:
-    #         kwargs.update({'key': 'model_name', 'msg': kwargs['msg'] + ' Property mismatch: model_name.'})
-    #         raise InflateError(**kwargs)
-    #     return n
+    @classmethod
+    def inflate(cls, node):
+        n = super(ModelNodeMixinBase, cls).inflate(node)
+        kwargs = {
+            'cls': cls,
+            'obj': node,
+            'msg': ('Can not inflate node with properties %(props)s '
+                    'to node class %(class)r.' % {
+                        'props': ', '.join(['='.join([k, str(v)]) for k, v in node.properties.items()]),
+                        'class': cls
+                    })
+        }
+        if not n._app_label == cls.Meta.model._meta.app_label:
+            kwargs.update({'key': '_app_label', 'msg': kwargs['msg'] + ' Wrong app_label.'})
+            raise InflateError(**kwargs)
+        elif not n._model_name == cls.Meta.model._meta.model_name:
+            kwargs.update({'key': '_model_name', 'msg': kwargs['msg'] + ' Wrong model_name.'})
+            raise InflateError(**kwargs)
+        return n
 
     def sync(self, *args, **kwargs):
         """
