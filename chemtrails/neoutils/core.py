@@ -22,10 +22,10 @@ logger = logging.getLogger(__name__)
 
 field_property_map = {
     models.ForeignKey: RelationshipTo,
-    models.OneToOneField: RelationshipTo,
-    models.ManyToManyField: RelationshipTo,
     models.ManyToOneRel: RelationshipTo,
+    models.OneToOneField: RelationshipTo,
     models.OneToOneRel: RelationshipTo,
+    models.ManyToManyField: RelationshipTo,
     models.ManyToManyRel: RelationshipTo,
     GenericForeignKey: RelationshipTo,
     GenericRelation: RelationshipTo,
@@ -152,6 +152,9 @@ class ModelNodeMeta(NodeBase):
                 relation = cls.get_related_node_property_for_field(field)
                 if relation:
                     cls.add_to_class(field.name, relation)
+                    if isinstance(field, models.ForeignKey):
+                        cls.add_to_class(field.attname,
+                                         cls.get_property_class_for_field(field.target_field.__class__)())
 
             # Add reverse relations
             elif field in reverse_relations:
@@ -313,6 +316,28 @@ class ModelNodeMixinBase:
 
         raise NotImplementedError('Unsupported field. Field %s is currently not supported.' % klass.__name__)
 
+    @staticmethod
+    def get_cardinality_for_field(field):
+        """
+        Returns the cardinality for ``field``.
+        """
+        cardinalities = {
+            models.ForeignKey: (ZeroOrOne, One),
+            models.ManyToOneRel: (ZeroOrOne, One),
+            models.OneToOneField: (ZeroOrOne, One),
+            models.OneToOneRel: (ZeroOrOne, One),
+            models.ManyToManyField: (ZeroOrMore, ZeroOrMore),  # Null has no effect on m2m fields
+            models.ManyToManyRel: (ZeroOrMore, ZeroOrMore),
+            GenericForeignKey: (ZeroOrOne, One),
+            GenericRelation: (ZeroOrOne, One)
+        }
+        nullable, not_nullable = cardinalities[field.__class__]
+        if not hasattr(field, 'null') or field.null:
+            # Defaults to nullable field for safety
+            return nullable
+        else:
+            return not_nullable
+
     @classmethod
     def get_forward_relation_fields(cls):
         return [
@@ -387,13 +412,14 @@ class ModelNodeMixinBase:
                      if related_model in __meta_cache__
                      else get_meta_node_class_for_model(related_model))
             return (prop(cls_name=klass, rel_type=relationship_type, model=DynamicRelation)
-                    if not klass._is_ignored else None)
+                         # FIXME: Support cardinality for MetaNodes
+                         if not klass._is_ignored else None)
         else:
             klass = (__node_cache__[related_model]
                      if reverse_field and related_model in __node_cache__
                      else get_node_class_for_model(related_model))
-            return (prop(cls_name=klass, rel_type=relationship_type, model=DynamicRelation)
-                    if not klass._is_ignored else None)
+            return (prop(cls_name=klass, rel_type=relationship_type, model=DynamicRelation,
+                         cardinality=cls.get_cardinality_for_field(field)) if not klass._is_ignored else None)
 
     # FIXME: WIP Critical bug
     # https://github.com/inonit/django-chemtrails/issues/44
@@ -665,12 +691,13 @@ class ModelNodeMixin(ModelNodeMixinBase):
             """
             Connect both sides of the relationship.
             """
-            if node not in prop.all() and isinstance(node, prop.definition['node_class']):
+            if not prop.is_connected(node) and isinstance(node, prop.definition['node_class']):
                 prop.connect(node)
                 self._log_relationship_definition('Connected', node, prop)
                 for p, r in node.defined_properties(aliases=False, properties=False).items():
                     # Iterate all relationship properties for node and connect the
                     # "reverse" side of the relationship back.
+                    # NOTE: Simplify this anyone?
                     p = getattr(node, p)
                     if issubclass(p.definition['node_class'], self.__class__):
                         remote_field = p.definition['model'].remote_field
@@ -684,13 +711,27 @@ class ModelNodeMixin(ModelNodeMixinBase):
                                 continue
                             if (remote_field.default == p.source_class._get_remote_field_name(f)
                                     and target_field.default == str(getattr(f, 'target_field', '')).lower()):
-                                source = getattr(node.get_object(node.pk), p.name, None)
+
                                 instance = self.get_object(self.pk)
-                                if ((isinstance(source, Manager) and instance in source.all())
+                                source = getattr(node.get_object(node.pk), p.name, None)
+
+                                # If `source` is a manager, query for existence of `instance`
+                                if ((isinstance(source, Manager) and source.filter(pk=instance.pk).exists())
+
+                                    # Or, if `source` is a model instance, check if it has an attribute
+                                    # `p.name` which is the `instance`
                                     or (isinstance(source, models.Model)
-                                        and getattr(source, p.name, None) == instance)):
-                                    p.connect(self)
-                                    self._log_relationship_definition('Connected', self, p)
+                                        and getattr(source, p.name, None) == instance)
+
+                                    # Or, if field `f` is a OneToOneField or OneToOneRel and
+                                    # `source` equals the `instance`
+                                    or (isinstance(source, models.Model)
+                                        and isinstance(f, (models.OneToOneField, models.OneToOneRel))
+                                        and source == instance)):
+
+                                    if not p.is_connected(self):
+                                        p.connect(self)
+                                        self._log_relationship_definition('Connected', self, p)
 
         def disconnect(node, prop):
             """
