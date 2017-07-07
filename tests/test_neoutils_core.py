@@ -492,7 +492,13 @@ class GraphMapperTestCase(TestCase):
                     # can be made, because the connected objects might not exist.
                     for prop in book_node.defined_properties(aliases=False, properties=False).keys():
                         relation = getattr(book_node, prop)
-                        self.assertEqual(len(relation.all()), 0)
+                        try:
+                            self.assertEqual(len(relation.all()), 0)
+                        except CardinalityViolation:
+                            # Will raise CardinalityViolation for nodes which has a single
+                            # required relationship
+                            continue
+
                 elif depth == 1:
                     self.assertEqual(0, len(get_node_class_for_model(Book).nodes.has(store_set=True)))
                     self.assertEqual(0, len(get_node_class_for_model(Store).nodes.has(books=True)))

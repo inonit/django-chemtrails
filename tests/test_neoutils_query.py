@@ -13,9 +13,9 @@ class QueryFunctionsTestCase(TestCase):
 
     def test_get_relationship_types(self):
         expected = ['ACCESSRULE', 'ACCESSRULE_CTYPE_SOURCE_SET', 'ACCESSRULE_CTYPE_TARGET_SET', 'ACCESSRULE_PERMISSIONS',
-                    'AUTHOR', 'AUTHORS', 'BESTSELLER', 'BESTSELLER_STORES', 'BOOK', 'BOOKS', 'CONTACT', 'CONTENT_TYPE',
-                    'CONTENT_TYPE_SET_FOR_TAG', 'CTYPE_SOURCE', 'CTYPE_TARGET', 'GROUP', 'GROUPS', 'GUILD',
-                    'GUILDS', 'GUILD_CONTACTS', 'GUILD_SET', 'MEMBERS',
+                    'AUTHOR', 'AUTHORS', 'BESTSELLER', 'BESTSELLER_STORES', 'BOOK', 'BOOKS', 'CONTACT',
+                    'CONTENT_OBJECT', 'CONTENT_TYPE', 'CONTENT_TYPE_SET_FOR_TAG', 'CTYPE_SOURCE', 'CTYPE_TARGET',
+                    'GROUP', 'GROUPS', 'GUILD', 'GUILDS', 'GUILD_CONTACTS', 'GUILD_SET', 'MEMBERS',
                     'PERMISSION', 'PERMISSIONS', 'PUBLISHER', 'STORE', 'TAGS', 'USER', 'USER_PERMISSIONS', 'USER_SET']
         self.assertEqual(expected, query.get_relationship_types())
 
@@ -27,7 +27,7 @@ class QueryFunctionsTestCase(TestCase):
             self.assertIsInstance(val, list)
 
     def test_get_node_relationship_types_with_params(self):
-        params = {'type': 'MetaNode', 'app_label': 'auth'}
+        params = {'type': 'MetaNode', '_app_label': 'auth'}
         result = query.get_node_relationship_types(params)
         self.assertIsInstance(result, dict)
         self.assertTrue(len(result), 6)
