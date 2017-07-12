@@ -470,7 +470,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
 
         if self._instance:
             # For GenericForeignKey fields, we have no way of knowing what kind of
-            # what object it is related to during class creation, thus the relationship
+            # object it is related to during class creation, thus the relationship
             # definition is set to refer itself.
             # When initializing we have access to the underlying django object instance and
             # can inspect it, so we need to switch out the relationship definition
