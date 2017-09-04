@@ -8,10 +8,11 @@ Chemtrails - Graphing Django
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: Table of Contents:
+   :name: mastertoc
 
    01_configuration
-   02_development
+   02_contrib_permissions
 
 About
 =====
@@ -30,7 +31,9 @@ Features
 Installation
 ============
 
-Soon in a cheese shop near you!
+.. code-block:: none
+
+    $ pip install django-chemtrails
 
 Requirements
 ============
