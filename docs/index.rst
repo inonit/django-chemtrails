@@ -20,8 +20,6 @@ About
 This project aims to solve complex object based permissions by utilizing the relationships
 between entities in a graph.
 
-`Why the stupid name?` - I just love conspiracy theorists =)
-
 Features
 ========
 
