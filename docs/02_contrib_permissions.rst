@@ -188,3 +188,6 @@ Other security measures
 Finally we have the ``Requires staff`` and the ``Is active`` fields. They should be pretty self-explanatory, where
 the first requires the authenticated user to be a *staff* user, and the latter can be used to deactivate a rule
 instead of deleting it. Inactive rules will not be evaluated.
+
+
+.. image:: _static/admin-add-access-rules07.png
