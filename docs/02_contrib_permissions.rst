@@ -12,9 +12,9 @@ Once we have the database mapped and synchronized we have the ability to read re
 brand new way. We now can generate paths, and inspect the way our dataset is related in a much broader
 way than we can with a pure relational database.
 
-One thing we can do is to exploit this and build a permission system on top of it. Let's say user Esther in
-the picture above authenticates into the book store application. We want her to access all books she has
-written. This can be achieved by the executing the following
+One thing we can do is to exploit this and build a permission system on top of it. Let's say we have a user
+Esther in the picture above (I know she's not there, it's an old image) which authenticates into the book
+store application. We want her to access all books she has written. This can be achieved by the executing the following
 `Cypher <https://neo4j.com/developer/cypher-query-language/#_about_cypher>`_ statement.
 
 .. code-block:: cypher
