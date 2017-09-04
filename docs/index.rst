@@ -2,7 +2,7 @@
 Chemtrails - Graphing Django
 ============================
 
-.. image:: _static/chemtrails.png
+.. image:: _static/chemtrails_bw.png
     :alt: Mind control, no doubt!
 
 
