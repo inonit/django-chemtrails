@@ -33,7 +33,7 @@ try:
         django.setup()
 
 except ImportError:
-    use_sphinx_rtd_theme = False
+    use_sphinx_rtd_theme = os.environ.get('READTHEDOCS', False)
 
 
 def get_version(package):
