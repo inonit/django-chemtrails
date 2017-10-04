@@ -46,12 +46,15 @@ class AccessRuleForm(forms.ModelForm):
         # TODO: This should be DRY'ed up!
         fake_model = instance.ctype_source.model_class()(pk=0)
         manager = get_node_for_object(fake_model).paths
+        if instance.direction is not None:
+            manager.direction = instance.direction
+
         error_message = _('Unable to validate cypher statement.\nError was: "%(error)s".')
 
         query = None
         for n, rule_definition in enumerate(instance.relation_types_obj):
             relation_type, target_props = zip(*rule_definition.items())
-            relation_type, target_props = relation_type[0], target_props[0]  # TODO: This should be validated before save!
+            relation_type, target_props = relation_type[0], target_props[0]
 
             source_props = {}
             if n == 0 and instance.requires_staff:
@@ -100,7 +103,7 @@ class AccessRuleAdmin(admin.ModelAdmin):
     filter_horizontal = ('permissions',)
     fieldsets = (
         (None, {'fields': ('ctype_source', 'ctype_target', 'description', 'permissions',
-                           'relation_types', 'cypher_statement', 'requires_staff', 'is_active')}),
+                           'relation_types', 'direction', 'cypher_statement', 'requires_staff', 'is_active')}),
         ('Dates', {'fields': ('created', 'updated')})
         # ('Rule editor', {'fields': ('graph',)}),
     )

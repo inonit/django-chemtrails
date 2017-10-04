@@ -62,6 +62,10 @@ class PathManager:
         # Keep track of the next source class.
         self.___next_class__ = source
 
+        # Override default direction. If set to -1, 0 or 1 this
+        # will affect **all** directions in the query!
+        self.__direction__ = None
+
     @property
     def traversals(self):
         """
@@ -79,6 +83,14 @@ class PathManager:
     @next_class.setter
     def next_class(self, klass):
         self.___next_class__ = klass
+
+    @property
+    def direction(self):
+        return self.__direction__
+
+    @direction.setter
+    def direction(self, direction):
+        self.__direction__ = direction
 
     @property
     def statement(self):
@@ -102,8 +114,8 @@ class PathManager:
                 return '{0}: {1}'.format(ident, label)
 
         # Matches ie. (source1: UserNode {...}) as long as it's followed
-        # by a "-[" which indicates the beginning of a relationship.
-        pattern = re.compile(r'^(\(source\d+:.\w+(.{\w+:.[A-Za-z0-9\'"_]+})?\)(?=-\[))')
+        # by a "-[" or "<-[" which indicates the beginning of a relationship.
+        pattern = re.compile(r'^(\(source\d+:.\w+(.{\w+:.[A-Za-z0-9\'"_]+})?\)(?=<?-\[))')
 
         statements = []
         for n, config in enumerate(self._statements):
@@ -123,6 +135,13 @@ class PathManager:
 
             # Replace placeholders with actual values.
             defaults = config['relation_props'].copy()
+
+            # Check if we should override direction
+            if self.direction is not None:
+                assert self.direction in (INCOMING, EITHER, OUTGOING), (
+                    'Direction must be one of %s.' % ', '.join((INCOMING, EITHER, OUTGOING)))
+                config['traversal'].definition['direction'] = self.direction
+
             atom = build_relation_string(lhs='{source}', rhs='{target}',
                                          props={key: '{{{0}}}'.format(key) for key in defaults.keys()},
                                          **config['traversal'].definition)
@@ -130,7 +149,8 @@ class PathManager:
             source_props = self.resolve_filters(config['source_props'])
             if not inspect.isclass(config['source_class']):
                 # If we have a node instance, always match its primary key!
-                source_props['pk'] = config['source_class'].pk
+                if hasattr(config['source_class'], 'pk'):
+                    source_props['pk'] = config['source_class'].pk
 
             target_props = self.resolve_filters(config['target_props'])
 

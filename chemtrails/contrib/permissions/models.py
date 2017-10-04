@@ -11,6 +11,8 @@ from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
 
+from neomodel.match import OUTGOING, INCOMING, EITHER
+
 from chemtrails.contrib.permissions.forms import JSONField
 from chemtrails.neoutils.query import get_node_relationship_types, get_node_permissions, get_relationship_types
 
@@ -31,6 +33,13 @@ def get_relationship_types_choices():
 
 
 class AccessRule(models.Model):
+
+    DIRECTION_CHOICES = (
+        (INCOMING, _('INCOMING')),
+        (EITHER, _('EITHER')),
+        (OUTGOING, _('OUTGOING'))
+    )
+
     ctype_source = models.ForeignKey(ContentType, verbose_name=_('source content type'),
                                      related_name='accessrule_ctype_source_set')
     ctype_target = models.ForeignKey(ContentType, verbose_name=_('target content type'),
@@ -43,6 +52,11 @@ class AccessRule(models.Model):
                                 help_text=_('List of relation type rule definitions, optionally with a map '
                                             'of properties for matching the relation type node. '
                                             'Example: {"USER": {"is_superuser": true}}, {"GROUP": null}'))
+    direction = models.SmallIntegerField(verbose_name=_('direction'), choices=DIRECTION_CHOICES,
+                                         blank=True, null=True, default=None,
+                                         help_text=_('Override calculated direction for relationships.<br/> '
+                                                     'Use with caution, this will affect *all* directional '
+                                                     'relationships for evaluation of this rule!'))
     is_active = models.BooleanField(default=True, help_text=_('Uncheck to disable evaluation of the rule '
                                                               'in the rule chain.'))
     requires_staff = models.BooleanField(default=False, help_text=_('Requires user which should have '
