@@ -15,7 +15,7 @@ from django.contrib.postgres.fields import HStoreField, JSONField, RangeField
 from django.utils.translation import ungettext
 
 from neomodel import *
-from chemtrails import settings
+from chemtrails.conf import settings
 from chemtrails.utils import get_model_string, flatten, timeit
 
 logger = logging.getLogger(__name__)
@@ -251,6 +251,7 @@ class ModelNodeMixinBase:
             '{app_label}.*'.format(app_label=cls.Meta.app_label),
             get_model_string(cls.Meta.model)
         )
+        from chemtrails.conf import settings
         return any(match in settings.IGNORE_MODELS for match in lookups)
 
     @classproperty
@@ -795,11 +796,13 @@ class ModelNodeMixin(ModelNodeMixinBase):
                 if len(nodeset) != source.count():
                     existing = [n.pk for n in nodeset]
                     for obj in source.exclude(pk__in=existing):
-                        node = get_node_for_object(obj).save()
-                        logger.info('Created missing node %(node)r while synchronizing %(instance)r' % {
-                            'node': node,
-                            'instance': instance
-                        })
+                        node = get_node_for_object(obj)
+                        if not node._is_ignored:
+                            node.save()
+                            logger.info('Created missing node %(node)r while synchronizing %(instance)r' % {
+                                'node': node,
+                                'instance': instance
+                            })
                     nodeset = klass.nodes.filter(pk__in=list(source.values_list('pk', flat=True)))
 
                 for node in nodeset:
