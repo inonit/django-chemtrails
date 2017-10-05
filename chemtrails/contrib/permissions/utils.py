@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
+import operator
 from itertools import chain
+from functools import reduce
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser, Group, Permission
@@ -8,13 +10,14 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q, Count
 from django.shortcuts import _get_queryset
 from django.utils.encoding import force_text
+from django.utils.translation import ngettext_lazy
 
-from neo4j.v1 import Node, Path
+from neo4j.v1 import Path
 from neomodel import db
 from rest_framework.compat import is_anonymous
 
 from chemtrails.contrib.permissions.exceptions import MixedContentTypeError
-from chemtrails.neoutils import get_node_class_for_model, InflateError
+from chemtrails.neoutils import InflateError, get_node_class_for_model, get_node_for_object
 from chemtrails.neoutils.query import validate_cypher
 from chemtrails.contrib.permissions.models import AccessRule
 from chemtrails.utils import flatten
@@ -60,6 +63,26 @@ def get_user_perms(user, model):
     """
     checker = GraphPermissionChecker(user)
     return checker.get_user_perms(model)
+
+
+def get_access_rules(ctype_source, ctype_target, codenames):
+    """
+    Retrieve all defined access rules originating from ``ctype_source``
+    and targeting ``ctype_target``.
+
+    :param ctype_source: Content type source
+    :param ctype_target: Content type target
+    :param codenames: Sequence of permission codenames
+
+    :returns: Queryset containing active access rules.
+    """
+    # To reduce search space, first retrieve all access rules with n or greater permissions count.
+    queryset = (AccessRule.objects.prefetch_related('permissions')
+                .annotate(count=Count('permissions')).filter(count__gte=len(codenames)))
+    queryset = queryset.filter(ctype_source=ctype_source,
+                               ctype_target=ctype_target, is_active=True,
+                               permissions__codename__in=codenames)
+    return queryset
 
 
 def check_permissions_app_label(permissions):
@@ -109,12 +132,110 @@ def check_permissions_app_label(permissions):
     return ctype, codenames
 
 
-def get_users_with_perms(obj, attach_perms=False, with_superusers=False, with_group_users=True):
+def get_users_with_perms(obj, permissions, with_superusers=False, with_group_users=True):
     """
     Returns a queryset of all ``User`` objects which there can be calculated a path from
     the given ``obj``.
+
+    :param obj: model instance.
+    :param permissions: Single permission string, or sequence of permissions strings
+      that user requires to have.
+    :param with_superusers: Default: ``False``. If set to ``True`` result would
+      include all superusers.
+    :param with_group_users: Default: ``True``. If set to ``False`` result would
+      **not** include users which has only group permissions for given ``obj``.
+
+    :raises MixedContentTypeError: If computed content type for ``permissions``
+      and/or ``obj`` clashes.
+
+    :returns: Queryset containing ``User`` objects which has ``permissions`` for ``obj``.
     """
-    raise NotImplementedError
+    ctype, codenames = check_permissions_app_label(permissions)
+    if ctype is None:
+        ctype = get_content_type(obj)
+        if codenames:
+            # Make sure permissions are valid.
+            _codenames = set(ctype.permission_set.filter(codename__in=codenames)
+                             .values_list('codename', flat=True))
+            if not codenames == _codenames:
+                message = ngettext_lazy(
+                    'Calculated content type from permission "%s" does not match %r.' % (next(iter(codenames)), ctype),
+                    'One or more permissions "%s" from calculated content type does not match %r.' %
+                    (', '.join(sorted(codenames)), ctype),
+                    len(codenames))
+                raise MixedContentTypeError(message)
+
+    elif not ctype == get_content_type(obj):
+        raise MixedContentTypeError('Calculated content type %r does not match %r.' % (ctype, get_content_type(obj)))
+
+    queryset = _get_queryset(User)
+
+    # If there is no node in the graph for ``obj``, return empty queryset.
+    target_node = get_node_class_for_model(obj).nodes.get_or_none(**{'pk': obj.pk})
+    if not codenames or not target_node:
+        if with_superusers is True:
+            return queryset.filter(is_superuser=True)
+        return queryset.none()
+
+    ctype_source = get_content_type(User)
+
+    # We need a fake source content type model to use as origin.
+    fake_model = ctype_source.model_class()()
+    source_node = get_node_for_object(fake_model)
+
+    queries = []
+    for access_rule in get_access_rules(ctype_source, ctype, codenames):
+        manager = source_node.paths
+        if access_rule.direction is not None:
+            manager.direction = access_rule.direction
+
+        for n, rule_definition in enumerate(access_rule.relation_types_obj):
+            relation_type, target_props = zip(*rule_definition.items())
+            relation_type, target_props = relation_type[0], target_props[0]
+
+            source_props = {}
+            if n == 0 and access_rule.requires_staff:
+                source_props.update({'is_staff': True})
+
+            # Make sure the last object in the query is matched to ``obj``.
+            if n == len(access_rule.relation_types_obj) - 1:
+                target_props = target_props or {}
+                target_props.update(target_node.deflate(target_node.__properties__))
+
+            manager = manager.add(relation_type, source_props=source_props, target_props=target_props)
+
+        if manager.statement:
+            queries.append(manager.get_path())
+
+    q_values = Q()
+    if with_superusers is True:
+        q_values |= Q(is_superuser=True)
+    node_class = get_node_class_for_model(queryset.model)
+    for query in queries:
+        # FIXME: https://github.com/inonit/libcypher-parser-python/issues/1
+        # validate_cypher(query, raise_exception=True)
+        result, _ = db.cypher_query(query)
+        if result:
+            values = set()
+            for item in flatten(result):
+                if not isinstance(item, Path):
+                    continue
+                try:
+                    start, end = (node_class.inflate(item.start),
+                                  get_node_class_for_model(obj).inflate(item.end))
+                    if isinstance(start, node_class) and end == target_node:
+                        # Make sure the user object has correct permissions
+                        global_perms = set(get_perms(start._instance, obj) if with_group_users
+                                           else get_user_perms(start._instance, obj))
+                        if all((code in global_perms for code in codenames)):
+                            values.add(item.start.properties['pk'])
+                except (KeyError, InflateError):
+                    continue
+            q_values |= Q(pk__in=values)
+
+    if not q_values:
+        return queryset.none()
+    return queryset.filter(q_values)
 
 
 def get_groups_with_perms(obj, attach_perms=False):
@@ -206,18 +327,9 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True,
             if code not in global_perms:
                 codenames.remove(code)
 
-    # Retrieve all defined access rules originating from user content types,
-    # and targets `queryset.model`.
-    # To reduce search space, first retrieve all access rules with n or greater permissions count.
-    rules_queryset = (AccessRule.objects.prefetch_related('permissions')
-                      .annotate(count=Count('permissions')).filter(count__gte=len(codenames)))
-    rules_queryset = rules_queryset.filter(ctype_source=get_content_type(user),
-                                           ctype_target=ctype, is_active=True,
-                                           permissions__codename__in=codenames)
-
     # Calculate a PATH query for each rule
     queries = []
-    for access_rule in rules_queryset:
+    for access_rule in get_access_rules(get_content_type(user), ctype, codenames):
         manager = source_node.paths
         for n, rule_definition in enumerate(access_rule.relation_types_obj):
             relation_type, target_props = zip(*rule_definition.items())

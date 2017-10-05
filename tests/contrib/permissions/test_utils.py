@@ -99,6 +99,73 @@ class CheckPermissionsAppLabelTestCase(TestCase):
             utils.check_permissions_app_label, permissions=perms)
 
 
+class GetUsersWithPermsTestCase(TestCase):
+    """
+    Testing ``chemtrails.contrib.permissions.utils.get_users_with_perms()``.
+    """
+    def setUp(self):
+        clear_neo4j_model_nodes()
+
+        self.book = BookFixture(Book, generate_m2m={'authors': (2, 2)}).create_one()
+        self.user1, self.user2 = User.objects.earliest('pk'), User.objects.latest('pk')
+        self.group = Group.objects.create(name='group')
+
+    def tearDown(self):
+        clear_neo4j_model_nodes()
+
+    def test_invalid_single_perm(self):
+        perms = ['add_user']
+        self.assertRaisesMessage(
+            MixedContentTypeError, ('Calculated content type from permission "add_user" '
+                                    'does not match <ContentType: book>.'),
+            utils.get_users_with_perms, obj=self.book, permissions=perms
+        )
+
+    def test_invalid_multiple_perms(self):
+        perms = ['add_user', 'view_book']
+        self.assertRaisesMessage(
+            MixedContentTypeError, ('One or more permissions "add_user, view_book" from calculated '
+                                    'content type does not match <ContentType: book>.'),
+            utils.get_users_with_perms, obj=self.book, permissions=perms
+        )
+
+    def test_no_perms(self):
+        queryset = utils.get_users_with_perms(self.book, permissions=[])
+        self.assertEqual(set(queryset), set())
+
+    def test_no_perms_with_superusers(self):
+        self.user1.is_superuser = True
+        self.user1.save()
+
+        queryset = utils.get_users_with_perms(self.book, permissions=[], with_superusers=True)
+        self.assertEqual(set(queryset), {self.user1})
+
+    def test_single_perm(self):
+        access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(User),
+                                                ctype_target=utils.get_content_type(Book),
+                                                relation_types=[{'AUTHOR': None},
+                                                                {'BOOK': None}])
+        perm = Permission.objects.get(content_type__app_label='testapp', codename='view_book')
+        access_rule.permissions.add(perm)
+        self.user1.user_permissions.add(perm)
+
+        users = utils.get_users_with_perms(obj=self.book, permissions='view_book')
+        self.assertEqual(set(users), {self.user1})
+
+    def test_multiple_perms(self):
+        access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(User),
+                                                ctype_target=utils.get_content_type(Book),
+                                                relation_types=[{'AUTHOR': None},
+                                                                {'BOOK': None}])
+        perms = Permission.objects.filter(content_type__app_label='testapp', codename__in=['view_book', 'change_book'])
+        access_rule.permissions.add(*perms)
+        self.user1.user_permissions.add(*perms)
+        self.user2.user_permissions.add(perms.get(codename='change_book'))  # Should not be in result set
+
+        users = utils.get_users_with_perms(obj=self.book, permissions=['change_book', 'view_book'])
+        self.assertEqual(set(users), {self.user1})
+
+
 class GetObjectsForUserTestCase(TestCase):
     """
     Testing ``chemtrails.contrib.permissions.utils.get_objects_for_user()``.
