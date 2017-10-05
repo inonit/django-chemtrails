@@ -3,7 +3,6 @@
 import re
 import inspect
 
-from neomodel import Property
 from neomodel.match import Traversal
 from neomodel.match import OUTGOING, INCOMING, EITHER
 
@@ -149,7 +148,7 @@ class PathManager:
             source_props = self.resolve_filters(config['source_props'])
             if not inspect.isclass(config['source_class']):
                 # If we have a node instance, always match its primary key!
-                if hasattr(config['source_class'], 'pk'):
+                if getattr(config['source_class'], 'pk', None):
                     source_props['pk'] = config['source_class'].pk
 
             target_props = self.resolve_filters(config['target_props'])
