@@ -36,7 +36,8 @@ Installation
 Requirements
 ============
 
-    - A Django project
+    - Python 3.5 or 3.6
+    - A project running Django 1.10.x or 1.11.x
     - Neo4j running and accepting connections using the bolt protocol
 
 Changelog

@@ -3,12 +3,8 @@
 import re
 import os
 
-try:
-    from setuptools import setup, find_packages
-except ImportError:
-    from ez_setup import use_setuptools
-    use_setuptools()
-    from setuptools import setup
+from pip.req import parse_requirements
+from setuptools import setup, find_packages
 
 
 def get_version(package):
@@ -17,6 +13,7 @@ def get_version(package):
     """
     init_py = open(os.path.join(package, '__init__.py')).read()
     return re.search("__version__ = ['\"]([^'\"]+)['\"]", init_py).group(1)
+
 
 setup(
     name='django-chemtrails',
@@ -28,16 +25,14 @@ setup(
     url='https://github.com/inonit/django-chemtrails',
     download_url='https://github.com/inonit/django-chemtrails.git',
     license='MIT License',
-    packages=[
-        'chemtrails'
-    ],
+    packages=find_packages('.', exclude=['tests*', 'docs*', 'javascript*']),
     include_package_data=True,
-    install_requires=[
-        'Django>=1.10,<2.0',
-        'libcypher-parser-python>=0.0.4',
-        'neomodel>=3.2.5',
-        'requests[security]'
-    ],
+    install_requires=[str(r.req) for r in parse_requirements('./requirements.txt', session=False)],
+    extras_require={
+        'perms': [
+            'djangorestframework'
+        ]
+    },
     tests_require=[
         'nose',
         'coverage',
