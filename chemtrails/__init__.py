@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from chemtrails.settings import chemtrails_settings as settings
-
 default_app_config = 'chemtrails.apps.ChemtrailsConfig'
 
 __title__ = 'django-chemtrails'

@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand, CommandError
 from chemtrails.neoutils import get_node_class_for_model
 from django.apps import apps
-from chemtrails import settings
+from chemtrails.conf import settings
 import csv
 import tempfile
 from neomodel import db, exception

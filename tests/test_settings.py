@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from django.test import TestCase, override_settings
-from chemtrails import settings
+from chemtrails.conf import settings
 
 
 class SettingsTestCase(TestCase):
@@ -21,7 +21,7 @@ class SettingsTestCase(TestCase):
         ]
     })
     def test_override_settings(self):
-        from chemtrails.settings import chemtrails_settings as settings  # Need to re-import after override
+        from chemtrails.conf import settings
         self.assertEqual(settings.ENABLED, False)
         self.assertEqual(settings.NAMED_RELATIONSHIPS, False)
         self.assertEqual(settings.CONNECT_META_NODES, False)

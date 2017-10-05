@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import operator
 from itertools import chain
-from functools import reduce
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser, Group, Permission

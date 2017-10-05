@@ -9,9 +9,10 @@ CHEMTRAILS = {
     ]
 }
 """
-from django.conf import settings
-
+from django.conf import settings as django_settings
 from django.core.signals import setting_changed
+
+USER_SETTINGS = getattr(django_settings, 'CHEMTRAILS', None)
 
 # Following formats are supported:
 #   - app_label: 'migrations' or 'migrations.*'
@@ -51,16 +52,18 @@ class CSettings:
     @property
     def user_settings(self):
         if not hasattr(self, '_user_settings'):
-            self._user_settings = getattr(settings, 'CHEMTRAILS', {})
+            self._user_settings = getattr(django_settings, 'CHEMTRAILS', {})
         return self._user_settings
 
-chemtrails_settings = CSettings(None, DEFAULTS)
+
+settings = CSettings(USER_SETTINGS, DEFAULTS)
 
 
 def reload_settings(*args, **kwargs):
-    global chemtrails_settings
+    global settings
     setting, value = kwargs['setting'], kwargs['value']
     if setting == 'CHEMTRAILS':
-        chemtrails_settings = CSettings(value, DEFAULTS)
+        settings = CSettings(value, DEFAULTS)
+
 
 setting_changed.connect(reload_settings)

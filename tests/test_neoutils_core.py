@@ -10,7 +10,6 @@ from django.utils import six
 from neomodel import *
 from neomodel.match import NodeSet
 
-from chemtrails import settings
 from chemtrails.neoutils import (
     ModelNodeMeta, ModelNodeMixin, MetaNodeMeta, MetaNodeMixin,
     get_meta_node_class_for_model, get_meta_node_for_model,
@@ -23,7 +22,7 @@ from tests.utils import flush_nodes
 from tests.testapp.autofixtures import (
     Author, AuthorFixture,
     Book, BookFixture,
-    Publisher, PublisherFixture,
+    Publisher,
     Store, StoreFixture,
     Tag
 )
@@ -282,7 +281,6 @@ class GraphMapperTestCase(TestCase):
     """
     Test that node relationships are mapped correctly
     """
-
     def test_get_property_class_for_field(self):
         from django.contrib.contenttypes.fields import GenericRelation
         from django.contrib.postgres.fields import (
@@ -395,86 +393,68 @@ class GraphMapperTestCase(TestCase):
         results = list(flatten(results))
         self.assertEqual(len(results), 1)
 
+    @override_settings(CHEMTRAILS={
+        'IGNORE_MODELS': ['auth']
+    })
     def test_ignored_models_app_label(self):
-        default = settings.IGNORE_MODELS
-        try:
-            settings.IGNORE_MODELS = ['auth']
+        klass = get_node_class_for_model(Group)
+        self.assertTrue(klass._is_ignored)
 
-            klass = get_node_class_for_model(Group)
-            self.assertTrue(klass._is_ignored)
+        klass = get_node_class_for_model(Book)
+        self.assertFalse(klass._is_ignored)
 
-            klass = get_node_class_for_model(Book)
-            self.assertFalse(klass._is_ignored)
-        finally:
-            settings.IGNORE_MODELS = default
-
+    @override_settings(CHEMTRAILS={
+        'IGNORE_MODELS': ['auth.*']
+    })
     def test_ignored_models_app_label_wildcard(self):
-        default = settings.IGNORE_MODELS
-        try:
-            settings.IGNORE_MODELS = ['auth.*']
+        klass = get_node_class_for_model(Group)
+        self.assertTrue(klass._is_ignored)
 
-            klass = get_node_class_for_model(Group)
-            self.assertTrue(klass._is_ignored)
+        klass = get_node_class_for_model(Book)
+        self.assertFalse(klass._is_ignored)
 
-            klass = get_node_class_for_model(Book)
-            self.assertFalse(klass._is_ignored)
-        finally:
-            settings.IGNORE_MODELS = default
-
+    @override_settings(CHEMTRAILS={
+        'IGNORE_MODELS': ['auth.group']
+    })
     def test_ignored_models_app_label_model_name(self):
-        default = settings.IGNORE_MODELS
-        try:
-            settings.IGNORE_MODELS = ['auth.group']
+        klass = get_node_class_for_model(Group)
+        self.assertTrue(klass._is_ignored)
 
-            klass = get_node_class_for_model(Group)
-            self.assertTrue(klass._is_ignored)
-
-            klass = get_node_class_for_model(Permission)
-            self.assertFalse(klass._is_ignored)
-        finally:
-            settings.IGNORE_MODELS = default
-
-    def test_ignore_model_save(self):
-        # Make sure ignored models are not saved
-        pass
-
-    def test_ignored_model_sync(self):
-        default = settings.IGNORE_MODELS
-        try:
-            settings.IGNORE_MODELS = ['auth.group']
-            group = Group.objects.create(name='group')
-
-            get_node_for_object(group).sync()
-            klass = get_node_class_for_model(Group)
-            try:
-                klass.nodes.get(pk=group.pk)
-                self.fail('Did not fail when trying to look up an ignored node class.')
-            except klass.DoesNotExist as e:
-                self.assertEqual(str(e), "{'pk': %d}" % group.pk)
-
-        finally:
-            settings.IGNORE_MODELS = default
+        klass = get_node_class_for_model(Permission)
+        self.assertFalse(klass._is_ignored)
 
     @flush_nodes()
-    def test_related_ignore_model_sync(self):
-        default = settings.IGNORE_MODELS
+    @override_settings(CHEMTRAILS={
+        'IGNORE_MODELS': ['auth.group']
+    })
+    def test_ignored_model_sync(self):
+        group = Group.objects.create(name='group')
+
+        get_node_for_object(group).sync()
+        klass = get_node_class_for_model(Group)
         try:
-            settings.IGNORE_MODELS = ['auth.group']
-            user = User.objects.create_user(username='testuser', password='test123.')
-            group = Group.objects.create(name='group')
-            user.groups.add(group)
+            klass.nodes.get(pk=group.pk)
+            self.fail('Did not fail when trying to look up an ignored node class.')
+        except klass.DoesNotExist as e:
+            self.assertEqual(str(e), "{'pk': %d}" % group.pk)
 
-            get_node_for_object(user).sync()
+    @flush_nodes()
+    @override_settings(CHEMTRAILS={
+        'IGNORE_MODELS': ['auth.group']
+    })
+    def test_related_ignore_model_sync(self):
+        user = User.objects.create_user(username='testuser', password='test123.')
+        group = Group.objects.create(name='group')
+        user.groups.add(group)
 
-            klass = get_node_class_for_model(Group)
-            try:
-                klass.nodes.get(pk=group.pk)
-                self.fail('Did not fail when trying to look up an ignored node class.')
-            except klass.DoesNotExist as e:
-                self.assertEqual(str(e), "{'pk': %d}" % group.pk)
+        get_node_for_object(user).sync()
 
-        finally:
-            settings.IGNORE_MODELS = default
+        klass = get_node_class_for_model(Group)
+        try:
+            klass.nodes.get(pk=group.pk)
+            self.fail('Did not fail when trying to look up an ignored node class.')
+        except klass.DoesNotExist as e:
+            self.assertEqual(str(e), "{'pk': %d}" % group.pk)
 
     @flush_nodes()
     def test_recursive_connect(self):

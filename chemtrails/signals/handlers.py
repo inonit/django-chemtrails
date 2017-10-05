@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from chemtrails import settings
+from chemtrails.conf import settings
 from chemtrails.neoutils import (
     get_meta_node_for_model,
     get_node_for_object, get_node_class_for_model, get_nodeset_for_queryset
