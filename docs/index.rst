@@ -43,7 +43,7 @@ Requirements
 Changelog
 =========
 
-v0.0.20
+v0.0.22
 -------
 *Release date: 2017-10-05*
 
