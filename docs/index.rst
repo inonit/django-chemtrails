@@ -43,6 +43,15 @@ Requirements
 Changelog
 =========
 
+v0.0.23
+-------
+
+*Release date: 2017-10-09*
+
+    - Fixed bug which caused ``AttemptedCardinalityViolation`` when pointing on a new object
+      using ``OneToOneField``.
+    - Removed support for Django REST Framework compat functions (removed upstreams).
+
 v0.0.22
 -------
 *Release date: 2017-10-05*
