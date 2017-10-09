@@ -43,6 +43,15 @@ Requirements
 Changelog
 =========
 
+v0.0.24
+-------
+
+*Release date: 2017-10-09*
+
+    - Workaround fix for `#46 <https://github.com/inonit/django-chemtrails/issues/46>`_. This let's us
+      perform ``get_users_with_perms()`` by evaluating queries using the ``"{source}.<attr>"`` syntax, by simply
+      ignore the filter.
+
 v0.0.23
 -------
 
