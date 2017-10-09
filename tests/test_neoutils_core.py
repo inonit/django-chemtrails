@@ -457,6 +457,17 @@ class GraphMapperTestCase(TestCase):
             self.assertEqual(str(e), "{'pk': %d}" % group.pk)
 
     @flush_nodes()
+    def test_change_one_to_one_field_model_sync(self):
+        # Make sure we're not getting ``AttemptedCardinalityViolation`` when trying to
+        # change a OneToOneField constraint.
+        author = AuthorFixture(Author).create_one()
+        user = User.objects.create_user(username='testuser', password='test123.')
+
+        author.user = user
+        author.save()
+        self.assertEqual(author.user, user)
+
+    @flush_nodes()
     def test_recursive_connect(self):
         post_save.disconnect(post_save_handler, dispatch_uid='chemtrails.signals.handlers.post_save_handler')
         m2m_changed.disconnect(m2m_changed_handler, dispatch_uid='chemtrails.signals.handlers.m2m_changed_handler')

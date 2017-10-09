@@ -780,6 +780,11 @@ class ModelNodeMixin(ModelNodeMixinBase):
                         'node': node,
                         'instance': instance
                     })
+                if isinstance(prop, ZeroOrOne):
+                    # Disconnect previously related node if any
+                    to_disconnect = prop.filter(pk__ne=source.pk)
+                    for n in to_disconnect:
+                        disconnect(n, prop)
                 connect(node, prop)
                 node.recursive_connect(max_depth=max_depth - 1)
 
