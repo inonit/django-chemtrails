@@ -293,7 +293,10 @@ class PathManager:
                                              "Make sure the '%(value)s' targets a valid attribute." % {
                                                  'node': self.source, 'key': key, 'value': value
                                              })
-                    filters[attr] = getattr(self.source, key)
+                    value = getattr(self.source, key)
+                    if value is None:
+                        value = 'null'
+                    filters[attr] = value
             except TypeError:
                 # This can happen if trying to re-process an already processed filter.
                 continue

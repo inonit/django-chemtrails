@@ -165,6 +165,27 @@ class GetUsersWithPermsTestCase(TestCase):
         users = utils.get_users_with_perms(obj=self.book, permissions=['change_book', 'view_book'])
         self.assertEqual(set(users), {self.user1})
 
+    def test_get_relation_types_definition_index_variable(self):
+        book = BookFixture(Book, generate_m2m={'authors': (2, 2)}).create_one()
+        get_nodeset_for_queryset(Store.objects.filter(pk=book.pk), sync=True)
+
+        user = User.objects.filter(pk__in=book.authors.values('user')).latest('pk')
+        perm = Permission.objects.get(content_type__app_label='auth', codename='change_user')
+
+        access_rule = AccessRule.objects.create(ctype_source=utils.get_content_type(User),
+                                                ctype_target=utils.get_content_type(User),
+                                                relation_types=[
+                                                    {'AUTHOR': None},
+                                                    {'BOOK': None},
+                                                    {'{0:AUTHORS}': {'pk': '{source}.pk'}},  # '{source}.pk' will be ignored
+                                                    {'USER': None}
+                                                ])
+        access_rule.permissions.add(perm)
+        user.user_permissions.add(perm)
+
+        queryset = utils.get_users_with_perms(user, 'auth.change_user')
+        self.assertEqual({user}, set(queryset))
+
 
 class GetObjectsForUserTestCase(TestCase):
     """

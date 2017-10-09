@@ -191,14 +191,19 @@ def get_users_with_perms(obj, permissions, with_superusers=False, with_group_use
             relation_type, target_props = relation_type[0], target_props[0]
 
             source_props = {}
+            target_props = target_props or {}
+
             if n == 0 and access_rule.requires_staff:
                 source_props.update({'is_staff': True})
 
             # Make sure the last object in the query is matched to ``obj``.
             if n == len(access_rule.relation_types_obj) - 1:
-                target_props = target_props or {}
                 target_props['pk'] = target_node.pk
 
+            # FIXME: Workaround for https://github.com/inonit/django-chemtrails/issues/46
+            # If using "{source}.<attr>" filters, ignore them!
+            target_props = {key: value for key, value in target_props.items()
+                            if isinstance(value, str) and not value.startswith('{source}.')}
             manager = manager.add(relation_type, source_props=source_props, target_props=target_props)
 
         if manager.statement:
@@ -330,7 +335,7 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True,
         manager = source_node.paths
         for n, rule_definition in enumerate(access_rule.relation_types_obj):
             relation_type, target_props = zip(*rule_definition.items())
-            relation_type, target_props = relation_type[0], target_props[0]  # TODO: This should be validated before save!
+            relation_type, target_props = relation_type[0], target_props[0]
 
             source_props = {}
             if n == 0 and access_rule.requires_staff:
