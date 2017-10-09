@@ -1,12 +1,8 @@
 # -*- coding: utf-8 -*-
 
-from collections import OrderedDict
-
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
-
-from chemtrails.contrib.permissions.forms import JSONField
 
 
 class Author(models.Model):
@@ -76,7 +72,3 @@ class Guild(models.Model):
     name = models.CharField(max_length=100)
     contact = models.ForeignKey(Author, related_name='guild_contacts')
     members = models.ManyToManyField(Author, verbose_name='members', related_name='guild_set')
-
-#
-# class JSONModel(models.Model):
-#     json = JSONField()
