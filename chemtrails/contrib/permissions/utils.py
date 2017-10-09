@@ -198,7 +198,7 @@ def get_users_with_perms(obj, permissions, with_superusers=False, with_group_use
             # Make sure the last object in the query is matched to ``obj``.
             if n == len(access_rule.relation_types_obj) - 1:
                 target_props = target_props or {}
-                target_props['pk'] = target_node.deflate(target_node.__properties__)['pk']
+                target_props['pk'] = target_node.pk
 
             manager = manager.add(relation_type, source_props=source_props, target_props=target_props)
 
