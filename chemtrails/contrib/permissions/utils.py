@@ -12,7 +12,6 @@ from django.utils.translation import ngettext_lazy
 
 from neo4j.v1 import Path
 from neomodel import db
-from rest_framework.compat import is_anonymous
 
 from chemtrails.contrib.permissions.exceptions import MixedContentTypeError
 from chemtrails.neoutils import InflateError, get_node_class_for_model, get_node_for_object
@@ -303,7 +302,7 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True,
         return queryset
 
     # We don't support anonymous users.
-    if is_anonymous(user):
+    if user.is_anonymous:
         return queryset.none()
 
     # If there is no node in the graph for the user object, return empty queryset.

@@ -3,13 +3,11 @@
 from django.contrib.auth.backends import ModelBackend
 from django.db import models
 
-from rest_framework.compat import is_anonymous
-
 from chemtrails.contrib.permissions.utils import GraphPermissionChecker, check_permissions_app_label
 
 
 def check_user_support(user_obj):
-    return not is_anonymous(user_obj) and user_obj.is_active
+    return not user_obj.is_anonymous and user_obj.is_active
 
 
 class ChemoPermissionsBackend(ModelBackend):
