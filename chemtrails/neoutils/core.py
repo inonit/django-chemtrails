@@ -3,7 +3,7 @@
 import itertools
 import logging
 import operator
-from collections import defaultdict
+from collections import defaultdict, MutableMapping
 from functools import reduce
 
 from django.db import models
@@ -61,6 +61,44 @@ field_property_map = {
     JSONField: JSONProperty
 }
 
+class DefinitionDict(MutableMapping):
+    def __init__(self, *args, **kwargs):
+        self.store = dict()
+        self.update(dict(*args, **kwargs))
+        self._hidden = {}
+
+    def __getitem__(self, key):
+        try:
+            return self._hidden[key]
+        except:
+            return self.store[key]
+
+    def __delitem__(self, key):
+        del self.store[key]
+
+    def __setitem__(self, key, value):
+        self.store[key] = value
+
+    def items(self):
+        _items = self.store.items()
+        _r = []
+        for a,b in _items:
+            if a in self._hidden:
+                _r.append([a, self._hidden[a]])
+            else:
+                _r.append([a,b])
+
+        return _r
+
+    def _safeguard(self, key, value):
+        self._hidden[key] = value
+
+    def __iter__(self):
+        return iter(self.store)
+
+    def __len__(self):
+        return len(self.store)
+    
 
 class Meta(type):
     """
@@ -483,8 +521,29 @@ class ModelNodeMixin(ModelNodeMixinBase):
                 relationship = self.defined_properties(aliases=False, properties=False).get(field.name, None)
                 if isinstance(getattr(self._instance, field.name, None), models.Model) and relationship:
                     node_class = get_node_class_for_model(getattr(self._instance, field.name))
-                    relationship.definition['model'].target_field.default = str(node_class._pk_field).lower()
-                    relationship.definition['node_class'] = node_class
+                    model = relationship.definition['model']
+                    model.target_field.default = str(node_class._pk_field).lower()
+
+                    # defensively set the definition dictionary to a dict like class
+                    # which will protect the safeguarded keys against being copied over
+                    # by neomodel
+                    relationship.definition = DefinitionDict(relationship.definition)
+                    
+                    relationship.definition._safeguard('node_class', node_class)
+                    relationship.definition._safeguard('model', model)
+
+    def post_save(self):
+        # once a node has been saved, fill in the definition for the attributes
+        # that has been protected in the relations. this has to be done in
+        # post_save as neomodel throws an exception if it's done before a node is
+        # saved
+        for attr, relation in self.defined_properties(aliases=False, properties=False).items():
+            if relation and hasattr(self, attr) and type(relation.definition) == DefinitionDict:
+                prop = getattr(self, attr)
+
+                prop.definition = DefinitionDict(prop.definition)
+                prop.definition._safeguard('node_class', relation.definition['node_class'])
+                prop.definition._safeguard('model', relation.definition['model'])
 
     def __repr__(self):
         return '<{label}: {id}>'.format(label=self.__class__.__label__, id=self.id if self._is_bound else None)
