@@ -3,6 +3,7 @@
 import re
 import inspect
 
+from django.contrib.contenttypes.fields import GenericForeignKey
 from neomodel.match import Traversal
 from neomodel.match import OUTGOING, INCOMING, EITHER
 
@@ -102,15 +103,18 @@ class PathManager:
             return None
 
         def format_node(ident, label, **filters):
-            if not filters:
+            separator = ': ' if label else ''
+            if not label and not filters:
+                return '{0}'.format(ident)
+            elif not filters:
                 return '{0}: {1}'.format(ident, label)
             else:
                 label = '{0} {{{1}}}'.format(
-                    label, ', '.join(['{}: {}'.format(
+                    label if label else '', ', '.join(['{}: {}'.format(
                         key, '"%s"' % value if isinstance(value, str) else value)
                         for key, value in filters.items()])
                 )
-                return '{0}: {1}'.format(ident, label)
+                return '{0}{1}{2}'.format(ident, separator, label)
 
         # Matches ie. (source1: UserNode {...}) as long as it's followed
         # by a "-[" or "<-[" which indicates the beginning of a relationship.
@@ -118,20 +122,6 @@ class PathManager:
 
         statements = []
         for n, config in enumerate(self._statements):
-            # Replace previous target node with currently provided '{!index:n}'
-            # target node.
-            # NOTE: This is pretty dirty... =/
-            # target_index = config.get('target_index', None)
-            # if target_index is not None:
-            #     p = re.compile(r'(?<=\]->)(\(target\d+:.\w+\))')
-            #     match = p.search(statements[target_index])
-            #     if match:
-            #         value = match.group()
-            #         match = p.search(statements[n - 1])
-            #         if match:
-            #             statements[n - 1] = p.sub(value, statements[n - 1])
-            #             # continue
-
             # Replace placeholders with actual values.
             defaults = config['relation_props'].copy()
 
@@ -156,12 +146,14 @@ class PathManager:
             defaults.update({
                 'source': 'source{0}'.format(format_node(
                     ident=n,
-                    label=config['source_class'].__label__,
+                    label=(config['source_class'].__label__
+                           if config['source_class'] else None),
                     **source_props
                 )),
                 'target': 'target{0}'.format(format_node(
                     ident=config.get('target_index', n),
-                    label=config['target_class'].__label__,
+                    label=(config['target_class'].__label__
+                           if config['target_class'] else None),
                     # Add any user specified filters to target node.
                     **target_props
                 ))
@@ -231,10 +223,18 @@ class PathManager:
         relation_props = {prop: '"%s"' % value if isinstance(value, str) else value
                           for prop, value in model.deflate(fake.__properties__).items()}
 
+        # At this point we have no idea of what object the GenericForeignKey
+        # relationship is really pointing at.
+        remote_field = getattr(traversal.source_class.Meta.model,
+                               model.remote_field.default.split('.')[-1])
+        if isinstance(remote_field, GenericForeignKey):
+            del relation_props['target_field']
+
         defaults.update({
             'source_class': self.next_class,
             'source_props': source_props or {},
-            'target_class': traversal.target_class,
+            'target_class': (traversal.target_class
+                             if not isinstance(remote_field, GenericForeignKey) else None),
             'target_props': target_props or {},
             'relation_props': relation_props,
             'traversal': traversal,
