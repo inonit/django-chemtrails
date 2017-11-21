@@ -12,17 +12,17 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         pass
-        # parser.add_argument('test', type=int)
 
     def handle(self, *args, **options):
 
         target_file = tempfile.NamedTemporaryFile(delete=True)
+        BUFFER_COUNT = 100
 
         try:
             for app in apps.all_models:
                 self.stdout.write(self.style.SUCCESS('Looking at {}'.format(app)))
-                cntr =0
-                model_count =0
+                model_count = 0
+                cntr = 0
 
                 for n, model in enumerate(apps.get_app_config(app_label=app).get_models()):
                     model_count += 1
@@ -36,43 +36,54 @@ class Command(BaseCommand):
                         cntr += 1
 
             with open(target_file.name, newline='') as csvfile:
-                cypher = ''
                 spamreader = csv.reader(csvfile, delimiter=';', quotechar='|')
                 self.stdout.write(self.style.SUCCESS('Crucifixion party! Wait for it...'))
                 node_count = 0
                 skip_count = 0
-                for n, row in enumerate(spamreader):
+                cypher = ''
 
+                for row in spamreader:
                     if row[0] == 'n':
-                        # print(row[1])
                         try:
                             cypher += row[1]
                             node_count += 1
                         except exception.UniqueProperty:
-                             skip_count+=1
-                db.cypher_query(cypher)
+                            skip_count += 1
+
+                    if cypher and node_count % BUFFER_COUNT == 0:
+                        db.cypher_query(cypher)
+                        cypher = ''
+                        self.stdout.write('{} nodes processed'.format(node_count), ending='\r')
+                        self.stdout.flush()
+
+                if cypher:
+                    db.cypher_query(cypher)
+
                 self.stdout.write(self.style.SUCCESS(
-                    '{} Nodes processed and delivered to Neo... '
+                    '{} nodes processed and delivered to Neo... '
                     'Why oh why, didn\'t I take the blue pill??'.format(node_count)))
                 if skip_count > 0:
                     self.stdout.write(self.style.SUCCESS(
-                        '{} Nodes already existed, and was not updated.... Were you listening to me Neo? Or were you '
+                        '{} nodes already existed, and was not updated.... Were you listening to me Neo? Or were you '
                         'looking at the woman in the red dress?'.format(skip_count)))
 
             with open(target_file.name, newline='') as csvfile:
                 spamreader = csv.reader(csvfile, delimiter=';', quotechar='|')
-                node_count = 0
+                relation_count = 0
+
                 for row in spamreader:
                     if row[0] == 'r':
-                        # print(row[1])
                         db.cypher_query(row[1])
-                        node_count += 1
+                        relation_count += 1
+
+                    if relation_count % BUFFER_COUNT == 0:
+                        self.stdout.write('{} relations processed'.format(relation_count), ending='\r')
+                        self.stdout.flush()
 
                 self.stdout.write(self.style.SUCCESS(
-                    '{} Relations processed and delivered to Neo... '
-                    'Why oh why, didn\'t I take the blue pill??'.format(node_count)))
+                    '{} relations processed and delivered to Neo... '
+                    'Why oh why, didn\'t I take the blue pill??'.format(relation_count)))
                 self.stdout.write(self.style.SUCCESS('Crucifixion party! By the left! Forward!'))
-
 
         finally:
             target_file.close()
