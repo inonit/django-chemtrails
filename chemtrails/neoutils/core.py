@@ -61,6 +61,7 @@ field_property_map = {
     JSONField: JSONProperty
 }
 
+
 class DefinitionDict(MutableMapping):
     def __init__(self, *args, **kwargs):
         self.store = dict()
@@ -500,12 +501,16 @@ class ModelNodeMixin(ModelNodeMixinBase):
         # Query the database for an existing node and set the id if found.
         # This will make this a "bound" node.
         if bind and not hasattr(self, 'id') and getattr(self, 'pk', None) is not None:
-            node_id = self._get_id_from_database(self.deflate(self.__properties__))
-            if node_id:
-                self.id = node_id
-            if not self._instance:
-                # If instantiated without an instance, try to look it up.
-                self._instance = self.get_object(self.pk)
+            try:
+                node_id = self._get_id_from_database(self.deflate(self.__properties__))
+                if node_id:
+                    self.id = node_id
+                if not self._instance:
+                    # If instantiated without an instance, try to look it up.
+                    self._instance = self.get_object(self.pk)
+            except RequiredProperty as e:
+                # NOTE: Workaround for ``RequiredProperty`` exception.
+                logger.error(str(e))
 
         if self._instance:
             # For GenericForeignKey fields, we have no way of knowing what kind of
