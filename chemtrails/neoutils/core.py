@@ -99,7 +99,7 @@ class DefinitionDict(MutableMapping):
 
     def __len__(self):
         return len(self.store)
-    
+
 
 class Meta(type):
     """
@@ -458,23 +458,24 @@ class ModelNodeMixinBase:
 
     @classmethod
     def inflate(cls, node):
-        n = super(ModelNodeMixinBase, cls).inflate(node)
-        kwargs = {
-            'cls': cls,
-            'obj': node,
-            'msg': ('Can not inflate node with properties %(props)s '
-                    'to node class %(class)r.' % {
-                        'props': ', '.join(['='.join([k, str(v)]) for k, v in node.properties.items()]),
-                        'class': cls
-                    })
-        }
-        if not n._app_label == cls.Meta.model._meta.app_label:
-            kwargs.update({'key': '_app_label', 'msg': kwargs['msg'] + ' Wrong app_label.'})
-            raise InflateError(**kwargs)
-        elif not n._model_name == cls.Meta.model._meta.model_name:
-            kwargs.update({'key': '_model_name', 'msg': kwargs['msg'] + ' Wrong model_name.'})
-            raise InflateError(**kwargs)
-        return n
+        inflated = super(ModelNodeMixinBase, cls).inflate(node)
+
+        model = cls.Meta.model
+        if inflated._app_label != model._meta.app_label:
+            raise InflateError(key='_app_label', cls=cls, obj=node, msg=(
+                "Cannot inflate node to class %(klass)r. Wrong app label, expected '%(expected)s', "
+                "but got '%(actual)s'." % {'klass': cls,
+                                           'expected': model._meta.app_label,
+                                           'actual': inflated._app_label
+                                           }))
+        elif inflated._model_name != model._meta.model_name:
+            raise InflateError(key='_model_name', cls=cls, obj=node, msg=(
+                "Cannot inflate node to class %(klass)r. Wrong model name, expected '%(expected)s', "
+                "but got '%(actual)s'." % {'klass': cls,
+                                           'expected': model._meta.model_name,
+                                           'actual': inflated._model_name
+                                           }))
+        return inflated
 
     def sync(self, *args, **kwargs):
         """
@@ -533,9 +534,12 @@ class ModelNodeMixin(ModelNodeMixinBase):
                     # which will protect the safeguarded keys against being copied over
                     # by neomodel
                     relationship.definition = DefinitionDict(relationship.definition)
-                    
+
                     relationship.definition._safeguard('node_class', node_class)
                     relationship.definition._safeguard('model', model)
+
+    def __repr__(self):
+        return '<{label}: {id}>'.format(label=self.__class__.__label__, id=self.id if self._is_bound else None)
 
     def post_save(self):
         # once a node has been saved, fill in the definition for the attributes
@@ -549,9 +553,6 @@ class ModelNodeMixin(ModelNodeMixinBase):
                 prop.definition = DefinitionDict(prop.definition)
                 prop.definition._safeguard('node_class', relation.definition['node_class'])
                 prop.definition._safeguard('model', relation.definition['model'])
-
-    def __repr__(self):
-        return '<{label}: {id}>'.format(label=self.__class__.__label__, id=self.id if self._is_bound else None)
 
     def to_csv(self, cntr=0, target_file=None):
         from chemtrails.neoutils import get_node_for_object
