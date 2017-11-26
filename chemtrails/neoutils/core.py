@@ -461,19 +461,24 @@ class ModelNodeMixinBase:
         inflated = super(ModelNodeMixinBase, cls).inflate(node)
 
         model = cls.Meta.model
-        if inflated._app_label != model._meta.app_label:
+        app_label = (getattr(inflated._app_label, 'default') if isinstance(inflated._app_label, Property)
+                     else inflated._app_label)
+        model_name = (getattr(inflated._model_name, 'default') if isinstance(inflated._model_name, Property)
+                      else inflated._model_name)
+
+        if app_label != model._meta.app_label:
             raise InflateError(key='_app_label', cls=cls, obj=node, msg=(
                 "Cannot inflate node to class %(klass)r. Wrong app label, expected '%(expected)s', "
                 "but got '%(actual)s'." % {'klass': cls,
                                            'expected': model._meta.app_label,
-                                           'actual': inflated._app_label
+                                           'actual': app_label
                                            }))
-        elif inflated._model_name != model._meta.model_name:
+        elif model_name != model._meta.model_name:
             raise InflateError(key='_model_name', cls=cls, obj=node, msg=(
                 "Cannot inflate node to class %(klass)r. Wrong model name, expected '%(expected)s', "
                 "but got '%(actual)s'." % {'klass': cls,
                                            'expected': model._meta.model_name,
-                                           'actual': inflated._model_name
+                                           'actual': model_name
                                            }))
         return inflated
 
