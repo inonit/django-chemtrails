@@ -38,3 +38,9 @@ class PathManagerTestCase(TestCase):
         query = self.node.paths.add('AUTHORS').add('USER').get_match()
         result, meta = db.cypher_query(query)
         self.assertTrue(len(result))
+
+    def test_path_manager_build_query_with_invalid_relationship(self):
+        node = get_node_for_object(BookFixture(Book).create_one())
+        self.assertRaisesMessage(
+            AttributeError, '<BookNode: {id}> has no relation type FOOBAR'.format(id=node.id),
+            node.paths.add, 'FOOBAR')
