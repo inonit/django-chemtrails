@@ -72,9 +72,8 @@ class PathManager:
         Returns a list of valid ``Traversal`` instances
         for the current nodeset.
         """
-        source_class = self.next_class
         return list(filter(lambda prop: isinstance(prop, Traversal),
-                           source_class.nodes.__dict__.values()))
+                           self.next_class.nodes.__dict__.values()))
 
     @property
     def next_class(self):
@@ -191,6 +190,7 @@ class PathManager:
         defaults = {}
         traversal = self.get_traversal(relation_type)
         if traversal is None:
+            # Check if using any back-references like ie. {0:GROUPS}
             pattern = re.compile(r'(?<=^{)(\d:\w+)(?=})')
             match = pattern.search(relation_type)
             if match:
@@ -200,12 +200,6 @@ class PathManager:
                 if len(self._statements) - 1 < index:
                     raise IndexError('target index out of range')
                 defaults['target_index'] = index
-                # target_class = self._statements[index]['traversal'].target_class
-                # for t in filter(lambda prop: isinstance(prop, Traversal),
-                #                 target_class.nodes.__dict__.values()):
-                #     if t.definition['relation_type'] == relation_type:
-                #         traversal = t
-                #         break
             elif not relation_type:
                 raise ValueError('Cannot find relationship with empty relation type.')
             if traversal is None:
