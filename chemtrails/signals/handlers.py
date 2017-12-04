@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
 
+import sys
+from neomodel import install_labels
+
 from chemtrails.conf import settings
 from chemtrails.neoutils import (
-    get_meta_node_for_model,
+    get_meta_node_for_model, get_meta_node_class_for_model,
     get_node_for_object, get_node_class_for_model, get_nodeset_for_queryset
 )
 
@@ -13,6 +16,9 @@ def post_migrate_handler(sender, **kwargs):
     """
     if settings.ENABLED:
         for model in sender.models.values():
+            install_labels(get_node_class_for_model(model), quiet=False, stdout=sys.stdout)
+            install_labels(get_meta_node_class_for_model(model), quiet=False, stdout=sys.stdout)
+
             get_meta_node_for_model(model).sync(max_depth=settings.MAX_CONNECTION_DEPTH, update_existing=True)
 
 
