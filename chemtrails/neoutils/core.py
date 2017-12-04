@@ -211,7 +211,6 @@ class ModelNodeMeta(NodeBase):
         cls.__all_aliases__ = tuple(cls.defined_properties(properties=False, rels=False).items())
         cls.__all_relationships__ = tuple(cls.defined_properties(aliases=False, properties=False).items())
 
-        install_labels(cls, quiet=True, stdout=None)
         return cls
 
 
@@ -996,7 +995,6 @@ class MetaNodeMeta(NodeBase):
         cls.__all_aliases__ = tuple(cls.defined_properties(properties=False, rels=False).items())
         cls.__all_relationships__ = tuple(cls.defined_properties(aliases=False, properties=False).items())
 
-        install_labels(cls, quiet=True, stdout=None)
         return cls
 
 
