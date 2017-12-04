@@ -505,17 +505,16 @@ class ModelNodeMixin(ModelNodeMixinBase):
 
         # Query the database for an existing node and set the id if found.
         # This will make this a "bound" node.
-        if bind and not hasattr(self, 'id') and getattr(self, 'pk', None) is not None:
-            try:
+        if bind and not hasattr(self, 'id'):
+            required = {key: prop for key, prop in self.defined_properties(aliases=False, rels=False).items()
+                        if prop.required or prop.unique_index}
+            if all(getattr(self, attr) for attr in required.keys()):
                 node_id = self._get_id_from_database(self.deflate(self.__properties__))
                 if node_id:
                     self.id = node_id
-                if not self._instance:
-                    # If instantiated without an instance, try to look it up.
-                    self._instance = self.get_object(self.pk)
-            except RequiredProperty as e:
-                # NOTE: Workaround for ``RequiredProperty`` exception.
-                logger.error(str(e))
+
+            if not self._instance and self.pk:
+                self._instance = self.get_object(self.pk)
 
         if self._instance:
             # For GenericForeignKey fields, we have no way of knowing what kind of
@@ -543,7 +542,8 @@ class ModelNodeMixin(ModelNodeMixinBase):
                     relationship.definition._safeguard('model', model)
 
     def __repr__(self):
-        return '<{label}: {id}>'.format(label=self.__class__.__label__, id=self.id if self._is_bound else None)
+        return '<{label}: {id}>'.format(label=self.__class__.__label__,
+                                        id=self.id if self._is_bound else None)
 
     def post_save(self):
         # once a node has been saved, fill in the definition for the attributes

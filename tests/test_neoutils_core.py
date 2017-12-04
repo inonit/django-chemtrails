@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-
+from autofixture.autofixtures import UserFixture
 from django.contrib.auth.models import Group, Permission, User
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ImproperlyConfigured
@@ -196,6 +196,11 @@ class ModelNodeTestCase(TestCase):
 
         node_class = get_node_class_for_model(Author)
         self.assertRaises(InflateError, node_class.inflate, deflated)
+
+    def test_deflate_empty_node_raise_required_property_error(self):
+        klass = get_node_class_for_model(User)
+        self.assertRaisesMessage(RequiredProperty, "property 'pk' on objects of class UserNode",
+                                 klass.deflate, klass().__properties__)
 
 
 class MetaNodeTestCase(TestCase):
