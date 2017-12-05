@@ -220,7 +220,10 @@ def get_users_with_perms(obj, permissions, with_superusers=False, with_group_use
         if result:
             values = set()
             for item in flatten(result):
-                if not isinstance(item, Path):
+                if not isinstance(item, Path):  # pragma: no cover
+                    continue
+                elif (source_node.__label__ not in item.start.labels
+                      or node_class.__label__ not in item.end.labels):
                     continue
                 try:
                     start, end = (node_class.inflate(item.start),
@@ -354,8 +357,11 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True,
         if result:
             values = set()
             for item in flatten(result):
-                if not isinstance(item, Path):
-                    continue  # pragma: no cover
+                if not isinstance(item, Path):  # pragma: no cover
+                    continue
+                elif (source_node.__label__ not in item.start.labels
+                      or node_class.__label__ not in item.end.labels):
+                    continue
                 try:
                     start, end = (get_node_class_for_model(user).inflate(item.start),
                                   node_class.inflate(item.end))
