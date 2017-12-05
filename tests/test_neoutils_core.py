@@ -428,6 +428,13 @@ class GraphMapperTestCase(TestCase):
         klass = get_node_class_for_model(Permission)
         self.assertFalse(klass._is_ignored)
 
+    @override_settings(CHEMTRAILS={
+        'IGNORE_MODELS': ['auth.Group']
+    })
+    def test_ignore_models_case_insensitive(self):
+        klass = get_node_class_for_model(Group)
+        self.assertTrue(klass._is_ignored)
+
     @flush_nodes()
     @override_settings(CHEMTRAILS={
         'IGNORE_MODELS': ['auth.group']

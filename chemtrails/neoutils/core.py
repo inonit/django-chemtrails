@@ -290,7 +290,7 @@ class ModelNodeMixinBase:
             get_model_string(cls.Meta.model)
         )
         from chemtrails.conf import settings
-        return any(match in settings.IGNORE_MODELS for match in lookups)
+        return any(match in map(str.lower, settings.IGNORE_MODELS) for match in lookups)
 
     @classproperty
     def has_relations(cls):
@@ -834,6 +834,10 @@ class ModelNodeMixin(ModelNodeMixinBase):
         for attr, relation in self.defined_properties(aliases=False, properties=False).items():
             prop = getattr(self, attr)
             klass = relation.definition['node_class']
+
+            # Never connect ignored models
+            if klass._is_ignored:
+                continue
 
             source = getattr(instance, prop.name, None)
             if not source:
