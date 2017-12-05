@@ -212,7 +212,9 @@ def get_users_with_perms(obj, permissions, with_superusers=False, with_group_use
     q_values = Q()
     if with_superusers is True:
         q_values |= Q(is_superuser=True)
-    node_class = get_node_class_for_model(queryset.model)
+
+    start_node_class = get_node_class_for_model(queryset.model)
+    end_node_class = get_node_class_for_model(obj)
     for query in queries:
         # FIXME: https://github.com/inonit/libcypher-parser-python/issues/1
         # validate_cypher(query, raise_exception=True)
@@ -222,13 +224,13 @@ def get_users_with_perms(obj, permissions, with_superusers=False, with_group_use
             for item in flatten(result):
                 if not isinstance(item, Path):  # pragma: no cover
                     continue
-                elif (source_node.__label__ not in item.start.labels
-                      or node_class.__label__ not in item.end.labels):
+                elif (start_node_class.__label__ not in item.start.labels
+                      or end_node_class.__label__ not in item.end.labels):
                     continue
                 try:
-                    start, end = (node_class.inflate(item.start),
-                                  get_node_class_for_model(obj).inflate(item.end))
-                    if isinstance(start, node_class) and end == target_node:
+                    start, end = (start_node_class.inflate(item.start),
+                                  end_node_class.inflate(item.end))
+                    if isinstance(start, start_node_class) and end == target_node:
                         # Make sure the user object has correct permissions
                         global_perms = set(get_perms(start._instance, obj) if with_group_users
                                            else get_user_perms(start._instance, obj))
@@ -349,7 +351,8 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True,
             queries.append(manager.get_path())
 
     q_values = Q()
-    node_class = get_node_class_for_model(queryset.model)
+    start_node_class = get_node_class_for_model(user)
+    end_node_class = get_node_class_for_model(queryset.model)
     for query in queries:
         # FIXME: https://github.com/inonit/libcypher-parser-python/issues/1
         # validate_cypher(query, raise_exception=True)
@@ -359,13 +362,13 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True,
             for item in flatten(result):
                 if not isinstance(item, Path):  # pragma: no cover
                     continue
-                elif (source_node.__label__ not in item.start.labels
-                      or node_class.__label__ not in item.end.labels):
+                elif (start_node_class.__label__ not in item.start.labels
+                      or end_node_class.__label__ not in item.end.labels):
                     continue
                 try:
-                    start, end = (get_node_class_for_model(user).inflate(item.start),
-                                  node_class.inflate(item.end))
-                    if start == source_node and isinstance(end, node_class):
+                    start, end = (start_node_class(user).inflate(item.start),
+                                  end_node_class.inflate(item.end))
+                    if start == source_node and isinstance(end, end_node_class):
                         values.add(item.end.properties['pk'])
                 except (KeyError, InflateError):  # pragma: no cover
                     continue
