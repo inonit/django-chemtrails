@@ -835,6 +835,10 @@ class ModelNodeMixin(ModelNodeMixinBase):
             prop = getattr(self, attr)
             klass = relation.definition['node_class']
 
+            # Never connect ignored models
+            if klass._is_ignored:
+                continue
+
             source = getattr(instance, prop.name, None)
             if not source:
                 for node in prop.all():
