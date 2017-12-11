@@ -490,7 +490,7 @@ class ModelNodeMixinBase:
 
 class ModelNodeMixin(ModelNodeMixinBase):
 
-    def __init__(self, instance=None, bind=True, *args, **kwargs):
+    def __init__(self, instance=None, bind=False, *args, **kwargs):
         self._instance = instance
         self.__recursion_depth__ = 0
 
@@ -848,7 +848,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
             if isinstance(source, models.Model):
                 node = klass.nodes.get_or_none(pk=source.pk)
                 if not node:
-                    node = get_node_for_object(source).save()
+                    node = get_node_for_object(source, bind=False).save()
                     logger.info('Created missing node %(node)r while synchronizing %(instance)r' % {
                         'node': node,
                         'instance': instance
@@ -874,7 +874,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
                 if len(nodeset) != source.count():
                     existing = [n.pk for n in nodeset]
                     for obj in source.exclude(pk__in=existing):
-                        node = get_node_for_object(obj)
+                        node = get_node_for_object(obj, bind=False)
                         if not node._is_ignored:
                             node.save()
                             logger.info('Created missing node %(node)r while synchronizing %(instance)r' % {

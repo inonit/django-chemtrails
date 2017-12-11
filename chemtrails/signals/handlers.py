@@ -27,7 +27,7 @@ def post_save_handler(sender, instance, **kwargs):
     Sync the node instance after it has been saved.
     """
     if settings.ENABLED:
-        get_node_for_object(instance).sync(max_depth=settings.MAX_CONNECTION_DEPTH, update_existing=True)
+        get_node_for_object(instance, bind=False).sync(max_depth=settings.MAX_CONNECTION_DEPTH, update_existing=True)
 
 
 def pre_delete_handler(sender, instance, **kwargs):
@@ -56,4 +56,4 @@ def m2m_changed_handler(sender, instance, action, reverse, model, pk_set, **kwar
             get_nodeset_for_queryset(model.objects.filter(pk__in=pk_set), sync=True,
                                      max_depth=settings.MAX_CONNECTION_DEPTH)
         elif action == 'post_clear':
-            get_node_for_object(instance).sync(max_depth=settings.MAX_CONNECTION_DEPTH, update_existing=True)
+            get_node_for_object(instance, bind=False).sync(max_depth=settings.MAX_CONNECTION_DEPTH, update_existing=True)

@@ -45,7 +45,7 @@ class AccessRuleForm(forms.ModelForm):
 
         # TODO: This should be DRY'ed up!
         fake_model = instance.ctype_source.model_class()(pk=0)
-        manager = get_node_for_object(fake_model).paths
+        manager = get_node_for_object(fake_model, bind=False).paths
         if instance.direction is not None:
             manager.direction = instance.direction
 

@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
 
+import time
+import logging
 from itertools import chain
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser, Group, Permission
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q, Count
 from django.shortcuts import _get_queryset
 from django.utils.encoding import force_text
@@ -20,6 +23,7 @@ from chemtrails.contrib.permissions.models import AccessRule
 from chemtrails.utils import flatten
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 def get_identity(identity):
@@ -178,7 +182,7 @@ def get_users_with_perms(obj, permissions, with_superusers=False, with_group_use
 
     # We need a fake source content type model to use as origin.
     fake_model = ctype_source.model_class()()
-    source_node = get_node_for_object(fake_model)
+    source_node = get_node_for_object(fake_model, bind=False)
 
     queries = []
     for access_rule in get_access_rules(ctype_source, ctype, codenames):
@@ -232,11 +236,12 @@ def get_users_with_perms(obj, permissions, with_superusers=False, with_group_use
                                   end_node_class.inflate(item.end))
                     if isinstance(start, start_node_class) and end == target_node:
                         # Make sure the user object has correct permissions
-                        global_perms = set(get_perms(start._instance, obj) if with_group_users
-                                           else get_user_perms(start._instance, obj))
+                        instance = start.get_object()
+                        global_perms = set(get_perms(instance, obj) if with_group_users
+                                           else get_user_perms(instance, obj))
                         if all((code in global_perms for code in codenames)):
                             values.add(item.start.properties['pk'])
-                except (KeyError, InflateError):
+                except (KeyError, InflateError, ObjectDoesNotExist):
                     continue
             q_values |= Q(pk__in=values)
 
@@ -286,6 +291,7 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True,
     
     :returns: QuerySet containing objects ``user`` has ``permissions`` to.
     """
+    timestamp = time.time()
     # Make sure all permissions checks out!
     ctype, codenames = check_permissions_app_label(permissions)
     if extra_perms:
@@ -354,9 +360,11 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True,
     start_node_class = get_node_class_for_model(user)
     end_node_class = get_node_class_for_model(queryset.model)
     for query in queries:
+        now = time.time()
         # FIXME: https://github.com/inonit/libcypher-parser-python/issues/1
         # validate_cypher(query, raise_exception=True)
         result, _ = db.cypher_query(query)
+        logger.debug('query took {0}'.format('%.5f' % (time.time() - now)))
         if result:
             values = set()
             for item in flatten(result):
@@ -366,8 +374,10 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True,
                       or end_node_class.__label__ not in item.end.labels):
                     continue
                 try:
+                    now = time.time()
                     start, end = (start_node_class(user).inflate(item.start),
                                   end_node_class.inflate(item.end))
+                    logger.debug('inflate took {0}'.format('%.5f' % (time.time() - now)))
                     if start == source_node and isinstance(end, end_node_class):
                         values.add(item.end.properties['pk'])
                 except (KeyError, InflateError):  # pragma: no cover
@@ -379,6 +389,7 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True,
     # Return an empty queryset.
     if not q_values:
         return queryset.none()
+    logger.debug('completed in {0}'.format('%.5f' % (time.time() - timestamp)))
     return queryset.filter(q_values)
 
 

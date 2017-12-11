@@ -84,6 +84,7 @@ def get_node_for_object(instance, bind=True):
     """
     Get a ``ModelNode`` instance for the current object instance.
     :param instance: Django model instance.
+    :param bind: Boolean indicating if we should instantiate a bound node.
     :returns: A ``ModelNode`` instance.
     """
     klass = get_node_class_for_model(instance, True)
@@ -103,7 +104,7 @@ def get_nodeset_for_queryset(queryset, sync=False, max_depth=1):
     nodeset = klass.nodes.filter(pk__in=list(queryset.values_list('pk', flat=True)))
     if sync:
         for instance in queryset:
-            get_node_for_object(instance).sync(max_depth=max_depth, update_existing=True)
+            get_node_for_object(instance, bind=False).sync(max_depth=max_depth, update_existing=True)
         nodeset = get_nodeset_for_queryset(queryset, sync=False)
     return nodeset
 
