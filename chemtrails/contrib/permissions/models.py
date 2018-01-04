@@ -41,9 +41,9 @@ class AccessRule(models.Model):
     )
 
     ctype_source = models.ForeignKey(ContentType, verbose_name=_('source content type'),
-                                     related_name='accessrule_ctype_source_set')
+                                     related_name='accessrule_ctype_source_set', on_delete=models.CASCADE)
     ctype_target = models.ForeignKey(ContentType, verbose_name=_('target content type'),
-                                     related_name='accessrule_ctype_target_set')
+                                     related_name='accessrule_ctype_target_set', on_delete=models.CASCADE)
     description = models.TextField(_('description'), default='')
     permissions = models.ManyToManyField(Permission, verbose_name=_('access rule permissions'), blank=True,
                                          help_text=_('Required permissions for target node.'),
