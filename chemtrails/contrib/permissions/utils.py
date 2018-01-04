@@ -16,7 +16,6 @@ from neomodel import db
 
 from chemtrails.contrib.permissions.exceptions import MixedContentTypeError
 from chemtrails.neoutils import InflateError, get_node_class_for_model, get_node_for_object
-from chemtrails.neoutils.query import validate_cypher
 from chemtrails.contrib.permissions.models import AccessRule
 from chemtrails.utils import flatten
 
@@ -216,10 +215,11 @@ def get_users_with_perms(obj, permissions, with_superusers=False, with_group_use
 
     start_node_class = get_node_class_for_model(queryset.model)
     end_node_class = get_node_class_for_model(obj)
-    for query in queries:
-        # FIXME: https://github.com/inonit/libcypher-parser-python/issues/1
-        # validate_cypher(query, raise_exception=True)
-        result, _ = db.cypher_query(query)
+
+    with db.transaction:
+        results = map(db.cypher_query, queries)
+
+    for result in results:
         if result:
             values = set()
             for item in flatten(result):
@@ -356,10 +356,11 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True,
     q_values = Q()
     start_node_class = get_node_class_for_model(user)
     end_node_class = get_node_class_for_model(queryset.model)
-    for query in queries:
-        # FIXME: https://github.com/inonit/libcypher-parser-python/issues/1
-        # validate_cypher(query, raise_exception=True)
-        result, _ = db.cypher_query(query)
+
+    with db.transaction:
+        results = map(db.cypher_query, queries)
+
+    for result in results:
         if result:
             values = set()
             for item in flatten(result):
