@@ -62,7 +62,8 @@ class Book(models.Model):
 class Store(models.Model):
     name = models.CharField(max_length=300)
     books = models.ManyToManyField(Book)
-    bestseller = models.ForeignKey(Book, related_name='bestseller_stores', null=True, blank=True)
+    bestseller = models.ForeignKey(Book, related_name='bestseller_stores', null=True, blank=True,
+                                   on_delete=models.CASCADE)
     registered_users = models.PositiveIntegerField()
 
     def __str__(self):
