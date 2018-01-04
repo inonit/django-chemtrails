@@ -6,7 +6,7 @@ from django.db import models
 
 
 class Author(models.Model):
-    user = models.OneToOneField('auth.User')
+    user = models.OneToOneField('auth.User', on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
     age = models.IntegerField()
     guilds = models.ManyToManyField('testapp.Guild', blank=True)
@@ -18,7 +18,8 @@ class Author(models.Model):
 class Tag(models.Model):
     tag = models.CharField(max_length=20)
     content_type = models.ForeignKey(ContentType, verbose_name='content type',
-                                     related_name='content_type_set_for_%(class)s')
+                                     related_name='content_type_set_for_%(class)s',
+                                     on_delete=models.CASCADE)
     object_pk = models.IntegerField(verbose_name='object ID')
     content_object = GenericForeignKey('content_type', 'object_pk')
 
@@ -46,7 +47,7 @@ class Book(models.Model):
     rating = models.FloatField()
     authors = models.ManyToManyField(Author)
     tags = GenericRelation(Tag, object_id_field='object_pk', content_type_field='content_type')
-    publisher = models.ForeignKey(Publisher)
+    publisher = models.ForeignKey(Publisher, on_delete=models.CASCADE)
     pubdate = models.DateField()
 
     class Meta:
@@ -61,7 +62,8 @@ class Book(models.Model):
 class Store(models.Model):
     name = models.CharField(max_length=300)
     books = models.ManyToManyField(Book)
-    bestseller = models.ForeignKey(Book, related_name='bestseller_stores', null=True, blank=True)
+    bestseller = models.ForeignKey(Book, related_name='bestseller_stores', null=True, blank=True,
+                                   on_delete=models.SET_NULL)
     registered_users = models.PositiveIntegerField()
 
     def __str__(self):
@@ -70,5 +72,5 @@ class Store(models.Model):
 
 class Guild(models.Model):
     name = models.CharField(max_length=100)
-    contact = models.ForeignKey(Author, related_name='guild_contacts')
+    contact = models.ForeignKey(Author, related_name='guild_contacts', on_delete=models.CASCADE)
     members = models.ManyToManyField(Author, verbose_name='members', related_name='guild_set')
