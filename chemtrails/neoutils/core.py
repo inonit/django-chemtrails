@@ -71,7 +71,7 @@ class DefinitionDict(MutableMapping):
     def __getitem__(self, key):
         try:
             return self._hidden[key]
-        except:
+        except KeyError:
             return self.store[key]
 
     def __delitem__(self, key):
@@ -160,7 +160,6 @@ class ModelNodeMeta(NodeBase):
     """
     Meta class for ``ModelNode``.
     """
-
     def __new__(mcs, name, bases, attrs):
         cls = super(ModelNodeMeta, mcs).__new__(mcs, str(name), bases, attrs)
 
@@ -334,6 +333,7 @@ class ModelNodeMixinBase:
     def get_property_class_for_field(klass):
         """
         Returns the appropriate property class for field class.
+
         :param klass: Field class which to look up Property type for.
         """
         if klass in field_property_map:
@@ -418,6 +418,7 @@ class ModelNodeMixinBase:
     def get_related_node_property_for_field(cls, field, meta_node=False):
         """
         Get the relationship definition for the related node based on field.
+
         :param field: Field to inspect
         :param meta_node: If True, return the meta node for the related model,
                           else return the model node.
@@ -693,6 +694,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
     def _get_id_from_database(self, params):
         """
         Query for node and return id.
+
         :param params: Parameters to use in query.
         :returns: Node id if found, else None
         """
@@ -745,6 +747,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
     def recursive_connect(self, max_depth=settings.MAX_CONNECTION_DEPTH):
         """
         Recursively connect a node branch.
+
         :param max_depth: Go n nodes deep originating from the current node.
         :returns: None
         """
@@ -891,6 +894,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
         """
         Synchronizes the current node with data from the database and
         connect all directly related nodes.
+
         :param max_depth: Maximum depth of recursive connections to be made.
         :param update_existing: If True, save data from the django model to graph node.
         :param create_empty: If the Node has no relational fields, don't create it.
@@ -1007,7 +1011,6 @@ class MetaNodeMixin(ModelNodeMixin):
     Mixin class for ``StructuredNode`` which adds a number of class methods
     in order to calculate relationship fields from a Django model class.
     """
-
     def __init__(self, *args, **kwargs):
         self._instance = self.__class__.Meta.model
         self.__recursion_depth__ = 0
@@ -1035,6 +1038,7 @@ class MetaNodeMixin(ModelNodeMixin):
     def recursive_connect(self, prop, relation, max_depth):
         """
         Recursively connect a related branch.
+
         :param prop: For example a ``ZeroOrMore`` instance.
         :param relation: ``RelationShipDefinition`` instance
         :param max_depth: Maximum depth of recursive connections to be made.
@@ -1072,6 +1076,7 @@ class MetaNodeMixin(ModelNodeMixin):
         """
         Synchronizes the current node with data from the database and
         connect all directly related nodes.
+
         :param max_depth: Maximum depth of recursive connections to be made.
         :param update_existing: If True, save data from the django model to graph node.
         :param create_empty: If the Node has no relational fields, don't create it.
