@@ -12,7 +12,7 @@ env:
   matrix:
     - DJANGO_VERSION=">=1.10,<1.11"
     - DJANGO_VERSION=">=1.11,<2.0"
-    - DJANGO_VERSION=">=2.0,<2.1"
+#    - DJANGO_VERSION=">=2.0,<2.1"  # django-autofixture does not support Django2.0
 
 addons:
   apt:
