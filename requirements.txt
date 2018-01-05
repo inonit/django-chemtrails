@@ -1,4 +1,4 @@
 Django>=1.10,<2.0
 libcypher-parser-python>=0.0.4
-git+git://github.com/robinedwards/neomodel.git@99a951f76e9bd40efe69fa7fa5adf3bca50defb7#egg=neomodel
+git+git://github.com/inonit/neomodel.git@develop#egg=neomodel
 requests[security]
