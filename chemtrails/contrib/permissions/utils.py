@@ -357,10 +357,10 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True,
     start_node_class = get_node_class_for_model(user)
     end_node_class = get_node_class_for_model(queryset.model)
 
-    with db.transaction:
-        results = map(db.cypher_query, queries)
+    for query in queries:
 
-    for result in results:
+        result = cypher_query(db, query)
+
         if result:
             values = set()
             for item in flatten(result):
