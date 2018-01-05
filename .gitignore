@@ -94,4 +94,4 @@ ENV/
 
 # Docker
 .docker-data/
-
+.idea/**

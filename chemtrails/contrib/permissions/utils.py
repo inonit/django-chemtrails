@@ -16,7 +16,7 @@ from neomodel import db
 
 from chemtrails.contrib.permissions.exceptions import MixedContentTypeError
 from chemtrails.neoutils import InflateError, get_node_class_for_model, get_node_for_object
-from chemtrails.neoutils.query import validate_cypher
+from chemtrails.neoutils.query import validate_cypher, cypher_query
 from chemtrails.contrib.permissions.models import AccessRule
 from chemtrails.utils import flatten
 
@@ -359,7 +359,7 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True,
     for query in queries:
         # FIXME: https://github.com/inonit/libcypher-parser-python/issues/1
         # validate_cypher(query, raise_exception=True)
-        result, _ = db.cypher_query(query)
+        result, _ = cypher_query(db, query)
         if result:
             values = set()
             for item in flatten(result):
