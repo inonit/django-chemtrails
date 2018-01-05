@@ -15,6 +15,7 @@ from chemtrails.neoutils import (
     get_meta_node_class_for_model, get_meta_node_for_model,
     get_node_class_for_model, get_node_for_object, get_nodeset_for_queryset
 )
+from chemtrails.neoutils.query import cypher_query
 from chemtrails.signals.handlers import post_save_handler, m2m_changed_handler
 from chemtrails.utils import flatten
 
@@ -378,10 +379,12 @@ class GraphMapperTestCase(TestCase):
         node1, node2 = get_node_for_object(group1), get_node_for_object(group2)
 
         # Create a custom relationship between group1 and group2
-        results, _ = db.cypher_query(
+        results, _ = cypher_query(
+            db,
             'MATCH (a), (b) WHERE ID(a) = %d AND ID(b) = %d '
             'CREATE (a)-[r1:RELATION]->(b), (b)-[r2:RELATION]->(a) '
-            'RETURN r1, r2' % (node1.id, node2.id)
+            'RETURN r1, r2' % (node1.id, node2.id),
+            query_type='write'
         )
         results = list(flatten(results))
         self.assertEqual(len(results), 2)
@@ -390,11 +393,11 @@ class GraphMapperTestCase(TestCase):
         node1.__update_raw_node__()
 
         # Make sure custom relationship is deleted
-        results, _ = db.cypher_query('MATCH (n)-[r]->() WHERE ID(n) = %d RETURN r' % node1.id)
+        results, _ = cypher_query(db, 'MATCH (n)-[r]->() WHERE ID(n) = %d RETURN r' % node1.id)
         self.assertEqual(len(results), 0)
 
         # The other relationship should still be intact
-        results, _ = db.cypher_query('MATCH (n)-[r]->() WHERE ID(n) = %d RETURN r' % node2.id)
+        results, _ = cypher_query(db, 'MATCH (n)-[r]->() WHERE ID(n) = %d RETURN r' % node2.id)
         results = list(flatten(results))
         self.assertEqual(len(results), 1)
 
