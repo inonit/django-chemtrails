@@ -16,6 +16,7 @@ from django.utils.translation import ungettext
 
 from neomodel import *
 from chemtrails.conf import settings
+from chemtrails.neoutils.query import cypher_query
 from chemtrails.utils import get_model_string, flatten, timeit
 
 logger = logging.getLogger(__name__)
@@ -233,7 +234,7 @@ class ModelNodeMixinBase:
             'MATCH (n:{label}) WHERE ID(n) = {id}'.format(label=self.__label__, id=self.id),
             'OPTIONAL MATCH (n)-[r]->() RETURN n, r'
         ))
-        results, _ = db.cypher_query(query)
+        results, _ = cypher_query(db, query)
 
         # Identify all properties and relationships which exists on the raw node,
         # but which are not defined on the class model.
@@ -699,7 +700,7 @@ class ModelNodeMixin(ModelNodeMixinBase):
         query = ' '.join(('MATCH (n:{label}) WHERE'.format(label=self.__label__),
                           ' AND '.join(['n.{} = {{{}}}'.format(key, key) for key in params.keys()]),
                           'RETURN id(n) LIMIT 1'))
-        result, _ = db.cypher_query(query, params)
+        result, _ = cypher_query(db, query, params)
         return list(flatten(result))[0] if result else None
 
     def get_object(self, pk=None):
