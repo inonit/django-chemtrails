@@ -219,7 +219,7 @@ def get_users_with_perms(obj, permissions, with_superusers=False, with_group_use
     for query in queries:
         # FIXME: https://github.com/inonit/libcypher-parser-python/issues/1
         # validate_cypher(query, raise_exception=True)
-        result, _ = db.cypher_query(query)
+        result, _ = cypher_query(db, query)
         if result:
             values = set()
             for item in flatten(result):
