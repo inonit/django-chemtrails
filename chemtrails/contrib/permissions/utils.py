@@ -205,7 +205,8 @@ def get_users_with_perms(obj, permissions, with_superusers=False, with_group_use
             # If using "{source}.<attr>" filters, ignore them!
             target_props = {key: value for key, value in target_props.items()
                             if isinstance(value, str) and not value.startswith('{source}.')}
-            manager = manager.add(relation_type, source_props=source_props, target_props=target_props)
+            manager = manager.add(relation_type, source_props=source_props, target_props=target_props,
+                                  with_relation_props=access_rule.with_relation_props)
 
         if manager.statement:
             queries.append(manager.get_path())
@@ -348,7 +349,8 @@ def get_objects_for_user(user, permissions, klass=None, use_groups=True,
             source_props = {}
             if n == 0 and access_rule.requires_staff:
                 source_props.update({'is_staff': True})
-            manager = manager.add(relation_type, source_props=source_props, target_props=target_props)
+            manager = manager.add(relation_type, source_props=source_props, target_props=target_props,
+                                  with_relation_props=access_rule.with_relation_props)
 
         if manager.statement:
             queries.append(manager.get_path())

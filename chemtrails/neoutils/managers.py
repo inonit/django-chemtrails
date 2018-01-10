@@ -36,7 +36,7 @@ def build_relation_string(lhs, rhs, ident=None, relation_type=None, direction=No
 
     props = props or {}
     relation_props = ' {{{{{0}}}}}'.format(', '.join(
-        ['{}: {}'.format(key, value) for key, value in props.items()]))
+        ['{}: {}'.format(key, value) for key, value in props.items()])) if props else ''
 
     statement = direction_map[direction or 0]
     if relation_type is None:
@@ -169,7 +169,8 @@ class PathManager:
 
         return ''.join(statements)
 
-    def add(self, relation_type=None, relation_props=None, source_props=None, target_props=None):
+    def add(self, relation_type, relation_props=None,
+            source_props=None, target_props=None, with_relation_props=True):
         """
         Adds a relationship matching string, based on relation type.
         
@@ -185,6 +186,9 @@ class PathManager:
         :param target_props: Property mapping which should be applied for filtering the
           target node.
         :type target_props: dict
+        :param with_relation_props: Boolean indicating if the query should be built
+          with property matching on relationships. Defaults to True.
+        :type with_relation_props: bool
         :returns: self
         """
         defaults = {}
@@ -213,9 +217,10 @@ class PathManager:
 
         # Instantiate a fake relationship model in order
         # to pick attributes for the relationship.
-        fake = model(**relation_props)
-        relation_props = {prop: '"%s"' % value if isinstance(value, str) else value
-                          for prop, value in model.deflate(fake.__properties__).items()}
+        if with_relation_props is True:
+            fake = model(**relation_props)
+            relation_props = {prop: '"%s"' % value if isinstance(value, str) else value
+                              for prop, value in model.deflate(fake.__properties__).items()}
 
         # At this point we have no idea of what object the GenericForeignKey
         # relationship is really pointing at.

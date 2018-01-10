@@ -60,7 +60,8 @@ class AccessRuleForm(forms.ModelForm):
             if n == 0 and instance.requires_staff:
                 source_props.update({'is_staff': True})
             try:
-                manager = manager.add(relation_type, source_props=source_props, target_props=target_props)
+                manager = manager.add(relation_type, source_props=source_props, target_props=target_props,
+                                      with_relation_props=instance.with_relation_props)
             except (ValueError, AttributeError) as e:
                 return error_message % {'error': e}
 
@@ -103,7 +104,8 @@ class AccessRuleAdmin(admin.ModelAdmin):
     filter_horizontal = ('permissions',)
     fieldsets = (
         (None, {'fields': ('ctype_source', 'ctype_target', 'description', 'permissions',
-                           'relation_types', 'direction', 'cypher_statement', 'requires_staff', 'is_active')}),
+                           'relation_types', 'direction', 'with_relation_props',
+                           'cypher_statement', 'requires_staff', 'is_active')}),
         ('Dates', {'fields': ('created', 'updated')})
         # ('Rule editor', {'fields': ('graph',)}),
     )

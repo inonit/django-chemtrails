@@ -57,6 +57,11 @@ class AccessRule(models.Model):
                                          help_text=_('Override calculated direction for relationships.<br/> '
                                                      'Use with caution, this will affect *all* directional '
                                                      'relationships for evaluation of this rule!'))
+    with_relation_props = models.BooleanField(verbose_name=_('with relationship properties'),
+                                              choices=((True, 'Enabled'), (False, 'Disabled')), default=True,
+                                              help_text=_('If enabled, relationships will be matched by certain '
+                                                          'properties, such as type (ForeignKey, ManyToManyField, '
+                                                          'etc), else only relationship labels will be used.'))
     is_active = models.BooleanField(default=True, help_text=_('Uncheck to disable evaluation of the rule '
                                                               'in the rule chain.'))
     requires_staff = models.BooleanField(default=False, help_text=_('Requires user which should have '
